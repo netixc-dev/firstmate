@@ -1,0 +1,19 @@
+CI canonical roots: 430
+1of2: 215 roots, 7285185 bytes, first=bin/fm-afk-contract.sh
+2of2: 215 roots, 7285063 bytes, first=bin/fm-afk-launch.sh
+2-way: complete and disjoint, 430 unique roots
+1of3: 143 roots, 4856832 bytes, first=bin/fm-afk-contract.sh
+2of3: 144 roots, 4856838 bytes, first=bin/fm-afk-start.sh
+3of3: 143 roots, 4856578 bytes, first=bin/fm-arm-pretool-check.sh
+3-way: complete and disjoint, 430 unique roots
+rejected: 00of3 (both flag forms, exit 2)
+rejected: 00of2 (both flag forms, exit 2)
+rejected: 01of3 (both flag forms, exit 2)
+rejected: 1of03 (both flag forms, exit 2)
+rejected: 0of3 (both flag forms, exit 2)
+rejected: 4of3 (both flag forms, exit 2)
+rejected: 1of1 (both flag forms, exit 2)
+rejected: 1of4 (both flag forms, exit 2)
+rejected: 4of4 (both flag forms, exit 2)
+rejected: --partition 2of3 --fast --list-files (exit 2, fm-lint.sh: --partition requires full canonical lint; omit --fast and explicit paths.)
+rejected: --partition 2of3 bin/fm-lint.sh (exit 2, fm-lint.sh: --partition requires full canonical lint; omit --fast and explicit paths.)
