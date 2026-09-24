@@ -25,9 +25,7 @@ export function firstmateShellInvocation(
   script: string,
   args: readonly string[],
 ): { command: string; args: string[] } {
-  return process.platform === "win32"
-    ? { command: "bash", args: [script, ...args] }
-    : { command: script, args: [...args] };
+  return { command: script, args: [...args] };
 }
 
 // The one owner of how each command is invoked and how its exit status and

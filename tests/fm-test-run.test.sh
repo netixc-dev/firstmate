@@ -114,7 +114,7 @@ init_changed_fixture_repo() {
     fm-procevent-quota.test.sh \
     fm-quota-choose.test.sh \
     fm-pi-watch-extension.test.sh \
-    fm-pi-windows-shell-invocation.test.sh \
+    fm-pi-shell-invocation.test.sh \
     fm-afk-return.test.sh \
     fm-bearings-snapshot.test.sh \
     fm-backend-cmux.test.sh \
@@ -349,15 +349,15 @@ test_changed_dependency_selection_and_unmapped_failure() {
   assert_contains "$listed" "tests/fm-ask-user-authority.test.sh" "skill source selects pure contract coverage"
   assert_contains "$listed" "tests/fm-cd-pretool-check.test.sh" "Claude and Pi source selects hook coverage"
   assert_contains "$listed" "tests/fm-pi-watch-extension.test.sh" "Pi source selects watcher coverage"
-  assert_contains "$listed" "tests/fm-pi-windows-shell-invocation.test.sh" \
-    "turn-end extension selects native-Windows shell coverage"
+  assert_contains "$listed" "tests/fm-pi-shell-invocation.test.sh" \
+    "turn-end extension selects portable Pi shell coverage"
   git -C "$repo" add .agents .claude .pi
   git -C "$repo" -c user.name=test -c user.email=test@example.invalid commit -qm non-bin-source-change
 
   printf '\n' >>"$repo/.pi/extensions/lib/fm-operational-input.ts"
   listed=$(cd "$repo" && bin/fm-test-run.sh --list --changed --base HEAD)
-  assert_contains "$listed" "tests/fm-pi-windows-shell-invocation.test.sh" \
-    "operational-input extension selects native-Windows shell coverage"
+  assert_contains "$listed" "tests/fm-pi-shell-invocation.test.sh" \
+    "operational-input extension selects portable Pi shell coverage"
   git -C "$repo" add .pi/extensions/lib/fm-operational-input.ts
   git -C "$repo" -c user.name=test -c user.email=test@example.invalid commit -qm operational-input-source-change
 
@@ -543,48 +543,45 @@ SH
   pass "changed defaults to bounded automatic scheduling with serial override"
 }
 
-test_windows_posix_mode_emulation_does_not_fail_parallel_runs() {
+test_worker_root_mode_is_enforced_for_parallel_runs() {
   local tmp repo fakebin real_stat out rc
-  tmp=$(mktemp -d "${TMPDIR:-/tmp}/fm-test-run-windows-modes.XXXXXX")
+  tmp=$(mktemp -d "${TMPDIR:-/tmp}/fm-test-run-worker-mode.XXXXXX")
   repo="$tmp/repo"
   fakebin="$tmp/fakebin"
   real_stat=$(command -v stat)
   init_changed_fixture_repo "$repo"
   mkdir -p "$fakebin"
-  cat >"$fakebin/uname" <<'SH'
-#!/usr/bin/env bash
-printf '%s\n' "${FAKE_UNAME:-MINGW64_NT-10.0}"
-SH
   cat >"$fakebin/stat" <<'SH'
 #!/usr/bin/env bash
 if [ "${1:-}" = -c ] && [ "${2:-}" = %a ]; then
-  printf '%s\n' 755
+  printf '%s\n' "${FAKE_STAT_MODE:-755}"
   exit 0
 fi
 exec "$REAL_STAT" "$@"
 SH
-  chmod +x "$fakebin/uname" "$fakebin/stat"
+  chmod +x "$fakebin/stat"
+
   set +e
   out=$(cd "$repo" && PATH="$fakebin:$PATH" REAL_STAT="$real_stat" \
     bin/fm-test-run.sh --jobs 2 \
       tests/fm-cd-pretool-check.test.sh tests/fm-ask-user-authority.test.sh 2>&1)
   rc=$?
   set -e
-  expect_code 0 "$rc" "native-Windows POSIX-mode emulation"
-  assert_contains "$out" "FM_TEST_SUMMARY total=2 failed=0" \
-    "Windows mode emulation did not complete both parallel scripts"
+  expect_code 1 "$rc" "worker-root mode enforcement"
+  assert_contains "$out" "isolation failure: worker root mode is 755, expected 0700" \
+    "worker-root mode enforcement did not reject a non-0700 worker root"
 
   set +e
-  out=$(cd "$repo" && PATH="$fakebin:$PATH" REAL_STAT="$real_stat" FAKE_UNAME=CYGWIN_NT-10.0 \
+  out=$(cd "$repo" && PATH="$fakebin:$PATH" REAL_STAT="$real_stat" FAKE_STAT_MODE=700 \
     bin/fm-test-run.sh --jobs 2 \
       tests/fm-cd-pretool-check.test.sh tests/fm-ask-user-authority.test.sh 2>&1)
   rc=$?
   set -e
-  expect_code 1 "$rc" "Cygwin POSIX-mode enforcement"
-  assert_contains "$out" "isolation failure: worker root mode is 755, expected 0700" \
-    "Cygwin mode enforcement did not reject a non-0700 worker root"
+  expect_code 0 "$rc" "worker-root mode acceptance"
+  assert_contains "$out" "FM_TEST_SUMMARY total=2 failed=0" \
+    "worker-root mode acceptance did not complete both parallel scripts"
   rm -rf "$tmp"
-  pass "Windows emulation exempts only synthetic POSIX modes"
+  pass "parallel workers require and accept a host-neutral 0700 root mode"
 }
 
 # A local verification round names the subjects it cares about. Exercise begin/end
@@ -1746,7 +1743,7 @@ test_shell_line_ending_policy_selects_runner_contract
 test_changed_dependency_selection_and_unmapped_failure
 test_changed_bin_reference_selects_per_script_not_per_family
 test_changed_uses_bounded_automatic_concurrency
-test_windows_posix_mode_emulation_does_not_fail_parallel_runs
+test_worker_root_mode_is_enforced_for_parallel_runs
 test_script_list_uses_bounded_automatic_concurrency
 test_family_proofs_run_in_separate_concurrent_phases
 test_empty_selection_emits_summary
