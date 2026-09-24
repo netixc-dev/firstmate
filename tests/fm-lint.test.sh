@@ -3,7 +3,7 @@
 #
 # bin/fm-lint.sh is the single owner invoked by CI
 # (.github/workflows/ci.yml) and by the pre-push gate (.no-mistakes.yaml
-# commands.lint). CI runs its two full-rigor canonical partitions; the local
+# commands.lint). CI runs its full-rigor canonical partitions; the local
 # gate uses its context-selected default. Their selection differs deliberately,
 # while this owner keeps analysis flags, configuration, and tool versions from
 # drifting.
@@ -179,45 +179,55 @@ test_list_files_reports_the_shell_inventory() {
 }
 
 test_canonical_partitions_preserve_full_lint() {
-  local tmp fakebin all part selected log flags mode rc option
+  local tmp fakebin all part selected log flags mode rc option union total index count
   tmp=$(fm_test_tmproot fm-lint-partitions)
   fakebin="$tmp/bin"
   mkdir -p "$fakebin"
   all=$(CI=true "$LINT" --list-files | LC_ALL=C sort)
-  : > "$tmp/union"
-  for part in 1of2 2of2; do
-    selected=$(CI=false GITHUB_ACTIONS=false "$LINT" --partition "$part" --list-files) \
-      || fail "partition $part must select full canonical roots even on a local branch"
-    [ -n "$selected" ] || fail "empty lint partition $part"
-    printf '%s\n' "$selected" >> "$tmp/union"
-    [ "$selected" = "$("$LINT" --partition "$part" --list-files)" ] \
-      || fail "partition $part is nondeterministic"
-    log="$tmp/$part.roots"
-    flags="$tmp/$part.flags"
-    mode="$tmp/$part.mode"
-    fm_lint_stub_shellcheck "$fakebin" "$log"
-    PATH="$fakebin:$PATH" FM_TEST_FLAG_LOG="$flags" FM_TEST_MODE_LOG="$mode" \
-      "$LINT" --partition "$part" > "$tmp/$part.out" 2>&1 \
-      || fail "canonical partition $part failed: $(cat "$tmp/$part.out")"
-    [ "$(LC_ALL=C sort "$log")" = "$(printf '%s\n' "$selected" | LC_ALL=C sort)" ] \
-      || fail "partition $part executed a different root set than it listed"
-    [ "$(LC_ALL=C sort -u "$flags")" = "$(printf 'exclude=none\nexternal-sources=yes')" ] \
-      || fail "partition $part weakened source-aware analysis"
-    [ "$(LC_ALL=C sort -u "$mode")" = on ] || fail "partition $part disabled full analysis"
+  for total in 2 3; do
+    : > "$tmp/union"
+    for ((index=1; index<=total; index++)); do
+      part="${index}of${total}"
+      selected=$(CI=false GITHUB_ACTIONS=false "$LINT" --partition "$part" --list-files) \
+        || fail "partition $part must select full canonical roots even on a local branch"
+      [ -n "$selected" ] || fail "empty lint partition $part"
+      printf '%s\n' "$selected" >> "$tmp/union"
+      [ "$selected" = "$("$LINT" --partition="$part" --list-files)" ] \
+        || fail "partition $part differs between option forms"
+      log="$tmp/$part.roots"
+      flags="$tmp/$part.flags"
+      mode="$tmp/$part.mode"
+      fm_lint_stub_shellcheck "$fakebin" "$log"
+      PATH="$fakebin:$PATH" FM_TEST_FLAG_LOG="$flags" FM_TEST_MODE_LOG="$mode" \
+        "$LINT" --partition "$part" > "$tmp/$part.out" 2>&1 \
+        || fail "canonical partition $part failed: $(cat "$tmp/$part.out")"
+      [ "$(LC_ALL=C sort "$log")" = "$(printf '%s\n' "$selected" | LC_ALL=C sort)" ] \
+        || fail "partition $part executed a different root set than it listed"
+      [ "$(LC_ALL=C sort -u "$flags")" = "$(printf 'exclude=none\nexternal-sources=yes')" ] \
+        || fail "partition $part weakened source-aware analysis"
+      [ "$(LC_ALL=C sort -u "$mode")" = on ] || fail "partition $part disabled full analysis"
+    done
+    union=$(LC_ALL=C sort "$tmp/union")
+    [ "$union" = "$all" ] || fail "$total lint partitions lose or duplicate canonical roots"
+    count=$(wc -l < "$tmp/union" | tr -d '[:space:]')
+    [ "$count" = "$(printf '%s\n' "$all" | wc -l | tr -d '[:space:]')" ] \
+      || fail "$total lint partitions do not execute each canonical root exactly once"
   done
-  [ "$(LC_ALL=C sort "$tmp/union")" = "$all" ] || fail "lint partitions lose or duplicate canonical roots"
-  for option in 0of2 3of2 1of3; do
+  for option in 00of3 00of2 01of2 01of3 1of03 0of3 4of3 1of1 1of0 1ofx 1of 0of0 1of4 4of4; do
     rc=0
     "$LINT" --partition "$option" --list-files > "$tmp/refused" 2>&1 || rc=$?
     [ "$rc" = 2 ] || fail "invalid partition $option was not refused"
+    rc=0
+    "$LINT" --partition="$option" --list-files > "$tmp/refused" 2>&1 || rc=$?
+    [ "$rc" = 2 ] || fail "invalid partition $option was accepted with an equals sign"
   done
   rc=0
-  "$LINT" --partition 1of2 --fast > "$tmp/refused" 2>&1 || rc=$?
+  "$LINT" --partition 1of3 --fast > "$tmp/refused" 2>&1 || rc=$?
   [ "$rc" = 2 ] || fail "partition accepted --fast"
   rc=0
-  "$LINT" --partition 1of2 bin/fm-lint.sh > "$tmp/refused" 2>&1 || rc=$?
+  "$LINT" --partition 1of3 bin/fm-lint.sh > "$tmp/refused" 2>&1 || rc=$?
   [ "$rc" = 2 ] || fail "partition accepted an explicit subset"
-  pass "two canonical lint partitions preserve complete source-aware coverage and reject weakened modes"
+  pass "two- and three-way lint partitions preserve complete, disjoint source-aware coverage and reject weakened modes"
 }
 
 # fm_lint_stub_git <fakebin-dir>: install a git stub for the changed-file mode
