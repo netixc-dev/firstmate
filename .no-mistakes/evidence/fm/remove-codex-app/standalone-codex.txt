@@ -1,0 +1,4 @@
+crew-harness=codex -> Firstmate crew=codex; standalone binary=codex-cli 0.156.1
+pi codex-native/gpt-6-astra ultra -> accepted
+pi-signed codex-native/gpt-6-astra ultra -> accepted
+codex codex-native/gpt-6-astra ultra -> refused: error: ultra effort requires pi or pi-signed with an explicit codex-native/<model> model

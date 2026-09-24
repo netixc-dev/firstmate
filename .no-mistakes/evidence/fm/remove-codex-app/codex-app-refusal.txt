@@ -1,0 +1,4 @@
+flag: exit=1; output=error: unknown backend 'codex-app' (known: tmux herdr zellij orca cmux)
+env: exit=1; output=error: unknown backend 'codex-app' (known: tmux herdr zellij orca cmux)
+config: exit=1; output=error: unknown backend 'codex-app' (known: tmux herdr zellij orca cmux)
+No task state created in isolated home.

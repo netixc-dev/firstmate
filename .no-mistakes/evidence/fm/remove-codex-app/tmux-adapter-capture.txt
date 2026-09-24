@@ -1,0 +1,5 @@
+Firstmate tmux adapter capture from private live session:
+printf 'FIRSTMATE-%s\n' TMUX-IS-LIVE
+control@controls-MacBook-Air 01M3A6Y1W9MENFD8ZT2VYSKFK0 % printf 'FIRSTMATE-%s\n' TMUX-IS-LIVE
+FIRSTMATE-TMUX-IS-LIVE
+control@controls-MacBook-Air 01M3A6Y1W9MENFD8ZT2VYSKFK0 %
