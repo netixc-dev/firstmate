@@ -44,9 +44,10 @@
 # Lint defaults to two bounded workers over two stable logical shards.
 # Diagnostics replay in stable shard/root order. FM_LINT_JOBS=1 changes
 # concurrency, not diagnostics or exit selection.
-# --partition 1of2/2of2 splits the entire canonical inventory across
-# two CI runners, each with those same bounded workers. Partitions are complete,
-# disjoint, and byte-weight balanced; --list-files exposes their actual roots.
+# --partition <index>of<total> splits the entire canonical inventory across
+# the requested number of CI runners, each with those same bounded workers.
+# Partitions are complete, disjoint, and byte-weight balanced;
+# --list-files exposes their actual roots. The total must be at least two.
 # Partition mode is always full source-aware analysis, never changed-only or
 # --fast, and does not accept explicit paths. Each partition also runs workflow
 # lint and backend-purity checks, keeping either invocation independently useful.
@@ -59,7 +60,7 @@
 #   fm-lint.sh --fast [path]...       local lint with extended analysis disabled
 #   fm-lint.sh <path>...               lint explicit roots with the same config
 #   fm-lint.sh --jobs <1|2> [path]...  override bounded worker count
-#   fm-lint.sh --partition <1of2|2of2> lint one full-rigor canonical CI partition
+#   fm-lint.sh --partition <index>of<total> lint one full-rigor canonical CI partition
 #   fm-lint.sh --telemetry <path> ...  write a quiet metrics snapshot
 #   fm-lint.sh --required-version      print the ShellCheck pin
 #   fm-lint.sh --list-files            print the file set that would be linted
@@ -403,6 +404,8 @@ TELEMETRY=${FM_LINT_TELEMETRY:-}
 FAST=0
 ANALYSIS_MODE=full
 PARTITION=
+PARTITION_INDEX=
+PARTITION_TOTAL=
 PARTITION_REQUESTED=0
 LIST_FILES=0
 while [ "$#" -gt 0 ]; do
@@ -426,7 +429,7 @@ while [ "$#" -gt 0 ]; do
       shift
       ;;
     --partition)
-      [ "$#" -ge 2 ] || { printf 'fm-lint.sh: --partition requires 1of2 or 2of2.\n' >&2; exit 2; }
+      [ "$#" -ge 2 ] || { printf 'fm-lint.sh: --partition requires <index>of<total>.\n' >&2; exit 2; }
       PARTITION=$2
       PARTITION_REQUESTED=1
       shift 2
@@ -465,17 +468,29 @@ esac
 case "$PARTITION" in
   '')
     if [ "$PARTITION_REQUESTED" -eq 1 ]; then
-      printf 'fm-lint.sh: --partition requires 1of2 or 2of2.\n' >&2
+      printf 'fm-lint.sh: --partition requires <index>of<total>.\n' >&2
       exit 2
     fi
     ;;
-  1of2|2of2)
+  *of*)
+    PARTITION_INDEX=${PARTITION%%of*}
+    PARTITION_TOTAL=${PARTITION#*of}
+    case "$PARTITION_INDEX" in
+      ''|*[!0-9]*|0) printf 'fm-lint.sh: --partition index must be a positive integer, got %s.\n' "$PARTITION" >&2; exit 2 ;;
+    esac
+    case "$PARTITION_TOTAL" in
+      ''|*[!0-9]*|0) printf 'fm-lint.sh: --partition total must be an integer of at least 2, got %s.\n' "$PARTITION" >&2; exit 2 ;;
+    esac
+    if [ "$PARTITION_TOTAL" -lt 2 ] || [ "$PARTITION_INDEX" -gt "$PARTITION_TOTAL" ]; then
+      printf 'fm-lint.sh: --partition must satisfy 1 <= index <= total and total >= 2, got %s.\n' "$PARTITION" >&2
+      exit 2
+    fi
     if [ "$FAST" -eq 1 ] || [ "$#" -gt 0 ]; then
       printf 'fm-lint.sh: --partition requires full canonical lint; omit --fast and explicit paths.\n' >&2
       exit 2
     fi
     ;;
-  *) printf 'fm-lint.sh: --partition must be 1of2 or 2of2, got %s.\n' "$PARTITION" >&2; exit 2 ;;
+  *) printf 'fm-lint.sh: --partition must be <index>of<total>, got %s.\n' "$PARTITION" >&2; exit 2 ;;
 esac
 
 if [ "$FAST" -eq 1 ] && { [ "${GITHUB_ACTIONS:-}" = true ] || [ "${CI:-}" = true ]; }; then
@@ -581,8 +596,15 @@ if [ -n "$PARTITION" ]; then
   partition_weights=$(fm_lint_root_weights) || exit $?
   while IFS="$TAB" read -r index path; do
     PARTITION_ROOTS+=("$path")
-  done < <(printf '%s\n' "$partition_weights" | LC_ALL=C sort -t "$TAB" -k1,1nr -k2,2n | awk -F '\t' -v want="${PARTITION%%of*}" '
-    { shard=(load[2] < load[1]) ? 2 : 1; load[shard]+=$1; if (shard == want) print $2 "\t" $3 }
+  done < <(printf '%s\n' "$partition_weights" | LC_ALL=C sort -t "$TAB" -k1,1nr -k2,2n | awk -F '\t' -v want="$PARTITION_INDEX" -v total="$PARTITION_TOTAL" '
+    {
+      shard=1
+      for (candidate=2; candidate <= total; candidate++) {
+        if (load[candidate] < load[shard]) shard=candidate
+      }
+      load[shard]+=$1
+      if (shard == want) print $2 "\t" $3
+    }
   ' | LC_ALL=C sort -t "$TAB" -k1,1n)
   ROOTS=("${PARTITION_ROOTS[@]}")
 fi
