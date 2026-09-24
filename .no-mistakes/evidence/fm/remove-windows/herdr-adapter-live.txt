@@ -1,0 +1,6 @@
+printf "adapter-retained-%s\n" alive
+control@controls-MacBook-Air 01M3AVTCZBVGHHTJM4PGZ0ETAN % printf "adapter-retained-%s\n" alive
+adapter-retained-alive
+control@controls-MacBook-Air 01M3AVTCZBVGHHTJM4PGZ0ETAN %
+Firstmate Herdr capture: confirmed
+teardown_status=0

@@ -1,0 +1,10 @@
+lab=fm-lab-remove-windows-24578-6292
+{"running":true,"protocol":22}
+workspace: {"workspace":"w1","pane":"w1:p1"}
+printf "herdr-portable-%s\n" alive
+control@controls-MacBook-Air 01M3AVTCZBVGHHTJM4PGZ0ETAN % printf "herdr-portable-%s\n" alive
+herdr-portable-alive
+control@controls-MacBook-Air 01M3AVTCZBVGHHTJM4PGZ0ETAN %
+fm-herdr-lab: refusing session name 'default'
+guard: default refused
+teardown_status=0
