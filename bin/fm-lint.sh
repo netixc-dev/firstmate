@@ -49,7 +49,7 @@
 # balanced; --list-files exposes their actual roots.
 # Partition mode is always full source-aware analysis, never changed-only or
 # --fast, and does not accept explicit paths. Each partition also runs workflow
-# lint and backend-purity checks, keeping either invocation independently useful.
+# lint and backend-purity checks, keeping each invocation independently useful.
 #
 # Optional quiet telemetry writes one bounded TSV snapshot of content and source
 # graph identity, wall/CPU/RSS, shard load, and competing ShellCheck processes.
