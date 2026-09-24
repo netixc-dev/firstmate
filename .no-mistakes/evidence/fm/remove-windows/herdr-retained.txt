@@ -1,0 +1,5 @@
+lab=fm-lab-retain-herdr-83654-6289
+{"running":true,"compatible":true,"protocol":22}
+fm-lab-retain-herdr-83654-6289:w1	w1:t1[{"workspace_id":"w1","label":"firstmate"}]
+1
+teardown_status=0

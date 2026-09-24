@@ -1,0 +1,5 @@
+lab=fm-lab-retain-task-30144-3699
+created_task tab=w1:t2 pane=w1:p2
+capture=retained-herdr
+[{"tab_id":"w1:t2","label":"fm-retained"}]
+teardown_status=0

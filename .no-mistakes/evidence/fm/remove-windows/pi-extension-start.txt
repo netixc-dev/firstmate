@@ -1,0 +1,2 @@
+{"state":true,"provider":"openai-codex","model":"gpt-5.6-sol"}
+{"extensionLoaded":true,"shutdown":0,"diagnostics":""}
