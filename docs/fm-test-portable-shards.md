@@ -59,8 +59,7 @@ Each shard is still strictly serial in itself, and separate runners mean no two 
 Assignment is longest-processing-time bin packing over per-script duration hints embedded in `bin/fm-test-run.sh`.
 The serial hints were refreshed from successful per-script records in the `fm-test-timing-portable-serial-*` artifacts of the complete green [run 35279383618](https://github.com/kunchenguid/firstmate/actions/runs/35279383618) and the available completed shards of [run 35282466441](https://github.com/kunchenguid/firstmate/actions/runs/35282466441) on 2026-09-17.
 Together these cover all 176 serial scripts at refresh time; retain the slower successful sample where both exist.
-The renamed `tests/fm-pi-shell-invocation.test.sh` now runs in the portable serial remainder, but its inherited duration hint came from the former native-Windows-only test rather than a portable run.
-Refresh that hint from a successful portable CI sample.
+The `tests/fm-pi-shell-invocation.test.sh` duration hint is provisional until refreshed from a successful portable CI sample.
 An unfinished or failed invocation is not a healthy duration sample.
 A script with no hint gets the conservative `PORTABLE_SERIAL_DEFAULT_WEIGHT_MS` default.
 Hints only affect balance: the coverage guard keeps the partition complete and disjoint whatever they say, so a stale hint costs a slower shard rather than lost coverage.
