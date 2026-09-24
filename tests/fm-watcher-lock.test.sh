@@ -15,9 +15,9 @@ LIB="$ROOT/bin/fm-wake-lib.sh"
 
 # An arm only reports its typed failure after wait_for_healthy_successor has
 # spent the whole confirmation budget, so cases that wait for that failure must
-# outlast the largest production default (30s on MSYS, 10s elsewhere - see
-# ARM_CONFIRM_DEFAULT in bin/fm-watch-arm.sh). This is a ceiling spent only when
-# an arm genuinely fails to exit; a passing case returns as soon as it does.
+# outlast the production default (10s - see ARM_CONFIRM_DEFAULT in
+# bin/fm-watch-arm.sh). This is a ceiling spent only when an arm genuinely fails
+# to exit; a passing case returns as soon as it does.
 ARM_FAIL_EXIT_POLLS=400
 
 TMP_ROOT=$(fm_test_tmproot fm-watcher-lock-tests)
@@ -1170,33 +1170,11 @@ test_stale_watch_reclaim_publishes_before_clear() {
   pass "stale watcher reclaim publishes durable recovery evidence before clear"
 }
 
-test_msys_pid_identity_uses_proc() {
-  local live identity
-  case "$(uname)" in
-    MSYS*|MINGW*|CYGWIN*) ;;
-    *)
-      pass "MSYS /proc process identity regression skipped on non-Windows host"
-      return
-      ;;
-  esac
-  sleep 300 &
-  live=$!
-  identity=$(bash -c '. "$1"; fm_pid_identity "$2"' _ "$LIB" "$live" 2>/dev/null)
-  kill "$live" 2>/dev/null || true
-  wait "$live" 2>/dev/null || true
-  case "$identity" in
-    proc-starttime=*" cmdline-hex="*) ;;
-    *) fail "MSYS process identity did not use compatible /proc fields ('$identity')" ;;
-  esac
-  pass "MSYS process identity uses compatible /proc fields"
-}
-
 test_wait_deadline_reaps_a_stopped_child
 test_singleton_start
 test_pid_identity_is_locale_invariant
 test_pid_identity_is_terminal_width_invariant
 test_proc_pid_identity_ignores_wall_clock_and_detects_pid_reuse
-test_msys_pid_identity_uses_proc
 test_stale_watch_lock_reclaimed
 test_stale_watch_reclaim_publishes_before_clear
 test_live_stale_watch_lock_is_actionable
