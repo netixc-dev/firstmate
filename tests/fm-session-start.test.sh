@@ -1327,6 +1327,36 @@ EOF
 
 # --- endpoint liveness: tmux and herdr, live and dead ------------------------
 
+test_rejected_backend_endpoint_is_unknown() {
+  local rec root home fakebin out
+  rec=$(new_world liveness-rejected-backend)
+  IFS='|' read -r root home fakebin <<EOF
+$rec
+EOF
+  make_fake_toolchain "$fakebin"
+  make_fake_ps_claude "$fakebin"
+  make_fake_tmux "$fakebin" "fm-sess:live-window"
+
+  printf 'window=fm-sess:live-window\nkind=ship\nbackend=zellij\nzellij_session=fm-sess\nzellij_tab_id=3\nzellij_pane_id=7\n' > "$home/state/task-legacy.meta"
+  printf 'kind=ship\nbackend=zellij\n' > "$home/state/task-legacy-no-window.meta"
+  printf 'window=fm-sess:live-window\nkind=ship\nbackend=cmux\n' > "$home/state/task-unsupported.meta"
+  printf 'window=fm-sess:live-window\nkind=ship\n' > "$home/state/task-tmux.meta"
+
+  out=$(run_session_start "$home" "$root" "$fakebin:$BASE_PATH")
+  assert_contains "$out" "endpoint: unknown (backend=zellij refused; endpoint not probed)" \
+    "legacy Zellij metadata must not be reported dead, even with a recorded window"
+  [ "$(printf '%s\n' "$out" | grep -c '^endpoint: unknown (backend=zellij refused; endpoint not probed)$')" -eq 2 ] \
+    || fail "both legacy Zellij records must be refused regardless of window presence"
+  assert_contains "$out" "endpoint: unknown (backend=cmux refused; endpoint not probed)" \
+    "another unsupported backend must not be reported dead"
+  assert_not_contains "$out" "endpoint: dead (backend=zellij" "legacy Zellij endpoint was falsely reported dead"
+  assert_not_contains "$out" "endpoint: dead (backend=cmux" "unsupported endpoint was falsely reported dead"
+  assert_contains "$out" "endpoint: alive (backend=tmux window=fm-sess:live-window)" \
+    "retained tmux metadata should still be probed"
+  pass "session start refuses unsupported endpoints without claiming they are dead"
+}
+
+
 test_endpoint_liveness_tmux() {
   local rec root home fakebin out
   rec=$(new_world liveness-tmux)
@@ -2723,6 +2753,7 @@ test_status_tail_line_cap
 test_orphan_status_logs_are_printed
 test_endpoint_liveness_tmux
 test_endpoint_liveness_herdr
+test_rejected_backend_endpoint_is_unknown
 test_composition_invokes_real_scripts
 test_branch_outcome_replay_respects_captain_barrier_and_lease_sweep
 test_non_pi_session_start_leaves_branch_state_untouched
