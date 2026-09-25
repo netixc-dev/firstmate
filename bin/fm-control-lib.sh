@@ -182,17 +182,6 @@ fm_control_interrupt_clear_key() {  # <harness>
   esac
 }
 
-fm_control_interrupt_ack_source() {  # <harness>
-  case "${1-}" in
-    # cursor's transcript DOES type an aborted close, but its write latency
-    # after an interrupt was measured as variable - sometimes seconds, sometimes
-    # not within 20 - so a cancellation claim built on it would be unreliable.
-    # Normal turn completion is prompt, which is what the busy fold depends on.
-    claude|codex|opencode|pi|pi-signed|omp|grok|kimi|cursor|gemini) printf 'none' ;;
-    *) return 1 ;;
-  esac
-}
-
 # The command that exits the agent from its own composer.
 fm_control_exit_command() {  # <harness>
   case "${1-}" in

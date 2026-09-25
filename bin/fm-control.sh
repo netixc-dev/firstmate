@@ -115,7 +115,6 @@
 #
 # Environment knobs (all bounded waits, seconds):
 #   FM_CONTROL_POLL              poll interval for postcondition waits (0.5)
-#   FM_CONTROL_SETTLE_WAIT       adapter acknowledgement wait after interrupt (5)
 #   FM_CONTROL_ARM_WAIT          wait for an armed interrupt's rendered proof
 #                                after the press gap (1.5)
 #   FM_CONTROL_EXIT_WAIT         alive->dead wait after the exit command (30)
@@ -170,7 +169,6 @@ DATA="${FM_DATA_OVERRIDE:-$FM_HOME/data}"
 . "$SCRIPT_DIR/fm-worker-account-lib.sh"
 
 POLL=${FM_CONTROL_POLL:-0.5}
-SETTLE_WAIT=${FM_CONTROL_SETTLE_WAIT:-5}
 ARM_WAIT=${FM_CONTROL_ARM_WAIT:-1.5}
 EXIT_WAIT=${FM_CONTROL_EXIT_WAIT:-30}
 LAUNCH_WAIT=${FM_CONTROL_LAUNCH_WAIT:-90}
@@ -459,9 +457,8 @@ send_interrupt_keys() {
     || die "interrupt key $key reached task $ID, but $clear did not, so its composer still holds the cancelled prompt; clear it before the next lifecycle action"
 }
 
-# deliver_interrupt: deliver and observe the strongest adapter-owned
-# cancellation claim available after delivery. `not-running` means an armed
-# adapter's first press rendered no running turn, so nothing was cancelled.
+# deliver_interrupt: deliver the keys and report cancellation unconfirmed.
+# `not-running` means an armed adapter's first press rendered no running turn.
 deliver_interrupt() {
   local cancel
   send_interrupt_keys
