@@ -299,14 +299,18 @@ done
 
 REMOVED_HARNESS=$(printf 'a%s' gy)
 REMOVED_RULE="$TMP_ROOT/removed-harness-rule.json"
+REMOVED_DEFAULT="$TMP_ROOT/removed-harness-default.json"
 printf '{"rules":[{"when":"removed adapter work","use":{"harness":"%s"}}]}\n' "$REMOVED_HARNESS" > "$REMOVED_RULE"
-cp "$REMOVED_RULE" "$RULES"
-reset_log
-TYPESAFE_API_KEY=$KEY run code out err "$BRIEF"
-expect_code 2 "$code" "removed adapter profile is rejected"
-assert_contains "$err" "each use profile must name a verified harness: $REMOVED_HARNESS" "removed adapter rejection names the unsupported harness"
-assert_absent "$LOG/argv" "removed adapter rejection never calls curl"
-assert_absent "$LOG/quota-axi.calls" "removed adapter rejection never reads quota"
+printf '{"default":{"harness":"%s"}}\n' "$REMOVED_HARNESS" > "$REMOVED_DEFAULT"
+for removed_profile in "$REMOVED_RULE" "$REMOVED_DEFAULT"; do
+  cp "$removed_profile" "$RULES"
+  reset_log
+  TYPESAFE_API_KEY=$KEY run code out err "$BRIEF"
+  expect_code 2 "$code" "removed adapter profile is rejected: $removed_profile"
+  assert_contains "$err" 'profile must name a verified harness' "removed adapter profile was not rejected by the verified-harness check"
+  assert_absent "$LOG/argv" "removed adapter rejection never calls curl"
+  assert_absent "$LOG/quota-axi.calls" "removed adapter rejection never reads quota"
+done
 cat > "$RESPONSE" <<'JSON'
 {"model":"jev-1.13.0","answers":{"rule":{"type":"choice","choice":"rule_1","confidence":0.99,"probabilities":{"rule_1":0.99,"default":0.01}}},"usage":{"input_tokens":100,"output_tokens":60}}
 JSON
