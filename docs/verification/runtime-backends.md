@@ -666,8 +666,6 @@ FM_COMPOSER_MATRIX_LIVE=1 tests/fm-composer-matrix-live-e2e.test.sh
 
 Retained-surface excerpt of observed output:
 
-Retained-surface excerpt of that run:
-
 ```text
 ok - claude (2.1.227 (Claude Code)): real idle composer classifies empty
 ok - codex (codex-cli 0.146.0): real idle composer classifies empty
