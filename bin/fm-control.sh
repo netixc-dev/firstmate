@@ -403,8 +403,8 @@ wait_rendered() {  # <ere> <timeout>
 }
 
 # dismiss_interrupt_hazard <key> <ere>: after the presses, close a surface a
-# mistimed press opened with one more key, before
-# anything else can be typed into it. Sets INTERRUPT_HAZARD.
+# mistimed press opened with one more key before anything else is typed.
+# Sets INTERRUPT_HAZARD.
 dismiss_interrupt_hazard() {  # <key> <ere>
   local key=$1 hazard=$2 gap
   gap=$(fm_control_interrupt_press_gap "$HARNESS")
@@ -493,8 +493,7 @@ interrupt_cancel_claim() {
 
 # deliver_interrupt: deliver and observe the strongest adapter-owned
 # cancellation claim available after delivery. `not-running` means an armed
-# adapter's first press rendered no running turn, so nothing was cancelled; a
-# dismissed revert picker is reported beside the claim.
+# adapter's first press rendered no running turn, so nothing was cancelled.
 deliver_interrupt() {
   local cancel
   prepare_interrupt_ack

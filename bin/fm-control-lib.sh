@@ -340,6 +340,8 @@ fm_control_harness_wiring_paths() {  # <harness> <worktree> <state-dir> <id>
     # is written into the worktree, whose own .gemini/settings.json belongs to
     # the project, and nothing global is installed.
     gemini) printf '%s\n' "$state/$id.gemini-settings.json" ;;
+    # Retire only the exact private sidecar from a legacy Devin task on replacement;
+    # this cleanup does not restore its removed launch or control adapter.
     devin) printf '%s\n' "$state/$id.devin-config.json" ;;
   esac
 }
