@@ -1,0 +1,4 @@
+Pi codex-native/… ultra: rc=0
+Pi openai-codex/… max: rc=0
+error: ultra effort requires pi or pi-signed with an explicit codex-native/<model> model
+Pi openai-codex/… ultra: rc=1

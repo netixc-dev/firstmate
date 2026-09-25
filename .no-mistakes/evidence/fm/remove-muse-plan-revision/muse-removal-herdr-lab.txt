@@ -1,0 +1,13 @@
+bare muse spawn rc=1: error: unsupported removed harness 'muse'; refusing before task mutation
+bare muse: no task record or new project worktree
+Muse crew pin rc=1: error: unsupported removed harness 'muse'; refusing before task mutation
+Muse crew pin: no task record or new project worktree
+raw spawn rc=0: warning: /Users/control/.no-mistakes/worktrees/874f0de57f61/01M3D531T79R41AAK5JQ9FD4CF/.fm-test-muse.VM24Yj/home/data/raw/launch-brief.md records no ship branch; defaulting to legacy branch fm/raw
+warning: /Users/control/.no-mistakes/worktrees/874f0de57f61/01M3D531T79R41AAK5JQ9FD4CF/.fm-test-muse.VM24Yj/home/data/raw/launch-brief.md records no delivery contract line (scaffolded before ship briefs recorded one); launching on the explicit --mode no-mistakes - confirm its definition of done matches
+spawned raw harness=sh kind=ship mode=no-mistakes yolo=off window=fm-lab-muse-removal-2825-32549:w1:p2 worktree=/Users/control/.treehouse/project-abc167/1/project
+raw endpoint: session=fm-lab-muse-removal-2825-32549 pane=w1:p2 harness=sh
+worker-created output: RAW_MUSE_LITERAL
+raw command ran on real Herdr pane; no Muse adapter sidecar was created
+legacy Muse interrupt rc=1: error: task raw records harness 'muse', which has no verified control mechanics; fm-control refuses to guess an interrupt key or exit command
+legacy Muse task record and real endpoint preserved on lifecycle refusal
+lab teardown rc=0

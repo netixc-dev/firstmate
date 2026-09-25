@@ -1,0 +1,15 @@
+tmux real Pi process state=alive; composer=empty
+-files --no-session --offline --tui-mode regular
+ pi v0.87.1
+ escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more
+ Press ctrl+o to show full startup help and loaded resources.
+ Pi can explain its own features and look up its docs. Ask it how to use or extend Pi.
+ Warning: No models available. Use /login to log into a provider via OAuth or API key. See:
+   /opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/docs/providers.md
+   /opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/docs/models.md
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+~/.no-mistakes/worktrees/874f0de57f61/01M3D531T79R41AAK5JQ9FD4CF/.fm-test-pi.Yd6ers (detached)
+0.0%/0 (auto)                                                                                                    unknown
+rendered Pi pane HTML: /Users/control/.no-mistakes/evidence/01M3D531T79R41AAK5JQ9FD4CF/pi-tmux-idle.html
+private tmux server stopped and private Pi configuration removed on exit
