@@ -297,19 +297,20 @@ for direct_rules in "$DEFAULT_ONLY" "$EMPTY_RULES"; do
   assert_absent "$LOG/quota-axi.calls" "no-rule resolution never reads quota: $direct_rules"
 done
 
-REMOVED_HARNESS=$(printf 'a%s' gy)
 REMOVED_RULE="$TMP_ROOT/removed-harness-rule.json"
 REMOVED_DEFAULT="$TMP_ROOT/removed-harness-default.json"
-printf '{"rules":[{"when":"removed adapter work","use":{"harness":"%s"}}]}\n' "$REMOVED_HARNESS" > "$REMOVED_RULE"
-printf '{"default":{"harness":"%s"}}\n' "$REMOVED_HARNESS" > "$REMOVED_DEFAULT"
-for removed_profile in "$REMOVED_RULE" "$REMOVED_DEFAULT"; do
-  cp "$removed_profile" "$RULES"
-  reset_log
-  TYPESAFE_API_KEY=$KEY run code out err "$BRIEF"
-  expect_code 2 "$code" "removed adapter profile is rejected: $removed_profile"
-  assert_contains "$err" 'profile must name a verified harness' "removed adapter profile was not rejected by the verified-harness check"
-  assert_absent "$LOG/argv" "removed adapter rejection never calls curl"
-  assert_absent "$LOG/quota-axi.calls" "removed adapter rejection never reads quota"
+for removed_harness in "$(printf 'a%s' gy)" devin; do
+  printf '{"rules":[{"when":"removed adapter work","use":{"harness":"%s"}}]}\n' "$removed_harness" > "$REMOVED_RULE"
+  printf '{"default":{"harness":"%s"}}\n' "$removed_harness" > "$REMOVED_DEFAULT"
+  for removed_profile in "$REMOVED_RULE" "$REMOVED_DEFAULT"; do
+    cp "$removed_profile" "$RULES"
+    reset_log
+    TYPESAFE_API_KEY=$KEY run code out err "$BRIEF"
+    expect_code 2 "$code" "removed adapter profile is rejected: $removed_profile"
+    assert_contains "$err" 'profile must name a verified harness' "removed adapter profile was not rejected by the verified-harness check"
+    assert_absent "$LOG/argv" "removed adapter rejection never calls curl"
+    assert_absent "$LOG/quota-axi.calls" "removed adapter rejection never reads quota"
+  done
 done
 cat > "$RESPONSE" <<'JSON'
 {"model":"jev-1.13.0","answers":{"rule":{"type":"choice","choice":"rule_1","confidence":0.99,"probabilities":{"rule_1":0.99,"default":0.01}}},"usage":{"input_tokens":100,"output_tokens":60}}

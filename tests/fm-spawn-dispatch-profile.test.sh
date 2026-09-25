@@ -138,6 +138,55 @@ test_removed_harness_pin_refuses_before_task_mutation() {
   pass "spawn rejects a removed harness pin before task mutation or launch"
 }
 
+test_devin_adapter_selections_refuse_and_raw_command_survives() {
+  local rec id out rc meta_before
+  id=devin-selection-z1
+  rec=$(make_spawn_case devin-selection codex "$id")
+  read_case_record "$rec"
+
+  out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness devin); rc=$?
+  expect_code 1 "$rc" "explicit Devin selection must refuse"
+  assert_contains "$out" "unsupported removed harness 'devin'" "explicit Devin selection did not name the refusal"
+  assert_absent "$HOME_DIR/state/$id.meta" "explicit Devin selection wrote task metadata"
+  assert_absent "$HOME_DIR/state/$id.status" "explicit Devin selection wrote task status"
+  [ ! -s "$LAUNCH_LOG" ] || fail "explicit Devin selection launched a worker"
+
+  out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" devin); rc=$?
+  expect_code 1 "$rc" "bare Devin positional selection must refuse"
+  assert_contains "$out" "unsupported removed harness 'devin'" "bare Devin positional selection did not name the refusal"
+  assert_absent "$HOME_DIR/state/$id.meta" "bare Devin positional selection wrote task metadata"
+
+  printf '%s\n' devin > "$HOME_DIR/config/crew-harness"
+  out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness codex); rc=$?
+  expect_code 1 "$rc" "a static Devin crew pin must refuse"
+  assert_contains "$out" "unsupported removed harness 'devin'" "static Devin crew pin did not name the refusal"
+  assert_absent "$HOME_DIR/state/$id.meta" "static Devin crew pin wrote task metadata"
+  printf '%s\n' codex > "$HOME_DIR/config/crew-harness"
+
+  printf '%s\n' devin > "$HOME_DIR/config/secondmate-harness"
+  out=$(run_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" --secondmate --harness codex); rc=$?
+  expect_code 1 "$rc" "a static Devin secondmate pin must refuse"
+  assert_contains "$out" "unsupported removed harness 'devin'" "static Devin secondmate pin did not name the refusal"
+  assert_absent "$HOME_DIR/state/$id.meta" "static Devin secondmate pin wrote task metadata"
+  printf '%s\n' codex > "$HOME_DIR/config/secondmate-harness"
+
+  fm_write_meta "$HOME_DIR/state/$id.meta" "window=sess:fm-$id" "worktree=$WT_DIR" "harness=devin" "kind=ship"
+  meta_before=$(cat "$HOME_DIR/state/$id.meta")
+  out=$(run_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" --relaunch --harness pi); rc=$?
+  expect_code 1 "$rc" "a legacy Devin relaunch must refuse"
+  assert_contains "$out" "unsupported removed harness 'devin'" "legacy Devin relaunch did not name the refusal"
+  [ "$(cat "$HOME_DIR/state/$id.meta")" = "$meta_before" ] || fail "legacy Devin relaunch rewrote its record"
+  [ ! -s "$LAUNCH_LOG" ] || fail "legacy Devin relaunch launched a worker"
+
+  id=devin-raw-z2
+  fm_test_spawn_brief "$HOME_DIR" "$id"
+  out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "devin --prompt-interactive"); rc=$?
+  expect_code 0 "$rc" "a caller-owned raw Devin command must remain available"
+  assert_contains "$out" "spawned $id harness=devin" "raw Devin command did not publish its task"
+  assert_contains "$(cat "$LAUNCH_LOG")" "devin --prompt-interactive" "raw Devin command was changed"
+  pass "first-class Devin selections refuse before mutation while raw Devin commands remain caller-owned"
+}
+
 test_removed_adapter_inputs_preserve_task() {
   local rec id out rc removed meta_before form tab
   removed=$(printf 'a%s' gy)
@@ -1649,6 +1698,7 @@ test_non_claude_harness_ignores_claude_permission_mode() {
 
 test_worker_launch_delivers_role_scope
 test_removed_harness_pin_refuses_before_task_mutation
+test_devin_adapter_selections_refuse_and_raw_command_survives
 test_removed_adapter_inputs_preserve_task
 test_caller_owned_raw_launch_forms
 test_unrelated_raw_argument_keeps_survivor_launch

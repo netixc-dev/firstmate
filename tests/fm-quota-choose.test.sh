@@ -557,11 +557,14 @@ fi
 [ "$out" = "none" ] || fail "exhausted Meta quota returned: $out"
 ok "Muse uses Meta quota"
 
-if err=$(call_choose --snapshot "$LAB/captured.json" --candidate "$REMOVED_ADAPTER:default" 2>&1); then
-  fail "removed adapter quota candidate unexpectedly accepted"
-fi
-printf '%s\n' "$err" | grep -F "unknown harness: $REMOVED_ADAPTER" >/dev/null || fail "removed adapter rejection changed: $err"
-ok "removed adapter quota candidate is rejected"
+for removed_harness in "$REMOVED_ADAPTER" devin; do
+  if err=$(call_choose --snapshot "$LAB/captured.json" --candidate "$removed_harness:default" 2>&1); then
+    fail "removed adapter quota candidate unexpectedly accepted: $removed_harness"
+  fi
+  printf '%s\n' "$err" | grep -F "unknown harness: $removed_harness" >/dev/null \
+    || fail "removed adapter rejection changed for $removed_harness: $err"
+done
+ok "removed adapter quota candidates are rejected"
 
 jq '.providers += [.providers[] | select(.provider == "claude")]' "$LAB/captured.json" > "$DUPLICATE"
 if err=$(call_choose --snapshot "$DUPLICATE" --candidate claude:default 2>&1); then

@@ -93,8 +93,8 @@ setup_home() {  # <name> -> echoes home dir
 
 test_removed_record_refuses_all_delivery_planes() {
   local dir fb home err log rc removed meta before target mode
-  removed=$(printf 'a%s' gy)
-  dir="$TMP_ROOT/removed-record"; mkdir -p "$dir"
+  removed=${1:-$(printf 'a%s' gy)}
+  dir="$TMP_ROOT/removed-record-$removed"; mkdir -p "$dir"
   fb=$(make_stubs "$dir"); home=$(setup_home removed); err="$dir/send.err"; log="$dir/tmux.log"; : > "$log"
   meta="$home/state/lane-old.meta"
   fm_write_meta "$meta" "window=sess:fm-lane-old" "kind=ship" "harness=$removed"
@@ -266,6 +266,7 @@ test_key_send_exit_status_follows_delivery() {
 
 test_exact_lane_id_send_still_works
 test_removed_record_refuses_all_delivery_planes
+test_removed_record_refuses_all_delivery_planes devin
 test_key_send_exit_status_follows_delivery
 test_unset_fm_home_fails
 test_unresolvable_target_does_not_tmux_fallback

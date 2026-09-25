@@ -25,13 +25,7 @@
 #              still exists, and the agent is still alive where the backend can
 #              classify that. Cancellation is confirmed only from an adapter-
 #              owned acknowledgement and otherwise reported unconfirmed. Busy
-#              state is never rewritten as proof of the action. Devin
-#              cancellation invalidates it to unknown because its native hooks
-#              emit no cancellation close; this is not a success claim.
-#              An adapter whose repeated interrupt key does something else on
-#              an idle agent (Devin's revert picker) sends its later presses
-#              only after the first press rendered a running turn, and
-#              otherwise reports `cancel=not-running` having sent one press.
+#              state is never rewritten as proof of the action.
 #   exit       Stop the agent, preserving its terminal endpoint, worktree, and
 #              every uncommitted change. Interrupts first when the task reads
 #              busy, then submits the harness's exit command. Postcondition:
@@ -409,7 +403,7 @@ wait_rendered() {  # <ere> <timeout>
 }
 
 # dismiss_interrupt_hazard <key> <ere>: after the presses, close a surface a
-# mistimed press opened (Devin's revert picker) with one more key, before
+# mistimed press opened with one more key, before
 # anything else can be typed into it. Sets INTERRUPT_HAZARD.
 dismiss_interrupt_hazard() {  # <key> <ere>
   local key=$1 hazard=$2 gap
@@ -502,22 +496,13 @@ interrupt_cancel_claim() {
 # adapter's first press rendered no running turn, so nothing was cancelled; a
 # dismissed revert picker is reported beside the claim.
 deliver_interrupt() {
-  local cancel devin_gen=
-  # Devin does not emit Stop for cancellation. Capture this incarnation before
-  # keys, then invalidate its state conservatively rather than claiming idle.
-  if [ "$HARNESS" = devin ]; then
-    devin_gen=$(fm_busy_current_gen "$STATE" "$ID" 2>/dev/null || true)
-  fi
+  local cancel
   prepare_interrupt_ack
   send_interrupt_keys
   if [ "$INTERRUPT_ARMED" = no ]; then
     cancel=not-running
   else
     cancel=$(interrupt_cancel_claim)
-    if [ "$HARNESS" = devin ] && [ -n "$devin_gen" ]; then
-      "$SCRIPT_DIR/fm-busy-event.sh" apply "$STATE" "$ID" unknown \
-        --gen "$devin_gen" --source fm-interrupt --event interrupt >/dev/null 2>&1 || true
-    fi
   fi
   [ "$INTERRUPT_HAZARD" = none ] || cancel="$cancel revert-picker=$INTERRUPT_HAZARD"
   printf '%s' "$cancel"

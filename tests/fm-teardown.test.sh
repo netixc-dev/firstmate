@@ -704,6 +704,29 @@ test_local_only_fork_remote_allows() {
   pass "local-only worktree with HEAD on a fork remote is torn down and the home summary is refreshed"
 }
 
+test_teardown_removes_only_exact_legacy_devin_sidecar() {
+  local case_dir out rc
+  case_dir=$(make_case legacy-devin-sidecar)
+  write_meta "$case_dir" local-only ship
+  printf '%s\n' 'harness=devin' >> "$case_dir/state/task-x1.meta"
+  wt_commit "$case_dir" "legacy Devin work"
+  add_fork_with_pushed_branch "$case_dir"
+  seed_backlog_in_flight "$case_dir"
+  printf '%s\n' legacy > "$case_dir/state/task-x1.devin-config.json"
+  printf '%s\n' orphan > "$case_dir/state/orphan.devin-config.json"
+
+  set +e
+  out=$(run_teardown "$case_dir" 2>&1)
+  rc=$?
+  set -e
+  expect_code 0 "$rc" "legacy-devin-sidecar: teardown should succeed for landed work"
+  assert_absent "$case_dir/state/task-x1.devin-config.json" \
+    "legacy-devin-sidecar: matching task sidecar was not cleaned"
+  assert_present "$case_dir/state/orphan.devin-config.json" \
+    "legacy-devin-sidecar: orphan sidecar was cleaned by a broad scan"
+  pass "teardown removes only the exact Firstmate-owned legacy Devin sidecar"
+}
+
 test_teardown_closes_the_backlog_item_itself() {
   local case_dir out
   case_dir=$(make_case tasks-axi-close)
@@ -3873,6 +3896,7 @@ EOF
 }
 
 test_local_only_fork_remote_allows
+test_teardown_removes_only_exact_legacy_devin_sidecar
 test_teardown_closes_the_backlog_item_itself
 test_teardown_manual_backend_leaves_the_backlog_to_the_operator
 test_local_only_truly_unpushed_refuses
