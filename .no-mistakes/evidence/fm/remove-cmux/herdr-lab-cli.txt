@@ -1,0 +1,24 @@
+lab=fm-lab-cmux-retained-16369-1317
+=== Running named-session Herdr server ===
+{
+  "server": {
+    "running": true,
+    "compatible": true
+  }
+}
+=== Create and list a workspace in the named lab ===
+{
+  "result": {
+    "workspace_id": "w1",
+    "label": "firstmate",
+    "tab_id": "w1:t1"
+  }
+}
+{
+  "workspaces": [
+    {
+      "workspace_id": "w1",
+      "label": "firstmate"
+    }
+  ]
+}

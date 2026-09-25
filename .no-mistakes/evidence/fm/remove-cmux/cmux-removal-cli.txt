@@ -1,0 +1,14 @@
+=== Explicit --backend cmux ===
+error: unknown backend 'cmux' (known: tmux herdr zellij)
+exit=1
+=== FM_BACKEND=cmux ===
+error: unknown backend 'cmux' (known: tmux herdr zellij)
+exit=1
+=== config/backend=cmux ===
+error: unknown backend 'cmux' (known: tmux herdr zellij)
+exit=1
+=== Task state after all three refusals ===
+=== Ambient cmux markers / macOS fallback ignored ===
+cmux_only=tmux
+herdr_in_cmux=herdr
+tmux_in_cmux=tmux

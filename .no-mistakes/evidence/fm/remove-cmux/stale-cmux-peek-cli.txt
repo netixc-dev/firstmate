@@ -1,0 +1,14 @@
+=== Peek at a recorded removed-backend task ===
+●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+●  WATCHER DOWN - SUPERVISION IS OFF
+●  1 task(s) in flight, but no live watcher process holds this home lock (last beat: 0s ago).
+●  Trust the emitted supervision protocol for this harness; do not use shell & for watcher repair.
+●  This is a supervision warning only; the guarded operation WILL still run.
+●  repair a missing or failed watcher cycle with the Pi tool fm_watch_arm_pi, or restart Pi with -e /Users/control/.no-mistakes/worktrees/874f0de57f61/01M3BCKESZG1K4RHY95J5WPHFG/.pi/extensions/fm-primary-turnend-guard.ts -e /Users/control/.no-mistakes/worktrees/874f0de57f61/01M3BCKESZG1K4RHY95J5WPHFG/.pi/extensions/fm-primary-pi-watch.ts if the extensions are not loaded.
+●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+error: unknown backend 'cmux' in /Users/control/.no-mistakes/worktrees/874f0de57f61/01M3BCKESZG1K4RHY95J5WPHFG/.fm-test-stale.a1SD5v/state/oldtask.meta; preserving task state
+exit=1
+=== Record remains unchanged ===
+backend=cmux
+window=old-workspace:old-surface
+endpoint_task_id=oldtask

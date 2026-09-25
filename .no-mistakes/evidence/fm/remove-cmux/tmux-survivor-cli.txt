@@ -1,0 +1,5 @@
+=== Live tmux adapter capture on a private socket ===
+control@controls-MacBook-Air 01M3BCKESZG1K4RHY95J5WPHFG % printf 'survivor-%s\n' tmux
+survivor-tmux
+=== After adapter closes the task window ===
+agent_state=missing
