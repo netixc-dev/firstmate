@@ -57,9 +57,10 @@ Each shard is still strictly serial in itself, and separate runners mean no two 
 `.github/workflows/ci.yml` derives the same `n` from `strategy.job-total` rather than a literal, so changing the shard count in either file without the other fails the lane loudly instead of leaving part of the required suite unrun.
 
 Assignment is longest-processing-time bin packing over per-script duration hints embedded in `bin/fm-test-run.sh`.
-The serial hints were refreshed from successful per-script records in the `fm-test-timing-portable-serial-*` artifacts of the complete green [run 35279383618](https://github.com/kunchenguid/firstmate/actions/runs/35279383618) and the available completed shards of [run 35282466441](https://github.com/kunchenguid/firstmate/actions/runs/35282466441) on 2026-09-17.
-Together these cover all 176 serial scripts at refresh time; retain the slower successful sample where both exist.
-The `tests/fm-pi-shell-invocation.test.sh` duration hint is provisional until refreshed from a successful portable CI sample.
+The serial hints were refreshed on 2026-09-25 with the slower successful per-script `duration_ms` from the portable-serial artifacts of two complete green same-tree GitHub-hosted runs: [36136032920](https://github.com/netixc-dev/firstmate/actions/runs/36136032920) and [36133959072](https://github.com/netixc-dev/firstmate/actions/runs/36133959072).
+Those artifacts supplied 149 measured paths; older recorded values remain for paths absent from these runs, and the coverage guard names any current unhinted script.
+The two new watcher-script hints partition the older suite's 983669 ms successful maximum in the observed 445584:507387 case-group ratio, rather than claiming a new GitHub-hosted measurement.
+Replace those two estimates with their own successful durations after the first green split run.
 An unfinished or failed invocation is not a healthy duration sample.
 A script with no hint gets the conservative `PORTABLE_SERIAL_DEFAULT_WEIGHT_MS` default.
 Hints only affect balance: the coverage guard keeps the partition complete and disjoint whatever they say, so a stale hint costs a slower shard rather than lost coverage.
@@ -69,8 +70,9 @@ That is not hypothetical: by 2026-09-01 the lane had grown from 116 to 139 scrip
 Refresh the hints whenever the serial lane gains scripts, rather than waiting for that bound to trip.
 
 `bin/fm-test-run.sh` owns the per-shard packing, so its `--check-coverage` output is the current account of lane size and coverage rather than a copied inventory.
-Nine serial runners pack the refreshed measurements into a longest modeled script sum of 697969 ms (11m38s), with other shards near 10m36s.
-The longest script, `tests/fm-watch-triage.test.sh`, legitimately occupies one whole shard and is the indivisible floor for this layout.
+Nine serial runners pack the current hints into a longest modeled script sum of 789820 ms (about 13m10s).
+The original watcher suite and its declared-wait/held-work companion are independent serial scripts; the twelve extracted cases keep real watcher poll-cycle checks and private fixtures.
+The new script uses its own local family because the original watcher's concurrent-family proof does not cover it, while both still run in the nine strictly serial CI shards.
 This is a packing estimate, not measured new-workflow execution or an end-to-end latency guarantee.
 Job timeouts remain hang tripwires under the policy in [Timeouts](#timeouts) below; they are not the desired healthy duration.
 `tests/fm-ci-workflow.test.sh` compares the parsed CI matrix to the executable runner lanes, and the runner rejects parallel `--jobs` on a serial lane even when that shard has only one member.
@@ -79,9 +81,9 @@ Refresh the CI-derived hints by downloading the per-shard timing artifacts from 
 
 ```sh
 for run in <run-id> <run-id> <run-id>; do
-  gh run download "$run" -R kunchenguid/firstmate --pattern 'fm-test-timing-portable-serial-*' -D "/tmp/fm-serial/$run"
+  gh-axi run download "$run" -R netixc-dev/firstmate --dir "/tmp/fm-serial/$run"
 done
-jq -r '.scripts[] | select(.exit == 0) | [.path, .duration_ms] | @tsv' /tmp/fm-serial/*/*/*.json \
+jq -r '.scripts[] | select(.exit == 0 and .gate_skip == false) | [.path, .duration_ms] | @tsv' /tmp/fm-serial/*/fm-test-timing-portable-serial-*/*.json \
   | awk -F'\t' '$2 > m[$1] { m[$1] = $2 } END { for (p in m) print p, m[p] }' \
   | LC_ALL=C sort
 bin/fm-test-run.sh --check-coverage
