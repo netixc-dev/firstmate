@@ -761,22 +761,62 @@ case "$EFFORT" in
 esac
 
 spawn_refuse_removed_harness() { # <harness-or-command>
-  local input=$1 word
-  case "$input" in *[![:space:]]*) ;; *) return 0 ;; esac
-  local words=()
-  read -r -a words <<< "$input"
-  for word in "${words[@]}"; do
-    word=${word#\"}
-    word=${word#\'}
-    word=${word%\"}
-    word=${word%\'}
-    case "${word##*/}" in
-    agy | antigravity)
-      echo "error: unsupported removed harness '$word'; refusing before task mutation" >&2
-      return 1
-      ;;
-    esac
-  done
+  local input=$1 command_name
+  case "$input" in *agy* | *antigravity*) ;; *) return 0 ;; esac
+  command_name=$(python3 - "$input" <<'PY'
+import os
+import re
+import shlex
+import sys
+
+lexer = shlex.shlex(sys.argv[1], posix=True, punctuation_chars=';&|()<>\n')
+lexer.whitespace = ' \t\r'
+lexer.whitespace_split = True
+lexer.commenters = '#'
+try:
+    tokens = list(lexer)
+except ValueError as error:
+    sys.exit(f'cannot inspect launch command: {error}')
+
+expect_command = True
+env_prefix = False
+skip_next = False
+for token in tokens:
+    if token and all(c in ';&|()\n' for c in token):
+        expect_command = True
+        env_prefix = False
+        skip_next = False
+        continue
+    if skip_next:
+        skip_next = False
+        continue
+    if not expect_command:
+        continue
+    if token in ('!', 'command', 'exec'):
+        continue
+    if token == 'env':
+        env_prefix = True
+        continue
+    if env_prefix and token in ('-u', '--unset', '-C', '--chdir'):
+        skip_next = True
+        continue
+    if env_prefix and (token.startswith('-') or token == '--'):
+        continue
+    if re.match(r'^[A-Za-z_][A-Za-z_0-9]*=', token):
+        continue
+    if os.path.basename(token) in ('agy', 'antigravity'):
+        print(token)
+        break
+    expect_command = False
+PY
+  ) || {
+    echo "error: unable to inspect launch command for a removed harness; refusing before task mutation" >&2
+    return 1
+  }
+  if [ -n "$command_name" ]; then
+    echo "error: unsupported removed harness '$command_name'; refusing before task mutation" >&2
+    return 1
+  fi
 }
 
 spawn_refuse_removed_harness "$HARNESS_ARG" || exit 1

@@ -144,12 +144,15 @@ test_removed_adapter_inputs_preserve_task() {
   id=removed-input-z1
   rec=$(make_spawn_case removed-input codex "$id")
   read_case_record "$rec"
-  for form in flag raw env positional static secondmate; do
+  for form in flag raw env separator multiline quoted positional static secondmate; do
     : > "$LAUNCH_LOG"
     case "$form" in
     flag) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "$removed"); rc=$? ;;
     raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "/opt/bin/$removed --prompt-interactive"); rc=$? ;;
-    env) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "env KEY=value $removed --prompt-interactive"); rc=$? ;;
+    env) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "env -u KEY OTHER=value $removed --prompt-interactive"); rc=$? ;;
+    separator) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "env KEY=value $removed; echo ok"); rc=$? ;;
+    multiline) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "$(printf 'echo ok\n%s --prompt-interactive' "$removed")"); rc=$? ;;
+    quoted) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "env KEY=value '/opt/bin/$removed' --prompt-interactive"); rc=$? ;;
     positional) out=$(run_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$removed" --secondmate); rc=$? ;;
     static)
       printf '%s\n' "$removed" > "$HOME_DIR/config/crew-harness"
@@ -175,7 +178,32 @@ test_removed_adapter_inputs_preserve_task() {
   assert_contains "$out" "unsupported removed harness" "legacy relaunch did not identify the recorded harness"
   [ "$(cat "$HOME_DIR/state/$id.meta")" = "$meta_before" ] || fail "legacy relaunch changed its record"
   [ ! -s "$LAUNCH_LOG" ] || fail "legacy relaunch launched another runtime"
+  fm_write_meta "$HOME_DIR/state/$id.meta" "window=sess:fm-$id" "worktree=$WT_DIR" "harness=codex" "kind=ship"
+  meta_before=$(cat "$HOME_DIR/state/$id.meta")
+  out=$(run_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" --relaunch --harness "env KEY=value $removed; echo ok"); rc=$?
+  expect_code 1 "$rc" "raw relaunch override must refuse the removed executable"
+  assert_contains "$out" "unsupported removed harness" "raw relaunch override did not name the refusal"
+  [ "$(cat "$HOME_DIR/state/$id.meta")" = "$meta_before" ] || fail "raw relaunch override changed its record"
+  [ ! -s "$LAUNCH_LOG" ] || fail "raw relaunch override launched another runtime"
   pass "removed adapter inputs and legacy relaunch refuse before task mutation"
+}
+
+test_unrelated_raw_argument_keeps_survivor_launch() {
+  local rec id quoted_id out rc removed
+  removed=$(printf 'a%s' gy)
+  id=removed-argument-z1
+  quoted_id=removed-quoted-argument-z1
+  rec=$(make_spawn_case removed-argument codex "$id" "$quoted_id")
+  read_case_record "$rec"
+  out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "other --prompt $removed"); rc=$?
+  expect_code 0 "$rc" "an unrelated raw launch may pass a removed-name argument"
+  assert_contains "$out" "spawned $id harness=other" "the unrelated raw launch was not selected"
+  assert_grep 'harness=other' "$HOME_DIR/state/$id.meta" "unrelated raw launch lost its harness record"
+  assert_contains "$(cat "$LAUNCH_LOG")" "other --prompt $removed" "raw launch changed its argument text"
+  out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$quoted_id" "$PROJ_DIR" --harness "other --prompt '$removed; echo ok'"); rc=$?
+  expect_code 0 "$rc" "a quoted argument containing shell syntax is not a command"
+  assert_contains "$(cat "$LAUNCH_LOG")" "other --prompt '$removed; echo ok'" "raw launch changed its quoted argument"
+  pass "removed-name arguments do not block another raw adapter"
 }
 
 test_no_profile_keeps_claude_profile_defaults() {
@@ -1542,6 +1570,7 @@ test_non_claude_harness_ignores_claude_permission_mode() {
 test_worker_launch_delivers_role_scope
 test_removed_harness_pin_refuses_before_task_mutation
 test_removed_adapter_inputs_preserve_task
+test_unrelated_raw_argument_keeps_survivor_launch
 test_no_profile_keeps_claude_profile_defaults
 test_non_cursor_launch_clears_inherited_cursor_markers
 test_relative_home_overrides_launch_with_absolute_cross_process_paths
