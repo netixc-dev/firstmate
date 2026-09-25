@@ -88,6 +88,7 @@ if [ -z "$STANDIN_BIN" ]; then
 fi
 ln -s "$STANDIN_BIN" "$LAB/bin/claude-link"
 ln -s "$STANDIN_BIN" "$LAB/bin/pi"
+ln -s "$STANDIN_BIN" "$LAB/bin/rovo"
 ln -s "$STANDIN_BIN" "$LAB/bin/notaharness"
 # omp (Oh My Pi) is a single binary whose live process name is the bare word
 # `omp`; the two decoys are the substrings an unanchored glob would misread.
@@ -120,6 +121,16 @@ chmod +x "$LAB/bin/agent-launcher"
 # shellcheck source=/dev/null
 . "$ROOT/bin/fm-backend.sh"
 fm_backend_source tmux || fail "fm_backend_source tmux failed"
+
+for name in rovo rovo-wrapper atlassian_cli_rovodev provoke; do
+  [ "$(fm_agent_process_classify_name "$name")" = other ] \
+    || fail "removed Rovo identity must not be attributed as an agent: $name"
+done
+for name in pi pi-signed pi-launcher Pi; do
+  [ "$(fm_agent_process_classify_name "$name")" = agent ] \
+    || fail "retained Pi identity lost agent attribution: $name"
+done
+pass "the shared process classifier retires Rovo while preserving Pi identities"
 
 # The idle window names its shell explicitly rather than letting tmux fall back
 # to `default-shell`, which is whoever runs the suite. An operator's login shell
@@ -202,6 +213,19 @@ new_window agent "$LAB/bin/claude-link" 900
 wait_for_state "$SESSION:agent" alive \
   || fail "a running harness-named foreground process must classify alive"
 pass "tmux liveness: a harness-named foreground process classifies alive"
+
+# A retired Rovo-named process can still occupy a legacy caller-owned raw
+# command pane. Do not give that process verified agent authority through the
+# tmux liveness classifier, even when argv0 still carries the former adapter.
+new_window retired-rovo "$LAB/bin/rovo" 900
+fm_backend_tmux_foreground_argv0s "$SESSION:retired-rovo" | grep -Fq "$LAB/bin/rovo" \
+  || fail "retired Rovo pane did not expose its executable identity in argv0"
+wait_for_state "$SESSION:retired-rovo" ambiguous \
+  || fail "a caller-owned Rovo-named process must not regain verified agent identity"
+printf 'retired Rovo process: argv0=%s backend-state=%s\n' \
+  "$(fm_backend_tmux_foreground_argv0s "$SESSION:retired-rovo" | tr '\n' ' ')" \
+  "$(fm_backend_agent_state tmux "$SESSION:retired-rovo")"
+pass "tmux liveness: a foreground process with retired Rovo argv0 stays ambiguous"
 
 # --- muse's version-suffixed binary name ------------------------------------
 # A muse crewmate pane misclassified here reads as a dead endpoint, so a healthy

@@ -25,7 +25,7 @@ START="$ROOT/bin/fm-afk-start.sh"
 CONTRACT="$ROOT/bin/fm-afk-contract.sh"
 # The daemon paths refuse on a Pi primary, so pin a daemon-running harness for
 # every unit below; the Pi refusal has its own units (unit_pi_never_launches_the_daemon).
-unset PI_CODING_AGENT FM_PI_HARNESS CURSOR_AGENT CURSOR_INVOKED_AS GEMINI_CLI ATLASSIAN_AGENT_TYPE ROVODEV_CLI
+unset PI_CODING_AGENT FM_PI_HARNESS CURSOR_AGENT CURSOR_INVOKED_AS GEMINI_CLI
 export CLAUDECODE=1
 
 FAILED=0

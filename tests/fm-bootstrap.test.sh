@@ -1178,6 +1178,24 @@ ROWS
     FM_FAKE_TREEHOUSE_LEASE_HELP=1 "$ROOT/bin/fm-bootstrap.sh")
   [ "$out" = 'CREW_DISPATCH: invalid config/crew-dispatch.json - unverified harness: devin' ] \
     || fail "no-key bootstrap must reject the removed devin worker adapter, got: $out"
+  local rovo_profile typed
+  for typed in off on; do
+    if [ "$typed" = on ]; then
+      printf '%s\n' 'TYPESAFE_API_KEY=test-key' > "$case_dir/home/.env"
+    fi
+    for rovo_profile in \
+      '{"rules":[{"when":"retired","use":{"harness":"rovo"}}]}' \
+      '{"rules":[{"when":"retired","use":[{"harness":"pi"},{"harness":"rovo"}]}]}' \
+      '{"default":{"harness":"rovo"}}' \
+      '{"default":[{"harness":"pi"},{"harness":"rovo"}]}'; do
+      printf '%s\n' "$rovo_profile" > "$case_dir/home/config/crew-dispatch.json"
+      out=$(PATH="$fakebin:$BASE_PATH" FM_HOME="$case_dir/home" FM_ROOT_OVERRIDE="$case_dir/home" \
+        FM_FAKE_TREEHOUSE_LEASE_HELP=1 "$ROOT/bin/fm-bootstrap.sh")
+      [ "$out" = 'CREW_DISPATCH: invalid config/crew-dispatch.json - unverified harness: rovo' ] \
+        || fail "typed=$typed must reject every Rovo profile shape, got: $out"
+    done
+  done
+  rm -f "$case_dir/home/.env"
   printf '%s\n' '{"rules":[{"when":"gemini work","use":{"harness":"gemini","model":"gemini-3.8-flash-high","provider":"google"}}]}' > "$case_dir/home/config/crew-dispatch.json"
   out=$(PATH="$fakebin:$BASE_PATH" FM_HOME="$case_dir/home" FM_ROOT_OVERRIDE="$case_dir/home" \
     FM_FAKE_TREEHOUSE_LEASE_HELP=1 "$ROOT/bin/fm-bootstrap.sh")

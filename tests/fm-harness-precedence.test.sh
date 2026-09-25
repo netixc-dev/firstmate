@@ -779,18 +779,20 @@ test_supervision_branch_resolves_the_primary_pin() {
 }
 
 test_supervision_branch_refuses_an_unknown_primary_pin() {
-  local dir home bin verb got
+  local dir home bin verb got pin
   dir="$TMP_ROOT/primary-pin-bad"
   home="$dir/home"
   mkdir -p "$home/config"
   bin=$(named_bin "$dir/pi-tree" pi)
-  for verb in '' crew secondmate; do
-    got=$(pin_probe "$bin" "$home" "$verb" PI_CODING_AGENT=true \
-      FM_SUPERVISION_ACTOR=branch FM_SUPERVISION_PRIMARY_HARNESS=unknown)
-    [ "$got" = '|2' ] \
-      || fail "an unknown pin resolved '${verb:-own}' as '$got', expected a refusal with nothing on stdout"
-    assert_contains "$(cat "$home/stderr")" "FM_SUPERVISION_PRIMARY_HARNESS='unknown' names no known harness" \
-      "the refusal did not name the bad pin"
+  for pin in unknown rovo; do
+    for verb in '' crew secondmate; do
+      got=$(pin_probe "$bin" "$home" "$verb" PI_CODING_AGENT=true \
+        FM_SUPERVISION_ACTOR=branch FM_SUPERVISION_PRIMARY_HARNESS="$pin")
+      [ "$got" = '|2' ] \
+        || fail "pin $pin resolved '${verb:-own}' as '$got', expected a refusal with nothing on stdout"
+      assert_contains "$(cat "$home/stderr")" "FM_SUPERVISION_PRIMARY_HARNESS='$pin' names no known harness" \
+        "the refusal did not name the bad pin"
+    done
   done
   pass "a supervision branch refuses to resolve a harness from a pin that names none"
 }
@@ -826,6 +828,22 @@ test_supervision_protocol_follows_corrected_verdict() {
   pass "session start renders the Codex protocol for a Codex primary holding a retained CLAUDECODE"
 }
 
+test_removed_rovo_evidence_does_not_select_an_adapter() {
+  local fake got
+  fake=$(blind_ancestry_bin "$TMP_ROOT/rovo-markers")
+  got=$(under_fake_ps "$fake" ATLASSIAN_AGENT_TYPE=rovo ROVODEV_CLI=1 AGENT=rovodev_cli --)
+  [ "$got" = unknown ] || fail "retired Rovo markers selected $got"
+  got=$(under_fake_ps "$fake" ATLASSIAN_AGENT_TYPE=rovo ROVODEV_CLI=1 PI_CODING_AGENT=true --)
+  [ "$got" = pi ] || fail "retired markers displaced plain Pi: $got"
+  fake=$(namespace_ancestry_bin "$TMP_ROOT/rovo-ancestry")
+  got=$(under_fake_ps "$fake" FM_TEST_PID1_COMM=rovo --)
+  [ "$got" = unknown ] || fail "retired Rovo ancestry selected $got"
+  got=$(under_fake_ps "$fake" FM_TEST_PID1_COMM=pi ATLASSIAN_AGENT_TYPE=rovo ROVODEV_CLI=1 --)
+  [ "$got" = pi ] || fail "retired markers displaced structural Pi: $got"
+  pass "removed Rovo markers and ancestry do not select an adapter or displace Pi"
+}
+
+test_removed_rovo_evidence_does_not_select_an_adapter
 test_markerless_ancestry_outranks_foreign_marker
 test_genuine_marker_and_ancestry_agree
 test_cursor_ordering_still_decides_when_ancestry_is_silent
