@@ -1,0 +1,49 @@
+{
+  "ci_workflow": "CI",
+  "linux_jobs": {
+    "lint": {
+      "runs_on": "blacksmith-2vcpu-ubuntu-2404",
+      "matrix_instances": 3
+    },
+    "test-coverage": {
+      "runs_on": "blacksmith-2vcpu-ubuntu-2404",
+      "matrix_instances": 1
+    },
+    "tests-portable-parallel-1": {
+      "runs_on": "blacksmith-2vcpu-ubuntu-2404",
+      "matrix_instances": 1
+    },
+    "tests-portable-parallel-2": {
+      "runs_on": "blacksmith-2vcpu-ubuntu-2404",
+      "matrix_instances": 1
+    },
+    "tests-portable-serial": {
+      "runs_on": "blacksmith-2vcpu-ubuntu-2404",
+      "matrix_instances": 9
+    },
+    "tests-herdr": {
+      "runs_on": "blacksmith-2vcpu-ubuntu-2404",
+      "matrix_instances": 1
+    },
+    "tests-timing-aggregate": {
+      "runs_on": "blacksmith-2vcpu-ubuntu-2404",
+      "matrix_instances": 1
+    },
+    "invariants": {
+      "runs_on": "blacksmith-2vcpu-ubuntu-2404",
+      "matrix_instances": 1
+    }
+  },
+  "stock_macos": {
+    "runs_on": "macos-latest"
+  },
+  "independent_compliance_workflow": {
+    "name": "Require no-mistakes",
+    "jobs": {
+      "check": "ubuntu-latest"
+    }
+  },
+  "registered_self_hosted_labels": [
+    "blacksmith-2vcpu-ubuntu-2404"
+  ]
+}
