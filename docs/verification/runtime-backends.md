@@ -105,7 +105,7 @@ The reject-other-harness cross-check judges comm-strength vantages only, because
 That narrowing changes only which vantages the cross-check judges; the comm-strength requirement itself is unchanged.
 A single-process harness has no descendant that adds a distinct verdict, which is why `claude` reports one.
 The portable regression pins every half without any harness installed: `tests/fm-harness-precedence.test.sh` asserts that this two-process topology decides at comm strength, that the descent probe reaches a strength the top-of-session probe cannot, that a sibling branch answering a foreign harness contributes no verdict, that a foreign args-only verdict at the deepest vantage leaves the comm-strength identity intact, and that equal-depth ties choose the comm-strength leaf regardless of process ordering.
-The run did not reach `opencode`, `pi`, `pi-signed`, `grok`, `kimi`, or `muse`, which were not installed, and stopped at the same pre-existing liveness failure for `cursor` 3.18.9, whose resolved binary on that machine is the editor rather than `cursor-agent`; those adapters are unverified by this run.
+The run did not reach `opencode`, `pi`, `pi-signed`, `grok`, or `kimi`, which were not installed, and stopped at the same pre-existing liveness failure for `cursor` 3.18.9, whose resolved binary on that machine is the editor rather than `cursor-agent`; those adapters are unverified by this run.
 
 ## tmux
 
@@ -160,24 +160,6 @@ In that 2026-08-03 seven-adapter run, Claude Code was the only harness whose tit
 Codex reported `codex-aarch64-a` at 0.145.0 and `codex` at 0.146.0, and Kimi Code reported `kimi-code` as its foreground `comm` at 0.29.1 and `kimi` at 0.31.1, so these identities move between ordinary patch releases in both directions.
 That is the evidence for treating any single process name as a surface under vendor control rather than a stable contract.
 
-The crewmate-only Muse Code 0.1.0-R708.1 adapter was verified separately on 2026-08-05 against tmux on macOS arm64.
-Its installed `muse-bin-0.1.0-R708.1` foreground identity classified `alive`, while `musescore`, `amuse`, `muse-binary`, and `muse-bind` remained ambiguous in the portable regression.
-[`muse.md`](muse.md#process-identity) owns the artifact identity and launcher evidence for that verification.
-
-
-Bounded observed output:
-
-```text
-foreground comms:
-  zsh
-  .../instbin/muse-bin-0.1.0-R708.1
-classify each:
-  zsh                            -> shell
-  muse-bin-0.1.0-R708.1          -> agent
-fm_backend_agent_state tmux museliv:zsh
-alive
-```
-
 `#{pane_current_command}` and foreground `ps -o comm=` read different name fields, but which one preserves executable identity is platform-dependent.
 On macOS the pane command reflected the rewritable title while the full install path could survive in `ps -o comm=`; in the Linux portable regression those roles reversed for the version-named native executable, with the identifying path retained in argv[0].
 The classifier therefore accepts a harness basename first, then an exact harness path component in the full executable path, then the same component in argv[0], without depending on which field carries it on a given platform.
@@ -192,7 +174,7 @@ FM_HARNESS_LIVENESS_DRIFT=1 bin/fm-test-run.sh tests/fm-harness-liveness-drift-l
 
 ### 2026-09-06 default-on drift refresh, and the Cursor editor CLI collision
 
-Running the guard with no variable set on macOS 26.5.2 arm64 checked 8 installed harnesses and classified every one `alive`:
+Retained-surface excerpt from the guard's 2026-09-06 run with no variable set on macOS 26.5.2 arm64; all seven retained results classified `alive`:
 
 ```text
 # claude 2.1.263 (Claude Code): title='2.1.263' foreground=[/Users/kunchen/.local/bin/claude <defunct> <defunct> ]
@@ -202,8 +184,6 @@ Running the guard with no variable set on macOS 26.5.2 arm64 checked 8 installed
 # pi-signed 0.84.4: title='pi-launcher' foreground=[/opt/homebrew/bin/pi-signed .../pi ]
 # grok grok 1.0.13 (5e9a58528b76) [stable]: title='grok-1.0.13-mac' foreground=[/Users/kunchen/.local/bin/grok ]
 # cursor 2026.09.02-c22c1a3: title='node' foreground=[/Users/kunchen/.local/bin/cursor-agent ]
-# muse Muse Code 1.0.3 (1.0.3-R2198.1): title='muse-bin-1.0.3-' foreground=[/Users/kunchen/.local/bin/muse-bin-1.0.3-R2198.1 ]
-# checked 8 installed harness(es)
 ```
 
 The first default-on run failed on Cursor with `LIVENESS DRIFT: cursor unknown is running but classifies 'missing'`, observed title `zsh`.
@@ -235,11 +215,32 @@ pi-signed
 0.82.0
 ```
 
+### 2026-09-25 retained-surface refresh
+
+The liveness and composer guards above and below were exercised through an explicit focused `bin/fm-test-run.sh` selection on Darwin 25.6.0 arm64 with tmux 3.7c.
+The installed tools were Codex CLI 0.156.1 and Pi 0.87.1; Claude, OpenCode, pi-signed, Grok, Kimi, and Cursor were absent and remain unverified by this run.
+Bounded observed output:
+
+```text
+ok - harness liveness: codex codex-cli 0.156.1 classifies alive
+ok - harness detection: codex codex-cli 0.156.1 is identified by the ancestry walk at comm strength
+ok - harness liveness: pi 0.87.1 classifies alive
+ok - harness detection: pi 0.87.1 is identified by the ancestry walk at comm strength
+not ok - codex (codex-cli 0.156.1): idle composer never classified empty (last verdict: unknown)
+ok - pi (0.87.1): real idle composer classifies empty
+ok - pi (0.87.1): the same idle pane read cursorless is not pending (verdict: unknown)
+ok - strict posture live: a blank shell row classifies unknown and injection defers
+```
+
+The liveness guard passed; the composer guard failed because Codex was parked at `Hooks need review`, not an idle composer.
+No hooks were trusted to make that guard pass, and this run supplies no fresh Codex empty-composer proof.
+The separate `tests/fm-pi-codex-native.test.sh` guard skipped because the native adapter package was not installed; its provider transport is likewise not verified by this run.
+
 ### Harness-adapter instruction routing
 
 Two checks keep the evidence boundaries separate.
 `tests/fm-harness-adapter-references.test.sh` parses the router's declared JSON contract as normalized data and proves every selected reference is readable, which is structural evidence only.
-`tests/fm-harness-adapter-instructions-live-e2e.test.sh` is an opt-in development check that sends the directly loaded router and every operation scenario across all nine harness identities to a local Ollama model, requires the generated plan as normalized JSON, and makes no external-provider call.
+`tests/fm-harness-adapter-instructions-live-e2e.test.sh` is an opt-in development check that sends the directly loaded router and every operation scenario across its eight harness identities to a local Ollama model, requires the generated plan as normalized JSON, and makes no external-provider call.
 
 ```sh
 FM_HARNESS_ADAPTER_INSTRUCTION_EVAL=1 FM_HARNESS_ADAPTER_LOCAL_MODEL=ambient-router-gemma4:e4b bin/fm-test-run.sh tests/fm-harness-adapter-instructions-live-e2e.test.sh
@@ -247,12 +248,11 @@ FM_HARNESS_ADAPTER_INSTRUCTION_EVAL=1 FM_HARNESS_ADAPTER_LOCAL_MODEL=ambient-rou
 
 That local evaluation demonstrates instruction-driven scenario selection, but it does not claim that a native harness loaded the selected files.
 The guard prints the exact installed version or unavailable status for every native harness so absent tools and unexercised provider transports remain explicit rather than becoming passes.
-Native loader behavior still requires the applicable live agent-tool check; no uniform deterministic zero-provider transport currently spans Claude, Codex, OpenCode, and Pi, and the other five tools remain unavailable where their binaries are absent.
+Native loader behavior still requires the applicable live agent-tool check; no uniform deterministic zero-provider transport currently spans Claude, Codex, OpenCode, and Pi, and the other four tools remain unavailable where their binaries are absent.
 
-Bounded output from the 2026-08-29 local run:
+Retained-surface excerpt from the 2026-08-29 local run (not a rerun of the current identity set):
 
 ```text
-ok - local model ambient-router-gemma4:e4b selected every operation scenario and all nine harness identities
 # native loader not claimed: claude 2.1.220 (Claude Code) is installed, but this harness-neutral evaluation does not exercise its provider transport
 # native loader not claimed: codex 0.147.0-alpha.6+local.4 is installed, but this harness-neutral evaluation does not exercise its provider transport
 # native loader not claimed: opencode 1.14.48 is installed, but this harness-neutral evaluation does not exercise its provider transport
@@ -261,9 +261,7 @@ ok - local model ambient-router-gemma4:e4b selected every operation scenario and
 # unverified native loader: grok is not installed on this machine
 # unverified native loader: kimi is not installed on this machine
 # unverified native loader: cursor is not installed on this machine
-# unverified native loader: muse is not installed on this machine
 # installed native tools recorded without overstating loader coverage: 4
-# unavailable native tools: pi-signed grok kimi cursor muse
 ```
 
 The isolated process and endpoint checks used:
@@ -322,7 +320,7 @@ ok - fm-teardown: dedicated-socket invalid cleanup preserves target/control and 
 The dedicated tmux cell removed ambient tmux variables, required a socket-bound wrapper, kept one target and one independent control window, and proved the wrapper was not called for invalid metadata or a direct empty target.
 Valid cleanup removed only the exact task-bound target and left the control window live.
 The metadata-only validation covers retained endpoints and removed-backend refusal before backend dispatch; [`configuration.md`](../configuration.md#runtime-backend-configbackend--fm_backend) owns the operator recovery guidance.
-Claude, Codex, OpenCode, Pi, pi-signed, Grok, Kimi, Cursor, and Muse share that backend cleanup boundary; their harness-specific hook files, tokens, transcript bindings, and session-log sidecars are cleaned only after it, so no harness needs a separate endpoint parser.
+Claude, Codex, OpenCode, Pi, pi-signed, Grok, Kimi, and Cursor share that backend cleanup boundary; their harness-specific hook files, tokens, and transcript bindings are cleaned only after it, so no harness needs a separate endpoint parser.
 
 ### Endpoint close
 
@@ -488,7 +486,7 @@ The lab home was deleted and the test entry was removed from the store and verif
 
 `bin/fm-spawn.sh` therefore pre-registers the directory every claude launch starts in through `bin/fm-claude-trust.sh` before launch, and `tests/fm-claude-trust.test.sh` pins both halves of the scope contract for both shapes: a fresh worktree and a seeded secondmate home are trusted, and an out-of-scope path is refused.
 That automated spawn case runs against a fake claude, so it asserts the store entry and the launch command and nothing more; the live arms above are what establish that the entry actually suppresses the dialog.
-The composer-classification record below observes the same gate from the other side, where an untrusted worktree left Claude, Grok, and Muse unverified because the guard reads a first-launch trust dialog as an unreadable composer.
+The composer-classification record below observes the same gate from the other side, where an untrusted worktree left Claude and Grok unverified because the guard reads a first-launch trust dialog as an unreadable composer.
 
 ## Launch-prompt backstop signatures
 
@@ -660,7 +658,7 @@ The portable half, `tests/fm-spawn-dispatch-profile.test.sh`, pins the split the
 
 The shared composer classifier (`bin/fm-composer-lib.sh`, `fm_composer_classify_screen`) owns every composer shape fleet-wide; each backend contributes only a capture and a capability descriptor.
 The live half of that guarantee was verified on 2026-08-10 from an already-trusted checkout at the branch's final validated head, against every installed harness then covered by the empty-composer matrix on tmux 3.6a, macOS arm64, on an isolated private socket, with no prompt submitted to any harness.
-An earlier untrusted-worktree run left Claude, Grok, and Muse unverified because the guard treats first-launch trust dialogs as an unreadable-composer state and never confirms them; this trusted-checkout rerun supersedes those missing results.
+An earlier untrusted-worktree run left Claude and Grok unverified because the guard treats first-launch trust dialogs as an unreadable-composer state and never confirms them; this trusted-checkout rerun supersedes those missing results.
 
 ```sh
 FM_COMPOSER_MATRIX_LIVE=1 tests/fm-composer-matrix-live-e2e.test.sh
@@ -675,13 +673,12 @@ ok - opencode (1.14.46): real idle composer classifies empty
 ok - pi (0.84.0): real idle composer classifies empty
 ok - grok (grok 1.0.0 (3cd0d0cbcebe)): real idle composer classifies empty
 # harness absent, not verified here: kimi
-ok - muse (Muse Code 0.1.0 (0.1.0-R708.1)): real idle composer classifies empty
 ok - strict posture live: a blank shell row classifies unknown and injection defers
 ```
 
-All six installed harnesses' real idle composers reached a proven `empty` (Claude auto-updated to 2.1.227 between the audit and this rerun, so the shipped classifier is proven against the newer release as well), including Pi through the tmux foreground-process identity probe, Grok through the titled-bottom-border tolerance, and OpenCode through the left-bar shape; Codex and OpenCode first parked on vendor update-available modals that the strict classifier correctly refused until the guard's single non-submitting Escape dismissed them.
+The five retained installed harnesses' real idle composers reached a proven `empty` (Claude auto-updated to 2.1.227 between the audit and this rerun, so the shipped classifier is proven against the newer release as well), including Pi through the tmux foreground-process identity probe, Grok through the titled-bottom-border tolerance, and OpenCode through the left-bar shape; Codex and OpenCode first parked on vendor update-available modals that the strict classifier correctly refused until the guard's single non-submitting Escape dismissed them.
 The strict blank-row posture held live (a blank shell row deferred injection), preserving the conservative delivery boundary.
-Kimi was not installed on the verification machine; its bordered shape is pinned by the portable byte-capture regressions in `tests/fm-composer-lib.test.sh`, which also carry the other five adapters' capability profiles for every harness under both a UTF-8 locale and `LC_ALL=C`.
+Kimi was not installed on the verification machine; its bordered shape is pinned by the portable byte-capture regressions in `tests/fm-composer-lib.test.sh`, which also carry the surviving adapters' capability profiles for every harness under both a UTF-8 locale and `LC_ALL=C`.
 This guard is the refresh command after an upgrade to any matrix-covered harness; rerun it and update the versions above rather than trusting this table across releases.
 The 2026-08-23 steering-inbox doorbell run observed grok 1.0.5's idle composer classifying `unknown` (and sometimes pending-family), never `empty`.
 Issue #3436's recorded idle capture reproduced the cause on 2026-09-14: Grok 1.0.5 renders the titled bottom border three columns wider than its aligned top and content rows, so the cursorless Herdr profile rejected the otherwise complete box as ambiguous.
@@ -785,7 +782,7 @@ The steering channel's one behavioral assumption - a real worker agent follows t
 FM_SEND_INBOX_LIVE_E2E=1 tests/fm-send-inbox-doorbell-live-e2e.test.sh
 ```
 
-Observed output (combined across the full run and the grok rerun after the advisory-skip narrowing landed):
+Retained-surface excerpt (combined across the full run and the grok rerun after the advisory-skip narrowing landed):
 
 ```text
 ok - claude (2.1.241 (Claude Code)): the doorbell reached a real worker, which acted and acked with the mv
@@ -795,10 +792,9 @@ ok - pi (0.84.1): the doorbell reached a real worker, which acted and acked with
 # grok (grok 1.0.5 (5115b46bc909) [stable]): idle composer never classified empty; proceeding as production does (advisory check skips only on pending)
 ok - grok (grok 1.0.5 (5115b46bc909) [stable]): the doorbell reached a real worker, which acted and acked with the mv
 # harness absent, not verified here: kimi
-ok - muse (Muse Code 0.2.1 (0.2.1-R1215.1)): the doorbell reached a real worker, which acted and acked with the mv
 ```
 
-All six installed harnesses honored the doorbell contract with real model turns: each listed the inbox named by the doorbell, read its record, executed the instruction inside it, and acknowledged with the atomic `mv`.
+The five retained installed harnesses honored the doorbell contract with real model turns: each listed the inbox named by the doorbell, read its record, executed the instruction inside it, and acknowledged with the atomic `mv`.
 Two findings from the run shaped the shipped behavior: an OpenCode vendor update modal swallowed the first doorbell and the single re-ring recovered it, which is exactly the watcher ladder's job; and grok 1.0.5's idle composer never classifies `empty` (a classifier drift owned by the [Composer classification matrix](#composer-classification-matrix) guard, whose refresh for grok 1.0.5 is still owed), which motivated the ring's advisory pre-check not to skip on ambiguity - a doorbell into an ambiguous composer is a recoverable constant line, while skipping on ambiguity would starve steering for any harness the classifier cannot positively identify.
 The current pending-composer ring contract is owned by `bin/fm-task-inbox-lib.sh`.
 Kimi was not installed on the verification machine; its receive path is the same one-line-plus-shell contract, and the portable ladder and enqueue regressions in `tests/fm-task-inbox.test.sh` and `tests/fm-send-inbox.test.sh` cover every harness-independent half.

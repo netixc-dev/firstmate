@@ -9,7 +9,7 @@
 #      (unsafe-for-injection), never `empty`. This is the safety fix.
 #   2. The SAME shell glyph INSIDE a bordered composer box is the harness's own
 #      prompt and still reads `empty` (existing behavior preserved).
-#   3. The AGENT prompt glyphs `❯` (claude), `›` (codex), `⟩` (muse), and `→`
+#   3. The AGENT prompt glyphs `❯` (claude), `›` (codex), and `→`
 #      (cursor) are a genuine empty agent composer either way, bordered or bare.
 #   4. Real unsubmitted text reads `pending`; a known idle placeholder reads
 #      `empty`.
@@ -43,10 +43,8 @@ test_stripped_unbordered_content_uses_plain_content() {
     [ "$out" = unknown ] \
       || fail "stripped unbordered content '$plain' must retain its unknown safety verdict, got '$out'"
   done
-  # muse draws `⟩` at luminance ~150, the tightest margin over the 128 ghost
-  # threshold in the fleet, so a raised threshold really can strip it to empty
-  # and leave only the plain row. This branch is what keeps that pane readable.
-  for plain in '❯' '›' '⟩'; do
+  # Loss of the styled glyph must leave the supported plain-row signal usable.
+  for plain in '❯' '›' '→'; do
     out=$(classify 0 '' '' sensitive "$plain")
     [ "$out" = empty ] \
       || fail "a stripped agent glyph '$plain' must remain empty, got '$out'"
@@ -82,9 +80,9 @@ test_agent_glyphs_are_empty_bordered_and_bare() {
   out=$(classify 0 '›'); [ "$out" = empty ] || fail "bare codex '›' should read empty, got '$out'"
   out=$(classify 1 '❯'); [ "$out" = empty ] || fail "bordered claude '❯' should read empty, got '$out'"
   out=$(classify 1 '›'); [ "$out" = empty ] || fail "bordered codex '›' should read empty, got '$out'"
-  out=$(classify 0 '⟩'); [ "$out" = empty ] || fail "bare muse '⟩' should read empty, got '$out'"
-  out=$(classify 1 '⟩'); [ "$out" = empty ] || fail "bordered muse '⟩' should read empty, got '$out'"
-  pass "fm_composer_classify_content: agent prompt glyphs (❯ claude, › codex, ⟩ muse) read empty bordered or bare"
+  out=$(classify 0 '⟩'); [ "$out" != empty ] || fail "retired bare glyph must not prove empty"
+  out=$(classify 0 '' '' sensitive '⟩'); [ "$out" = unknown ] || fail "retired stripped glyph must stay unknown"
+  pass "fm_composer_classify_content: only supported agent glyphs prove empty"
 }
 
 # --- Empty content and idle placeholder -------------------------------------
@@ -126,9 +124,6 @@ test_real_text_is_pending() {
   local out
   out=$(classify 0 '❯ fix findings 1 and 3'); [ "$out" = pending ] || fail "bare '❯ <text>' should be pending, got '$out'"
   out=$(classify 1 '> deploy staging now'); [ "$out" = pending ] || fail "bordered '> <text>' should be pending, got '$out'"
-  # muse restores the interrupted prompt into its composer after Escape, as real
-  # bright text. Reading that as pending is correct - it really is unsubmitted.
-  out=$(classify 0 '⟩ second turn to interrupt'); [ "$out" = pending ] || fail "bare '⟩ <text>' should be pending, got '$out'"
   # A slash-command popup argument-hint placeholder is still unsubmitted text.
   out=$(classify 1 '/compact compaction instructions'); [ "$out" = pending ] || fail "a popup placeholder fill should be pending, got '$out'"
   pass "fm_composer_classify_content: real unsubmitted text reads pending (including a popup argument-hint fill)"
@@ -139,10 +134,10 @@ test_real_text_is_pending() {
 # correctness matrix (audit data/fm-composer-consolidation-audit-s1, task
 # fm-composer-thin-adapter-refactor-r1).
 #
-# Fixtures are the audit's byte-level captures of six REAL idle harnesses:
+# Fixtures retain the audit's byte-level captures of supported idle harnesses:
 # claude 2.1.226 (bare `❯` + U+00A0 NO-BREAK SPACE), codex 0.146.0 (bold `›`
 # + SGR-2 dim hint), codex 0.154.0 (the same `›` amid a braille starfield over
-# a status footer, captured through Herdr on 2026-09-15), muse (truecolor `⟩`, 38;2;90;160;255), pi (blank row
+# a status footer, captured through Herdr on 2026-09-15), pi (blank row
 # between solid `─` rules), opencode 1.14.46 (left-bar `┃` rows), and grok
 # 1.0.0 (bordered box with a TITLED bottom border), plus claude captured
 # through a styled ANSI dump (`ESC[m` `❯` U+00A0).
@@ -333,24 +328,6 @@ test_matrix_codex_dim_hint_row() {
   assert_screen "codex idle on styled capture" empty "$CAPS_STYLED_NOID" "$styled"
   assert_screen "codex idle on plain backends" unknown "$CAPS_UNSTYLED" "$plain"
   pass "matrix: codex's dim hint is empty when styling proves it, unknown (never pending) when it cannot"
-}
-
-test_matrix_muse_truecolor_glyph_survives_signal_loss() {
-  # Real idle muse: truecolor `⟩` (38;2;90;160;255, luminance ~149.9) under a
-  # TITLED rule. Two independent signals prove emptiness: the glyph surviving
-  # the ghost strip, and the UNSTRIPPED plain row carrying an agent glyph.
-  # Drive them apart: with the luma threshold raised past the glyph's
-  # luminance, the ghost strip erases it, and the verdict must survive on the
-  # plain-row signal alone.
-  local screen plain out
-  screen=$'── Voice input (⌥ + v to start) ─────\n'"${ESC}[0m${ESC}[38;2;90;160;255m⟩${ESC}[0m"
-  plain=$'── Voice input (⌥ + v to start) ─────\n⟩'
-  assert_screen "muse idle on tmux" empty "$CAPS_TMUX" "$screen" 1
-  assert_screen "muse idle on herdr" empty "$CAPS_STYLED" "$screen"
-  assert_screen "muse idle on styled capture" empty "$CAPS_STYLED_NOID" "$screen"
-  out=$(FM_COMPOSER_GHOST_LUMA_MAX=200 fm_composer_classify_screen "$CAPS_STYLED" "$screen")
-  [ "$out" = empty ] || fail "muse must stay empty when the ghost strip eats its glyph (plain-row signal), got '$out'"
-  pass "matrix: muse's ⟩ reads empty everywhere and survives losing the styled-glyph signal"
 }
 
 test_matrix_cursor_reverse_video_placeholder_remnant() {
@@ -903,7 +880,6 @@ test_composer_footer_demotion_needs_a_proven_pair
 test_composer_footer_zone_is_shape_independent
 test_composer_footer_zone_refuses_rather_than_allows
 test_matrix_codex_dim_hint_row
-test_matrix_muse_truecolor_glyph_survives_signal_loss
 test_matrix_cursor_reverse_video_placeholder_remnant
 test_matrix_herdr_halfblock_rule_bounds_bare_wrap
 test_matrix_omp_status_row_bounds_bare_composer

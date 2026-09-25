@@ -115,7 +115,6 @@
 #
 # Environment knobs (all bounded waits, seconds):
 #   FM_CONTROL_POLL              poll interval for postcondition waits (0.5)
-#   FM_CONTROL_SETTLE_WAIT       adapter acknowledgement wait after interrupt (5)
 #   FM_CONTROL_ARM_WAIT          wait for an armed interrupt's rendered proof
 #                                after the press gap (1.5)
 #   FM_CONTROL_EXIT_WAIT         alive->dead wait after the exit command (30)
@@ -170,7 +169,6 @@ DATA="${FM_DATA_OVERRIDE:-$FM_HOME/data}"
 . "$SCRIPT_DIR/fm-worker-account-lib.sh"
 
 POLL=${FM_CONTROL_POLL:-0.5}
-SETTLE_WAIT=${FM_CONTROL_SETTLE_WAIT:-5}
 ARM_WAIT=${FM_CONTROL_ARM_WAIT:-1.5}
 EXIT_WAIT=${FM_CONTROL_EXIT_WAIT:-30}
 LAUNCH_WAIT=${FM_CONTROL_LAUNCH_WAIT:-90}
@@ -459,49 +457,15 @@ send_interrupt_keys() {
     || die "interrupt key $key reached task $ID, but $clear did not, so its composer still holds the cancelled prompt; clear it before the next lifecycle action"
 }
 
-prepare_interrupt_ack() {
-  INTERRUPT_ACK_SOURCE=$(fm_control_interrupt_ack_source "$HARNESS")
-  INTERRUPT_ACK_LOG=
-  INTERRUPT_ACK_RUN=
-  case "$INTERRUPT_ACK_SOURCE" in
-    muse-session-terminal)
-      INTERRUPT_ACK_LOG=$(fm_busy_muse_session_log "$STATE" "$ID" 2>/dev/null || true)
-      [ -n "$INTERRUPT_ACK_LOG" ] || return 0
-      INTERRUPT_ACK_RUN=$(fm_busy_muse_active_run_id "$INTERRUPT_ACK_LOG" 2>/dev/null || true)
-      ;;
-  esac
-}
-
-interrupt_cancel_claim() {
-  local elapsed=0 terminal=
-  case "$INTERRUPT_ACK_SOURCE:$INTERRUPT_ACK_RUN" in
-    muse-session-terminal:?*) ;;
-    *) printf 'unconfirmed'; return 0 ;;
-  esac
-  while :; do
-    terminal=$(fm_busy_muse_run_terminal "$INTERRUPT_ACK_LOG" "$INTERRUPT_ACK_RUN" 2>/dev/null || true)
-    case "$terminal" in
-      cancelled) printf 'confirmed'; return 0 ;;
-      ?*) printf 'unconfirmed'; return 0 ;;
-    esac
-    awk -v e="$elapsed" -v t="$SETTLE_WAIT" 'BEGIN{exit !(e < t)}' || break
-    sleep "$POLL"
-    elapsed=$(awk -v e="$elapsed" -v p="$POLL" 'BEGIN{printf "%.3f", e + p}')
-  done
-  printf 'unconfirmed'
-}
-
-# deliver_interrupt: deliver and observe the strongest adapter-owned
-# cancellation claim available after delivery. `not-running` means an armed
-# adapter's first press rendered no running turn, so nothing was cancelled.
+# deliver_interrupt: deliver the keys and report cancellation unconfirmed.
+# `not-running` means an armed adapter's first press rendered no running turn.
 deliver_interrupt() {
   local cancel
-  prepare_interrupt_ack
   send_interrupt_keys
   if [ "$INTERRUPT_ARMED" = no ]; then
     cancel=not-running
   else
-    cancel=$(interrupt_cancel_claim)
+    cancel=unconfirmed
   fi
   [ "$INTERRUPT_HAZARD" = none ] || cancel="$cancel revert-picker=$INTERRUPT_HAZARD"
   printf '%s' "$cancel"

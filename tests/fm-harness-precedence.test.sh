@@ -128,7 +128,7 @@ named_bin() {  # <dir> <name>
 
 # --- 1. A foreign marker never renames a markerless harness -----------------
 
-# codex, opencode, kimi, and muse publish no identity marker, so before
+# codex, opencode, and kimi publish no identity marker, so before
 # this boundary existed ANY retained marker renamed them outright. This is the
 # reported live failure, generalized to every markerless adapter and to both
 # foreign markers that can be retained.
@@ -136,10 +136,9 @@ test_markerless_ancestry_outranks_foreign_marker() {
   local dir fakebin bin got name
   dir="$TMP_ROOT/markerless"
   fakebin=$(blind_ancestry_bin "$dir/blind")
-  for name in codex opencode kimi muse-bin-0.1.0; do
+  for name in codex opencode kimi; do
     bin=$(named_bin "$dir/$name-tree" "$name")
     local expect=$name
-    case "$name" in muse-bin-*) expect=muse ;; esac
 
     got=$(under_process "$bin")
     [ "$got" = "$expect" ] \
@@ -784,7 +783,7 @@ test_supervision_branch_refuses_an_unknown_primary_pin() {
   home="$dir/home"
   mkdir -p "$home/config"
   bin=$(named_bin "$dir/pi-tree" pi)
-  for pin in unknown rovo; do
+  for pin in unknown rovo muse; do
     for verb in '' crew secondmate; do
       got=$(pin_probe "$bin" "$home" "$verb" PI_CODING_AGENT=true \
         FM_SUPERVISION_ACTOR=branch FM_SUPERVISION_PRIMARY_HARNESS="$pin")
@@ -843,6 +842,21 @@ test_removed_rovo_evidence_does_not_select_an_adapter() {
   pass "removed Rovo markers and ancestry do not select an adapter or displace Pi"
 }
 
+test_removed_muse_ancestry_is_not_an_adapter() {
+  local fake got name
+  fake=$(namespace_ancestry_bin "$TMP_ROOT/muse-ancestry")
+  for name in muse muse-bin-0.1.0 muse-wrapper; do
+    got=$(under_fake_ps "$fake" FM_TEST_PID1_COMM="$name" --)
+    [ "$got" = unknown ] || fail "removed $name ancestry selected $got"
+    got=$(under_fake_ps "$fake" FM_TEST_PID1_COMM="$name" PI_CODING_AGENT=true --)
+    [ "$got" = pi ] || fail "removed $name ancestry displaced Pi marker: $got"
+  done
+  got=$(under_fake_ps "$fake" FM_TEST_PID1_COMM=pi --)
+  [ "$got" = pi ] || fail "plain Pi ancestry changed: $got"
+  pass "removed Muse ancestry stays unknown without displacing plain Pi"
+}
+
+test_removed_muse_ancestry_is_not_an_adapter
 test_removed_rovo_evidence_does_not_select_an_adapter
 test_markerless_ancestry_outranks_foreign_marker
 test_genuine_marker_and_ancestry_agree

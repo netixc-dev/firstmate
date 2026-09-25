@@ -728,28 +728,41 @@ test_teardown_removes_only_exact_legacy_devin_sidecar() {
 }
 
 test_legacy_rovo_cleanup_preserves_unlanded_work() {
-  local case_dir mode out rc before head
+  local case_dir mode out rc before head removed suffix
+  for removed in rovo muse; do
   for mode in landed dirty unlanded; do
-    case_dir=$(make_case "legacy-rovo-$mode")
+    case_dir=$(make_case "legacy-$removed-$mode")
     write_meta "$case_dir" local-only ship
-    printf '%s\n' 'harness=rovo' >> "$case_dir/state/task-x1.meta"
-    wt_commit "$case_dir" "Rovo task work"
+    printf 'harness=%s\n' "$removed" >> "$case_dir/state/task-x1.meta"
+    wt_commit "$case_dir" "legacy task work"
     head=$(git -C "$case_dir/wt" rev-parse HEAD)
     [ "$mode" = unlanded ] || add_fork_with_pushed_branch "$case_dir"
     seed_backlog_in_flight "$case_dir"
     if [ "$mode" = dirty ]; then printf 'dirty work\n' > "$case_dir/wt/uncommitted.txt"; fi
     before=$(cat "$case_dir/state/task-x1.meta")
-    mkdir -p "$case_dir/vendor/.rovo"
-    printf 'vendor sentinel\n' > "$case_dir/vendor/.rovo/config.yml"
+    mkdir -p "$case_dir/vendor/.$removed"
+    printf 'vendor sentinel\n' > "$case_dir/vendor/.$removed/auth.json"
+    printf 'session sentinel\n' > "$case_dir/vendor/.$removed/session.jsonl"
+    printf 'sessions_root=%s\n' "$case_dir/vendor/.$removed" > "$case_dir/state/task-x1.muse-session"
+    printf '%s\n' "$case_dir/vendor/.$removed/session.jsonl" > "$case_dir/state/task-x1.muse-session-current"
+    for suffix in muse-session muse-session-current; do
+      printf 'another task\n' > "$case_dir/state/orphan.$suffix"
+    done
     printf 'another task\n' > "$case_dir/state/unrelated.txt"
     set +e
     out=$(run_teardown "$case_dir" 2>&1); rc=$?
     set -e
     if [ "$mode" = landed ]; then
-      expect_code 0 "$rc" "landed Rovo task must clean up normally: $out"
-      assert_absent "$case_dir/state/task-x1.meta" "landed Rovo task record was stranded"
+      expect_code 0 "$rc" "landed $removed task must clean up normally: $out"
+      assert_absent "$case_dir/state/task-x1.meta" "landed task record was stranded"
+      for suffix in muse-session muse-session-current; do
+        assert_absent "$case_dir/state/task-x1.$suffix" "owned legacy binding was stranded"
+      done
     else
-      expect_code 1 "$rc" "$mode Rovo work must refuse cleanup: $out"
+      expect_code 1 "$rc" "$mode $removed work must refuse cleanup: $out"
+      for suffix in muse-session muse-session-current; do
+        assert_present "$case_dir/state/task-x1.$suffix" "refusal deleted a legacy binding"
+      done
       assert_contains "$out" REFUSED "$mode cleanup did not report the work-protection refusal"
       [ "$(cat "$case_dir/state/task-x1.meta")" = "$before" ] || fail "$mode refusal changed task identity"
       [ "$(git -C "$case_dir/wt" rev-parse HEAD)" = "$head" ] || fail "$mode refusal lost commits"
@@ -757,10 +770,15 @@ test_legacy_rovo_cleanup_preserves_unlanded_work() {
         assert_grep 'dirty work' "$case_dir/wt/uncommitted.txt" "cleanup lost uncommitted work"
       fi
     fi
-    assert_grep 'vendor sentinel' "$case_dir/vendor/.rovo/config.yml" "cleanup touched vendor state"
+    assert_grep 'vendor sentinel' "$case_dir/vendor/.$removed/auth.json" "cleanup touched credentials"
+    assert_grep 'session sentinel' "$case_dir/vendor/.$removed/session.jsonl" "cleanup followed a vendor path"
+    for suffix in muse-session muse-session-current; do
+      assert_grep 'another task' "$case_dir/state/orphan.$suffix" "cleanup swept orphan bindings"
+    done
     assert_grep 'another task' "$case_dir/state/unrelated.txt" "cleanup swept unrelated records"
   done
-  pass "legacy Rovo cleanup retains ordinary landed, dirty and unlanded-work safeguards"
+  done
+  pass "legacy cleanup preserves vendor data, orphan bindings, dirty and unlanded work"
 }
 
 test_teardown_closes_the_backlog_item_itself() {

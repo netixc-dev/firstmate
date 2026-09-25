@@ -95,12 +95,8 @@ ln -s "$STANDIN_BIN" "$LAB/bin/notaharness"
 ln -s "$STANDIN_BIN" "$LAB/bin/omp"
 ln -s "$STANDIN_BIN" "$LAB/bin/ompd"
 ln -s "$STANDIN_BIN" "$LAB/bin/comp"
-# muse's installed binary is muse-bin-<version>: the launcher execs it, so the
-# version is the LIVE process name and it changes on every auto-update. Unlike
-# Claude Code's version-named binary there is no `muse` path component to fall
-# back on (~/.local/bin/muse-bin-<version>), so the executable name is the ONLY
-# signal, and `muse` alone is a common English fragment that must not widen into
-# a substring match. The last two names are the decoys that would be misread.
+# Removed launcher/versioned identities and unrelated names stay ambiguous.
+ln -s "$STANDIN_BIN" "$LAB/bin/muse"
 ln -s "$STANDIN_BIN" "$LAB/bin/muse-bin-0.1.0-R708.1"
 ln -s "$STANDIN_BIN" "$LAB/bin/musescore"
 ln -s "$STANDIN_BIN" "$LAB/bin/amuse"
@@ -227,22 +223,13 @@ printf 'retired Rovo process: argv0=%s backend-state=%s\n' \
   "$(fm_backend_agent_state tmux "$SESSION:retired-rovo")"
 pass "tmux liveness: a foreground process with retired Rovo argv0 stays ambiguous"
 
-# --- muse's version-suffixed binary name ------------------------------------
-# A muse crewmate pane misclassified here reads as a dead endpoint, so a healthy
-# worker would be torn down or relaunched. The decoys below are what keep the
-# fix from being a substring match that claims unrelated programs.
-
-new_window muse "$LAB/bin/muse-bin-0.1.0-R708.1" 900
-wait_for_state "$SESSION:muse" alive \
-  || fail "muse's version-suffixed binary name must classify alive"
-pass "tmux liveness: muse's version-suffixed muse-bin-<version> classifies alive"
-
-for decoy in musescore amuse muse-binary muse-bind; do
+# Removed processes are unknown, not dead shells safe to replace.
+for decoy in muse muse-bin-0.1.0-R708.1 musescore amuse muse-binary muse-bind; do
   new_window "decoy-$decoy" "$LAB/bin/$decoy" 900
   wait_for_state "$SESSION:decoy-$decoy" ambiguous \
-    || fail "'$decoy' merely contains 'muse' and must not classify as a live agent pane"
+    || fail "'$decoy' is not a supported agent or an agent-free shell"
 done
-pass "tmux liveness: unrelated muse-containing command names stay ambiguous"
+pass "tmux liveness: removed Muse identities and unrelated command names stay ambiguous"
 
 # --- omp's bare binary name -------------------------------------------------
 # omp (Oh My Pi) runs as a single binary whose live process name is exactly

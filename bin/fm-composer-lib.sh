@@ -57,7 +57,7 @@
 #                still starts and ends with the family's rule glyph is
 #                tolerated, including Grok 1.0.5's three-column title overhang.
 #   bare       - an agent prompt glyph row with no border at all (claude `❯`,
-#                codex `›`, muse `⟩`, cursor `→`). The agent glyph is itself the container
+#                codex `›`, cursor `→`). The agent glyph is itself the container
 #                proof; a bare SHELL glyph (`>` `$` `%` `#`) never is.
 #                A bare composer's WRAP region (typed input continuing on the
 #                rows beneath the glyph row) is bounded by blank rows, by
@@ -121,7 +121,7 @@
 # what a pane shows once its agent has exited to a plain login shell - is a
 # genuine empty agent composer ONLY inside a bordered container. On a bare row
 # it is a dead-shell prompt and classifies `unknown` (never a safe injection
-# target). The AGENT glyphs `❯` (claude), `›` (codex), `⟩` (U+27E9, muse),
+# target). The AGENT glyphs `❯` (claude), `›` (codex),
 # and `→` (U+2192, cursor) are a genuine empty agent composer either way.
 # Both glyph sets are declared
 # exactly once below; every decision reaches them through the declarations.
@@ -248,11 +248,8 @@ fm_composer_normalize_trim_var() {  # <varname>
 #     no fleet harness uses it for ghost text, so it is kept (real text wins:
 #     under-stripping merely defers, which the max-defer alarm surfaces, while
 #     over-stripping would inject over real input).
-# Raising FM_COMPOSER_GHOST_LUMA_MAX is not free: muse draws its `⟩` prompt glyph
-# in truecolor 38;2;90;160;255, luminance ~149.9 (verified, muse 0.1.0-R708.1),
-# the tightest margin over the 128 default in the fleet. Above ~150 that glyph is
-# stripped as ghost text, which is why the bare-glyph fallback below must also
-# recognise every agent glyph from the UNSTRIPPED plain row.
+# Raising FM_COMPOSER_GHOST_LUMA_MAX can strip real prompt glyphs. The bare-glyph
+# fallback below also recognizes supported glyphs from the UNSTRIPPED plain row.
 # The dim/faint and dark-foreground states are tracked together as "de-emphasis";
 # codes are processed left to right within a sequence, so "ESC[0;2m" reads as dim.
 # LC_ALL=C makes awk walk bytes, so multibyte glyphs (e.g. ❯) and de-emphasised
@@ -435,7 +432,7 @@ fm_busy_lines_match() {  # [harness]
 # a dead-shell prompt and must never read `empty`. Newline-separated and
 # consumed by `read` rather than word splitting, so `$`, `%`, and `#` stay
 # literal and no entry is ever exposed to pathname expansion.
-FM_COMPOSER_AGENT_PROMPT_GLYPHS=$(printf '%s\n' '❯' '›' '⟩' '→')
+FM_COMPOSER_AGENT_PROMPT_GLYPHS=$(printf '%s\n' '❯' '›' '→')
 FM_COMPOSER_SHELL_PROMPT_GLYPHS=$(printf '%s\n' '>' '$' '%' '#')
 
 # The ONE fleet-wide idle-placeholder set: composer text a harness renders in
@@ -623,9 +620,8 @@ fm_composer_idle_matches() {
 #              cannot shift underneath it.
 #   [idle_case] `sensitive` (default) or `insensitive`.
 #   [plain_content] the UNSTRIPPED plain row, consulted when ghost stripping
-#              emptied an unbordered row: muse's `⟩` sits at luminance ~150,
-#              close enough to the ghost threshold that a raised threshold
-#              strips it, and the plain row is what keeps that pane readable.
+#              emptied an unbordered row: a raised ghost threshold can strip
+#              a supported glyph, and the plain row keeps that pane readable.
 # Content and plain_content are normalized and re-trimmed on entry, so the
 # verdict never depends on which whitespace alphabet the calling adapter
 # trimmed with.
