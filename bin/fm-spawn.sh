@@ -761,15 +761,26 @@ case "$EFFORT" in
 esac
 
 spawn_refuse_removed_harness() { # <harness-or-command>
-  local input=$1 command_name
-  case "$input" in *agy* | *antigravity*) ;; *) return 0 ;; esac
+  local input=$1 command_name probe legacy='a'gy former='anti'gravity
+  case "${input##*/}" in
+  "$legacy" | "$former")
+    echo "error: unsupported removed harness '$input'; refusing before task mutation" >&2
+    return 1
+    ;;
+  esac
+  case "$input" in *' '* | *$'\t'* | *$'\n'*) ;; *) return 0 ;; esac
+  probe=${input//\\/}
+  probe=${probe//\'/}
+  probe=${probe//\"/}
+  case "$probe" in *"$legacy"* | *"$former"*) ;; *) return 0 ;; esac
   command_name=$(python3 - "$input" <<'PY'
 import os
 import re
 import shlex
 import sys
 
-lexer = shlex.shlex(sys.argv[1], posix=True, punctuation_chars=';&|()<>\n')
+removed = ('a' + 'gy', 'anti' + 'gravity')
+lexer = shlex.shlex(sys.argv[1], posix=True, punctuation_chars=';&|(){}<>\n')
 lexer.whitespace = ' \t\r'
 lexer.whitespace_split = True
 lexer.commenters = '#'
@@ -779,12 +790,12 @@ except ValueError as error:
     sys.exit(f'cannot inspect launch command: {error}')
 
 expect_command = True
-env_prefix = False
+prefix = None
 skip_next = False
 for token in tokens:
-    if token and all(c in ';&|()\n' for c in token):
+    if token and all(c in ';&|(){}\n' for c in token):
         expect_command = True
-        env_prefix = False
+        prefix = None
         skip_next = False
         continue
     if skip_next:
@@ -792,19 +803,32 @@ for token in tokens:
         continue
     if not expect_command:
         continue
-    if token in ('!', 'command', 'exec'):
+    if token == '!':
         continue
-    if token == 'env':
-        env_prefix = True
+    if token in ('env', 'command', 'exec'):
+        prefix = token
         continue
-    if env_prefix and token in ('-u', '--unset', '-C', '--chdir'):
+    if prefix == 'command' and token in ('-v', '-V'):
+        expect_command = False
+        continue
+    if prefix == 'command' and token in ('-p', '--'):
+        continue
+    if prefix == 'exec' and token == '-a':
         skip_next = True
         continue
-    if env_prefix and (token.startswith('-') or token == '--'):
+    if prefix == 'exec' and token in ('-c', '-l', '--'):
+        continue
+    if prefix == 'env' and token in ('-u', '--unset', '-C', '--chdir'):
+        skip_next = True
+        continue
+    if prefix == 'env' and token.startswith('-'):
+        continue
+    if token in ('<', '>', '<<', '>>', '<<<', '<>', '<&', '>&', '>|'):
+        skip_next = True
         continue
     if re.match(r'^[A-Za-z_][A-Za-z_0-9]*=', token):
         continue
-    if os.path.basename(token) in ('agy', 'antigravity'):
+    if os.path.basename(token) in removed:
         print(token)
         break
     expect_command = False

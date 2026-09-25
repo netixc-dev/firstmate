@@ -332,14 +332,12 @@ fm_send_meta_for_key_value() { # <state-dir> <key> <value>
 }
 
 fm_send_accept_meta() { # <meta-file>
-  local harness
+  local harness legacy='a'gy former='anti'gravity
   harness=$(fm_meta_get "$1" harness)
-  case "$harness" in
-  agy | antigravity)
+  if [ "$harness" = "$legacy" ] || [ "$harness" = "$former" ]; then
     echo "error: task record $1 names unsupported removed harness '$harness'; refusing to send" >&2
     return 1
-    ;;
-  esac
+  fi
 }
 
 fm_send_count_colons() { # <string>
