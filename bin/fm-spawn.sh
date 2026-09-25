@@ -761,26 +761,33 @@ case "$EFFORT" in
 esac
 
 spawn_refuse_removed_harness() { # <harness-or-command>
-  local input=$1 command_name probe legacy='a'gy former='anti'gravity
+  local input=$1 command_name legacy='a'gy
   case "${input##*/}" in
-  "$legacy" | "$former")
+  "$legacy")
     echo "error: unsupported removed harness '$input'; refusing before task mutation" >&2
     return 1
     ;;
   esac
-  case "$input" in *' '* | *$'\t'* | *$'\n'*) ;; *) return 0 ;; esac
-  probe=${input//\\/}
-  probe=${probe//\'/}
-  probe=${probe//\"/}
-  case "$probe" in *"$legacy"* | *"$former"*) ;; *) return 0 ;; esac
+  case "$input" in *' '*) ;; *) return 0 ;; esac
   command_name=$(python3 - "$input" <<'PY'
+import codecs
 import os
 import re
 import shlex
 import sys
 
-removed = ('a' + 'gy', 'anti' + 'gravity')
-lexer = shlex.shlex(sys.argv[1], posix=True, punctuation_chars=';&|(){}<>\n')
+removed = 'a' + 'gy'
+source = sys.argv[1]
+if '`' in source or '<(' in source or '>(' in source:
+    sys.exit('cannot inspect dynamic launch command')
+ansi = re.compile(r"\$'((?:\\[\s\S]|[^'\\])*)'")
+try:
+    source = ansi.sub(lambda m: shlex.quote(codecs.decode(m.group(1), 'unicode_escape')), source)
+except UnicodeError as error:
+    sys.exit(f'cannot inspect ANSI-C quoting: {error}')
+if '$' in source:
+    sys.exit('cannot inspect dynamic launch command')
+lexer = shlex.shlex(source, posix=True, punctuation_chars=';&|(){}<>\n')
 lexer.whitespace = ' \t\r'
 lexer.whitespace_split = True
 lexer.commenters = '#'
@@ -792,7 +799,10 @@ except ValueError as error:
 expect_command = True
 prefix = None
 skip_next = False
-for token in tokens:
+redirects = ('<', '>', '>>', '<<<', '<>', '<&', '>&', '>|')
+for index, token in enumerate(tokens):
+    if token in ('<<', '<<-'):
+        sys.exit('cannot inspect here-document launch command')
     if token and all(c in ';&|(){}\n' for c in token):
         expect_command = True
         prefix = None
@@ -803,8 +813,15 @@ for token in tokens:
         continue
     if not expect_command:
         continue
-    if token == '!':
+    if token.isdecimal() and index + 1 < len(tokens) and tokens[index + 1] in redirects:
         continue
+    if token in redirects:
+        skip_next = True
+        continue
+    if token in ('!', 'if', 'then', 'elif', 'else', 'fi', 'while', 'until', 'do', 'done'):
+        continue
+    if token in ('case', 'select', 'for', 'function', 'eval', 'source', '.'):
+        sys.exit('cannot inspect indirect launch command')
     if token in ('env', 'command', 'exec'):
         prefix = token
         continue
@@ -821,16 +838,17 @@ for token in tokens:
     if prefix == 'env' and token in ('-u', '--unset', '-C', '--chdir'):
         skip_next = True
         continue
-    if prefix == 'env' and token.startswith('-'):
+    if prefix == 'env' and token in ('-i', '-0', '--ignore-environment', '--null', '--'):
         continue
-    if token in ('<', '>', '<<', '>>', '<<<', '<>', '<&', '>&', '>|'):
-        skip_next = True
-        continue
+    if prefix and token.startswith('-'):
+        sys.exit('cannot inspect launch wrapper option')
     if re.match(r'^[A-Za-z_][A-Za-z_0-9]*=', token):
         continue
-    if os.path.basename(token) in removed:
+    if os.path.basename(token) == removed:
         print(token)
         break
+    if token in ('bash', 'sh', 'zsh') and '-c' in tokens[index + 1:]:
+        sys.exit('cannot inspect nested shell launch command')
     expect_command = False
 PY
   ) || {
