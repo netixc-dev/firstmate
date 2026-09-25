@@ -654,12 +654,10 @@ list_portable_serial() {
   done < <(all_repo_tests)
 }
 
-# Measured portable-serial script durations in milliseconds, from the CI timing
-# artifacts recorded in docs/fm-test-portable-shards.md. Each value is the
-# slowest successful sample in the referenced complete/partial CI runs, rather
-# than only on the fastest one measured. These are balance hints only: the shard
-# partition stays complete and disjoint whatever they say, so a stale hint costs
-# balance rather than coverage. That doc owns the refresh procedure.
+# Portable-serial duration hints in milliseconds. Most are the slowest successful
+# CI samples; the two split watcher suites have estimated weights until each has
+# its own successful CI sample. These hints only affect balance, not coverage.
+# docs/fm-test-portable-shards.md owns their evidence and refresh procedure.
 portable_serial_weight_hints() {
   cat <<'EOF'
 tests/fm-afk-contract.test.sh 9518

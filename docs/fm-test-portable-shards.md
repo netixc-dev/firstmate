@@ -58,7 +58,7 @@ Each shard is still strictly serial in itself, and separate runners mean no two 
 
 Assignment is longest-processing-time bin packing over per-script duration hints embedded in `bin/fm-test-run.sh`.
 The serial hints were refreshed on 2026-09-25 with the slower successful per-script `duration_ms` from the portable-serial artifacts of two complete green same-tree GitHub-hosted runs: [36136032920](https://github.com/netixc-dev/firstmate/actions/runs/36136032920) and [36133959072](https://github.com/netixc-dev/firstmate/actions/runs/36133959072).
-Those artifacts supplied 149 measured paths; older recorded values remain for paths absent from these runs, and the coverage guard names any current unhinted script.
+Those artifacts supplied 149 measured paths; older recorded values remain for paths absent from these runs, and the coverage guard reports the unhinted count (listing paths when the limit is exceeded).
 The two new watcher-script hints partition the older suite's 983669 ms successful maximum in the observed 445584:507387 case-group ratio, rather than claiming a new GitHub-hosted measurement.
 Replace those two estimates with their own successful durations after the first green split run.
 An unfinished or failed invocation is not a healthy duration sample.

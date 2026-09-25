@@ -4640,10 +4640,6 @@ test_afk_paused_changed_pane_hands_off_plain_stale() {
 # the record restores the ordinary bounded recheck, so the rule is the record's,
 # not a lost alarm.
 
-# A UTC ISO 8601 stamp for an epoch, on either date flavor.
-
-
-
 test_captain_held_never_rechecked_while_away_record_exists() {
   local dir state fakebin out capture_file statusf window key pane_hash sig pid back
   dir=$(make_case away-record-held-secondmate); state="$dir/state"; fakebin="$dir/fakebin"
