@@ -762,7 +762,7 @@ esac
 
 spawn_refuse_removed_harness() { # <harness-or-command>
   local input=$1 command_name legacy='a'gy
-  case "${input##*/}" in
+  case "$input" in
   "$legacy")
     echo "error: unsupported removed harness '$input'; refusing before task mutation" >&2
     return 1
@@ -770,93 +770,183 @@ spawn_refuse_removed_harness() { # <harness-or-command>
   esac
   case "$input" in *' '*) ;; *) return 0 ;; esac
   command_name=$(python3 - "$input" <<'PY'
-import codecs
 import os
 import re
-import shlex
 import sys
 
 removed = 'a' + 'gy'
-source = sys.argv[1]
-if '`' in source or '<(' in source or '>(' in source or '$(' in source:
-    sys.exit('cannot inspect dynamic launch command')
-ansi = re.compile(r"\$'((?:\\[\s\S]|[^'\\])*)'")
-try:
-    source = ansi.sub(lambda m: shlex.quote(codecs.decode(m.group(1), 'unicode_escape')), source)
-except UnicodeError as error:
-    sys.exit(f'cannot inspect ANSI-C quoting: {error}')
-lexer = shlex.shlex(source, posix=True, punctuation_chars=';&|(){}<>\n')
-lexer.whitespace = ' \t\r'
-lexer.whitespace_split = True
-lexer.commenters = '#'
-try:
-    tokens = list(lexer)
-except ValueError as error:
-    sys.exit(f'cannot inspect launch command: {error}')
-
-expect_command = True
-prefix = None
-skip_next = False
-compound = False
 redirects = ('<', '>', '>>', '<<<', '<>', '<&', '>&', '>|', '&>')
-for index, token in enumerate(tokens):
-    if token in ('<<', '<<-'):
-        sys.exit('cannot inspect here-document launch command')
-    if token and all(c in ';&|(){}\n' for c in token):
-        compound = True
-        expect_command = True
-        prefix = None
-        skip_next = False
-        continue
-    if skip_next:
-        skip_next = False
-        continue
-    if token in redirects:
-        compound = True
-        if expect_command:
-            skip_next = True
-        continue
-    if not expect_command:
-        continue
-    if token.isdecimal() and index + 1 < len(tokens) and tokens[index + 1] in redirects:
-        continue
-    if token in ('!', 'if', 'then', 'elif', 'else', 'fi', 'while', 'until', 'do', 'done'):
-        compound = True
-        continue
-    if token in ('case', 'select', 'for', 'function', 'eval', 'source', '.'):
-        sys.exit('cannot inspect indirect launch command')
-    if os.path.basename(token) in ('env', 'command', 'exec'):
-        prefix = os.path.basename(token)
-        continue
-    if prefix == 'command' and token in ('-v', '-V'):
-        expect_command = False
-        continue
-    if prefix == 'command' and token in ('-p', '--'):
-        continue
-    if prefix == 'exec' and token == '-a':
-        skip_next = True
-        continue
-    if prefix == 'exec' and token in ('-c', '-l', '--'):
-        continue
-    if prefix == 'env' and token in ('-u', '--unset', '-C', '--chdir'):
-        skip_next = True
-        continue
-    if prefix == 'env' and token in ('-i', '-0', '--ignore-environment', '--null', '--'):
-        continue
-    if prefix and token.startswith('-'):
-        sys.exit('cannot inspect launch wrapper option')
-    if re.match(r'^[A-Za-z_][A-Za-z_0-9]*=', token):
-        continue
-    if '$' in token:
-        sys.exit('cannot inspect dynamic executable')
-    if os.path.basename(token) == removed:
-        print(token)
-        sys.exit(0)
-    if os.path.basename(token) in ('bash', 'sh', 'zsh') and '-c' in tokens[index + 1:]:
-        sys.exit('cannot inspect nested shell launch command')
-    expect_command = False
-if compound:
-    sys.exit('cannot inspect compound launch command')
+
+class Unsafe(Exception):
+    pass
+
+def tokenize(source):
+    tokens, word, quoted = [], [], False
+    def flush():
+        nonlocal word, quoted
+        if word or quoted:
+            tokens.append(('word', ''.join(word), quoted))
+        word, quoted = [], False
+
+    i = 0
+    while i < len(source):
+        c = source[i]
+        if c == "'":
+            quoted = True
+            end = source.find("'", i + 1)
+            if end < 0:
+                raise Unsafe('unclosed single quote')
+            word.append(source[i + 1:end])
+            i = end + 1
+            continue
+        if source.startswith("$'", i):
+            quoted = True
+            i += 2
+            while i < len(source) and source[i] != "'":
+                if source[i] != '\\':
+                    word.append(source[i]); i += 1; continue
+                i += 1
+                if i == len(source):
+                    raise Unsafe('incomplete ANSI-C escape')
+                c = source[i]
+                if c in '01234567':
+                    end = i
+                    while end < min(i + 3, len(source)) and source[end] in '01234567':
+                        end += 1
+                    word.append(chr(int(source[i:end], 8))); i = end; continue
+                escapes = {'n': '\n', 'r': '\r', 't': '\t', 'a': '\a', 'b': '\b',
+                           'e': '\x1b', 'f': '\f', 'v': '\v', "'": "'", '"': '"', '\\': '\\'}
+                if c not in escapes:
+                    raise Unsafe('unknown ANSI-C escape')
+                word.append(escapes[c]); i += 1
+            if i == len(source):
+                raise Unsafe('unclosed ANSI-C quote')
+            i += 1
+            continue
+        if c == '"':
+            quoted = True
+            i += 1
+            while i < len(source) and source[i] != '"':
+                c = source[i]
+                if c in '$`':
+                    raise Unsafe('dynamic double-quoted word')
+                if c == '\\' and i + 1 < len(source) and source[i + 1] in '$`"\\\n':
+                    i += 1
+                    if source[i] != '\n':
+                        word.append(source[i])
+                else:
+                    word.append(c)
+                i += 1
+            if i == len(source):
+                raise Unsafe('unclosed double quote')
+            i += 1
+            continue
+        if c == '\\':
+            if i + 1 == len(source):
+                raise Unsafe('incomplete shell escape')
+            if source[i + 1] != '\n':
+                word.append(source[i + 1])
+            i += 2
+            continue
+        if c in '$`':
+            raise Unsafe('dynamic shell word')
+        if c == '#' and not word and not quoted:
+            end = source.find('\n', i)
+            i = len(source) if end < 0 else end
+            continue
+        if c in ' \t\r':
+            flush(); i += 1; continue
+        if c == '\n':
+            flush(); tokens.append(('op', c, False)); i += 1; continue
+        if c in '{}' and (word or (i + 1 < len(source) and source[i + 1] not in ' \t\r\n;')):
+            word.append(c); i += 1; continue
+        if c in ';&|(){}<>':
+            if c in '<>' and source[i:i + 2] in ('<(', '>('):
+                raise Unsafe('process substitution')
+            flush()
+            op = next((p for p in ('<<<', '&&', '||', '>>', '<<', '<>', '<&', '>&', '>|', '&>')
+                       if source.startswith(p, i)), c)
+            tokens.append(('op', op, False)); i += len(op); continue
+        word.append(c); i += 1
+    flush()
+    return tokens
+
+def inspect(source, depth=0):
+    if depth > 4:
+        raise Unsafe('nested shell depth')
+    tokens = tokenize(source)
+    expect, wrapper, compound, i = True, None, False, 0
+    while i < len(tokens):
+        kind, text, quoted = tokens[i]
+        if kind == 'op':
+            if text in redirects:
+                compound = True
+                if expect:
+                    if i + 1 >= len(tokens) or tokens[i + 1][0] != 'word':
+                        raise Unsafe('redirection without target')
+                    i += 2; continue
+            elif text in (';', '&&', '||', '|', '&', '(', ')', '{', '}', '\n'):
+                compound = True; expect = True; wrapper = None
+            else:
+                raise Unsafe('unknown shell operator')
+            i += 1; continue
+        if not expect:
+            i += 1; continue
+        if text.isdecimal() and i + 1 < len(tokens) and tokens[i + 1][1] in redirects:
+            i += 1; continue
+        if not quoted and text in ('!', 'if', 'then', 'elif', 'else', 'fi', 'while', 'until', 'do', 'done'):
+            compound = True; i += 1; continue
+        if not quoted and text in ('case', 'select', 'for', 'function', 'eval', 'source', '.'):
+            raise Unsafe('indirect shell command')
+        base = os.path.basename(text)
+        if base in ('env', 'command', 'exec', 'time', 'nohup'):
+            wrapper = base; i += 1; continue
+        if wrapper == 'command' and text in ('-v', '-V'):
+            expect = False; i += 2; continue
+        if wrapper == 'exec' and text == '-a':
+            i += 2; continue
+        if wrapper == 'env' and text in ('-u', '--unset', '-C', '--chdir'):
+            i += 2; continue
+        allowed = {'env': ('-i', '-0', '--ignore-environment', '--null', '--'),
+                   'command': ('-p', '--'), 'exec': ('-c', '-l', '--'),
+                   'time': ('-p', '--'), 'nohup': ('--',)}
+        if wrapper and text in allowed[wrapper]:
+            i += 1; continue
+        if wrapper and text.startswith('-'):
+            raise Unsafe('unknown wrapper option')
+        if re.match(r'^[A-Za-z_][A-Za-z_0-9]*=', text):
+            i += 1; continue
+        if base == removed:
+            return text
+        if base in ('bash', 'sh', 'zsh'):
+            j, command_mode = i + 1, False
+            while j < len(tokens) and tokens[j][0] == 'word' and tokens[j][1].startswith('-'):
+                opt = tokens[j][1]
+                if opt == '--':
+                    j += 1; break
+                if opt.startswith('--') or not opt[1:].isalpha():
+                    raise Unsafe('unknown shell option')
+                command_mode |= 'c' in opt[1:]
+                j += 1
+            if not command_mode:
+                expect = False; i += 1; continue
+            if j >= len(tokens) or tokens[j][0] != 'word':
+                raise Unsafe('shell -c without script argument')
+            found = inspect(tokens[j][1], depth + 1)
+            if found:
+                return found
+            i = j + 1; expect = False; continue
+        expect = False; i += 1
+    if compound:
+        raise Unsafe('compound shell command')
+    return None
+
+try:
+    found = inspect(sys.argv[1])
+except Unsafe as error:
+    sys.exit(f'cannot inspect launch command: {error}')
+if found:
+    print(found)
 PY
   ) || {
     echo "error: unable to inspect launch command for a removed harness; refusing before task mutation" >&2
@@ -871,19 +961,14 @@ PY
 spawn_refuse_removed_harness "$HARNESS_ARG" || exit 1
 if [ "$RELAUNCH" -eq 0 ]; then
   if [ "$KIND" = secondmate ]; then
-    case "${POS[1]:-}" in
-    *' '*)
-      if [ "${#POS[@]}" -gt 2 ] || [ -d "${POS[1]}" ]; then
-        spawn_refuse_removed_harness "${POS[2]:-}" || exit 1
-      else
-        spawn_refuse_removed_harness "${POS[1]}" || exit 1
-      fi
-      ;;
-    *)
-      spawn_refuse_removed_harness "${POS[1]:-}" || exit 1
+    if [ "${POS[1]:-}" = 'a'gy ]; then
+      spawn_refuse_removed_harness "${POS[1]}" || exit 1
+    fi
+    if [ -d "${POS[1]:-}" ] || [ "${#POS[@]}" -gt 2 ]; then
       spawn_refuse_removed_harness "${POS[2]:-}" || exit 1
-      ;;
-    esac
+    else
+      spawn_refuse_removed_harness "${POS[1]:-}" || exit 1
+    fi
   else
     spawn_refuse_removed_harness "${POS[2]:-}" || exit 1
   fi

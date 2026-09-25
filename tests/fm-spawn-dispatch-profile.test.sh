@@ -144,7 +144,7 @@ test_removed_adapter_inputs_preserve_task() {
   id=removed-input-z1
   rec=$(make_spawn_case removed-input codex "$id")
   read_case_record "$rec"
-  for form in flag raw env abs_env exec separator multiline quoted shellquote escaped ansi braces command conditional redirection positional positional_raw secondmate_raw static secondmate; do
+  for form in flag raw env abs_env exec time nohup shell abs_shell combined_shell separator multiline quoted shellquote escaped ansi braces command conditional redirection positional positional_raw secondmate_raw static secondmate; do
     : > "$LAUNCH_LOG"
     case "$form" in
     flag) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "$removed"); rc=$? ;;
@@ -152,6 +152,11 @@ test_removed_adapter_inputs_preserve_task() {
     env) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "env -u KEY OTHER=value $removed --prompt-interactive"); rc=$? ;;
     abs_env) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "/usr/bin/env $removed --prompt-interactive"); rc=$? ;;
     exec) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "exec -a worker $removed --prompt-interactive"); rc=$? ;;
+    time) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "time $removed --prompt-interactive"); rc=$? ;;
+    nohup) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "nohup $removed --prompt-interactive"); rc=$? ;;
+    shell) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "bash -c '$removed --prompt-interactive'"); rc=$? ;;
+    abs_shell) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "/bin/bash -c '$removed --prompt-interactive'"); rc=$? ;;
+    combined_shell) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "sh -ec '$removed --prompt-interactive'"); rc=$? ;;
     separator) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "env KEY=value $removed; echo ok"); rc=$? ;;
     multiline) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "$(printf 'echo ok\n%s --prompt-interactive' "$removed")"); rc=$? ;;
     quoted) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "env KEY=value '/opt/bin/$removed' --prompt-interactive"); rc=$? ;;
@@ -181,7 +186,7 @@ test_removed_adapter_inputs_preserve_task() {
     assert_absent "$HOME_DIR/state/$id.status" "$form wrote task status"
     [ ! -s "$LAUNCH_LOG" ] || fail "$form launched a worker"
   done
-  for form in "bash -c '$removed --prompt-interactive'" "/bin/bash -c '$removed --prompt-interactive'" "other --flag; echo ok"; do
+  for form in "other --flag; echo ok" "sh -ec 'other --flag; echo ok'"; do
     out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "$form"); rc=$?
     expect_code 1 "$rc" "an uninspectable raw command must refuse before publication"
     assert_contains "$out" "unable to inspect launch command" "uninspectable raw command was not rejected"
@@ -208,14 +213,17 @@ test_removed_adapter_inputs_preserve_task() {
 }
 
 test_unrelated_raw_argument_keeps_survivor_launch() {
-  local rec id quoted_id dollar_id other_id out rc removed other
+  local rec id quoted_id dollar_id substitution_id path_id shell_id other_id out rc removed other
   removed=$(printf 'a%s' gy)
   other=$(printf 'anti%s' gravity)
   id=removed-argument-z1
   quoted_id=removed-quoted-argument-z1
   dollar_id=removed-dollar-argument-z1
+  substitution_id=removed-literal-substitution-z1
+  path_id=removed-path-argument-z1
+  shell_id=removed-safe-shell-z1
   other_id=removed-other-command-z1
-  rec=$(make_spawn_case removed-argument codex "$id" "$quoted_id" "$dollar_id" "$other_id")
+  rec=$(make_spawn_case removed-argument codex "$id" "$quoted_id" "$dollar_id" "$substitution_id" "$path_id" "$shell_id" "$other_id")
   read_case_record "$rec"
   out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "other --prompt $removed"); rc=$?
   expect_code 0 "$rc" "an unrelated raw launch may pass a removed-name argument"
@@ -228,6 +236,15 @@ test_unrelated_raw_argument_keeps_survivor_launch() {
   out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$dollar_id" "$PROJ_DIR" --harness "other --prompt '\$slot'"); rc=$?
   expect_code 0 "$rc" "a literal dollar in a quoted argument must remain available"
   assert_contains "$(cat "$LAUNCH_LOG")" "other --prompt '\$slot'" "raw launch changed its literal dollar argument"
+  out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$substitution_id" "$PROJ_DIR" --harness "other --prompt '\$($removed)'"); rc=$?
+  expect_code 0 "$rc" "a single-quoted command-substitution string must remain an inert argument"
+  assert_contains "$(cat "$LAUNCH_LOG")" "other --prompt '\$($removed)'" "raw launch changed its inert command-substitution text"
+  out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$path_id" "$PROJ_DIR" --harness "other --prompt /$removed"); rc=$?
+  expect_code 0 "$rc" "a removed-name path argument must not be treated as an executable"
+  assert_contains "$(cat "$LAUNCH_LOG")" "other --prompt /$removed" "raw launch changed its path argument"
+  out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$shell_id" "$PROJ_DIR" --harness "bash -c 'other --prompt $removed'"); rc=$?
+  expect_code 0 "$rc" "a shell -c wrapper around an unrelated executable must remain available"
+  assert_contains "$(cat "$LAUNCH_LOG")" "bash -c 'other --prompt $removed'" "safe shell wrapper changed its script argument"
   out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$other_id" "$PROJ_DIR" --harness "$other --flag"); rc=$?
   expect_code 0 "$rc" "an unrelated raw executable must remain available"
   assert_contains "$out" "spawned $other_id harness=$other" "unrelated raw executable was rejected as an alias"
@@ -235,9 +252,11 @@ test_unrelated_raw_argument_keeps_survivor_launch() {
 }
 
 test_secondmate_home_with_literal_dollar_is_not_a_command() {
-  local rec id sm out rc
+  local rec id named_id sm named removed out rc
   id=secondmate-dollar-home-z1
-  rec=$(make_spawn_case secondmate-dollar-home pi "$id")
+  named_id=secondmate-legacy-basename-z1
+  removed=$(printf 'a%s' gy)
+  rec=$(make_spawn_case secondmate-dollar-home pi "$id" "$named_id")
   read_case_record "$rec"
   sm="$CASE_DIR/secondmate \$slot"
   make_seeded_secondmate_home "$sm" "$id"
@@ -245,7 +264,17 @@ test_secondmate_home_with_literal_dollar_is_not_a_command() {
   expect_code 0 "$rc" "a secondmate home containing spaces and a literal dollar must not be inspected as a command"
   assert_contains "$out" "spawned $id harness=pi kind=secondmate" "secondmate path was not used for the Pi launch"
   assert_grep "home=$sm" "$HOME_DIR/state/$id.meta" "secondmate lost its literal home path"
-  pass "a secondmate home with spaces and a literal dollar remains a path"
+  named="$CASE_DIR/$removed"
+  make_seeded_secondmate_home "$named" "$named_id"
+  out=$(cd "$CASE_DIR" && run_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$named_id" "$removed" --secondmate --harness pi); rc=$?
+  expect_code 1 "$rc" "the bare removed positional harness must refuse even when a same-named home exists"
+  assert_contains "$out" "unsupported removed harness" "the bare positional spelling was interpreted as a home"
+  assert_absent "$HOME_DIR/state/$named_id.meta" "the bare positional refusal wrote task metadata"
+  [ ! -s "$LAUNCH_LOG" ] || fail "the bare positional refusal launched a worker"
+  out=$(run_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$named_id" "$named" --secondmate --harness pi); rc=$?
+  expect_code 0 "$rc" "an absolute existing home with the legacy basename must remain a path"
+  assert_grep "home=$named" "$HOME_DIR/state/$named_id.meta" "the existing home was rejected as a removed executable"
+  pass "existing secondmate paths remain paths while the bare removed spelling refuses"
 }
 
 test_no_profile_keeps_claude_profile_defaults() {
