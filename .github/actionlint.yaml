@@ -1,0 +1,4 @@
+# The Blacksmith x64 Linux pilot uses this custom runner label in ci.yml.
+self-hosted-runner:
+  labels:
+    - blacksmith-2vcpu-ubuntu-2404

@@ -219,6 +219,25 @@ puts steps[index].fetch("timeout-minutes", "none")
   pass "Herdr keeps a $step minute step tripwire under a $heavy minute job backstop"
 }
 
+# Parse the public Actions workflow contract rather than matching YAML source text.
+# The compliance workflow must remain independently GitHub-hosted.
+test_linux_runner_pilot_preserves_hosted_lanes() {
+  ruby -ryaml - "$CI_WORKFLOW" "$ROOT/.github/workflows/no-mistakes-required.yml" <<'RUBY' || fail "Blacksmith pilot runner contract"
+ci = YAML.load_file(ARGV[0]).fetch("jobs")
+linux = %w[lint test-coverage tests-portable-parallel-1 tests-portable-parallel-2
+           tests-portable-serial tests-herdr tests-timing-aggregate invariants]
+raise "CI job inventory changed" unless ci.keys.sort == (linux + ["macos-stock-bash"]).sort
+linux.each do |id|
+  raise "#{id} is not on the x64 Blacksmith pilot" unless ci.fetch(id).fetch("runs-on") == "blacksmith-2vcpu-ubuntu-2404"
+end
+raise "stock macOS compatibility left GitHub hosting" unless ci.fetch("macos-stock-bash").fetch("runs-on") == "macos-latest"
+compliance = YAML.load_file(ARGV[1]).fetch("jobs")
+raise "compliance lane left GitHub hosting" unless compliance.values.all? { |job| job.fetch("runs-on") == "ubuntu-latest" }
+raise "portable serial matrix changed" unless ci.fetch("tests-portable-serial").fetch("strategy").fetch("matrix").fetch("shard") == (1..9).to_a
+RUBY
+  pass "eight Linux jobs use Blacksmith while nine serial shards and independent hosted lanes remain"
+}
+
 test_ci_matrices_match_executable_partitions() {
   ruby -ryaml -ropen3 - "$CI_WORKFLOW" "$ROOT" <<'RUBY' || fail "CI partition contract"
 jobs = YAML.load_file(ARGV[0]).fetch("jobs")
@@ -250,6 +269,7 @@ RUBY
 }
 
 test_ci_matrices_match_executable_partitions
+test_linux_runner_pilot_preserves_hosted_lanes
 test_pr_pushes_supersede_within_one_pr
 test_separate_prs_do_not_cancel_each_other
 test_main_pushes_are_never_cancelled
