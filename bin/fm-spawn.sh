@@ -778,28 +778,15 @@ spawn_refuse_removed_harness() { # <harness-or-command>
 }
 
 spawn_refuse_removed_record() { # <meta-file>
-  local meta=$1 recorded
-  recorded=$(fm_meta_get "$meta" harness)
-  if [ "$recorded" = devin ]; then
-    if [ -n "$HARNESS_ARG" ]; then
-      return 0
-    fi
-    if [ "$(fm_meta_get "$meta" raw_launch)" = 1 ]; then
-      echo "error: raw task $meta needs an explicit --harness command; its original command was not recorded" >&2
-      return 1
-    fi
-  fi
-  spawn_refuse_removed_harness "$recorded"
+  local recorded
+  recorded=$(fm_meta_get "$1" harness)
+  [ "$recorded" = devin ] || spawn_refuse_removed_harness "$recorded"
 }
 
 spawn_refuse_removed_harness "$HARNESS_ARG" || exit 1
 if [ "$RELAUNCH" -eq 0 ]; then
   if [ "$KIND" = secondmate ]; then
     if [ "${POS[1]:-}" = agy ]; then
-      spawn_refuse_removed_harness "${POS[1]}" || exit 1
-    fi
-    if [ "${POS[1]:-}" = devin ] && [ ! -d "${POS[1]}" ] &&
-      [ "${#POS[@]}" -eq 2 ] && [ -z "$HARNESS_ARG" ]; then
       spawn_refuse_removed_harness "${POS[1]}" || exit 1
     fi
     if [ -d "${POS[1]:-}" ] || [ "${#POS[@]}" -gt 2 ]; then
@@ -4383,7 +4370,6 @@ preserve_relaunch_meta() {
   echo "worktree=$WT"
   echo "project=$PROJ_ABS"
   echo "harness=$HARNESS"
-  [ "$RAW_LAUNCH" = 0 ] || echo "raw_launch=1"
   echo "kind=$KIND"
   [ -z "$MODE" ] || echo "mode=$MODE"
   [ -z "$YOLO" ] || echo "yolo=$YOLO"
