@@ -331,6 +331,17 @@ fm_send_meta_for_key_value() { # <state-dir> <key> <value>
   return 1
 }
 
+fm_send_accept_meta() { # <meta-file>
+  local harness
+  harness=$(fm_meta_get "$1" harness)
+  case "$harness" in
+  agy | antigravity)
+    echo "error: task record $1 names unsupported removed harness '$harness'; refusing to send" >&2
+    return 1
+    ;;
+  esac
+}
+
 fm_send_count_colons() { # <string>
   local s=$1 no_colons
   no_colons=${s//:/}
@@ -352,6 +363,7 @@ fm_send_resolve_target() { # <raw-target>
 
   meta=$(fm_backend_meta_for_selector "$raw" "$STATE" 2>/dev/null || true)
   if [ -n "$meta" ]; then
+    fm_send_accept_meta "$meta" || return 1
     if [ -n "$(fm_meta_get "$meta" remote_host)" ]; then
       id=$(fm_send_id_from_meta "$meta")
       RESOLVED_TARGET="remote:$id"
@@ -405,6 +417,7 @@ fm_send_resolve_target() { # <raw-target>
 
   meta=$(fm_backend_meta_for_window "$raw" "$STATE" 2>/dev/null || true)
   if [ -n "$meta" ]; then
+    fm_send_accept_meta "$meta" || return 1
     target=$(fm_backend_target_of_meta "$meta")
     if [ -z "$target" ]; then
       echo "error: no backend target recorded in $meta (tried explicit target '$raw' via recorded window/terminal; backend=from-meta)" >&2
@@ -911,6 +924,7 @@ else
     CURRENT_REMOTE_HOST=
     CURRENT_REMOTE_SPAWN_GEN=
     if [ -f "$TARGET_META" ]; then
+      fm_send_accept_meta "$TARGET_META" || { fm_lock_release "$REMOTE_META_LOCK"; exit 1; }
       CURRENT_REMOTE_ID=$(fm_send_id_from_meta "$TARGET_META")
       CURRENT_REMOTE_HOST=$(fm_meta_get "$TARGET_META" remote_host)
       CURRENT_REMOTE_SPAWN_GEN=$(fm_meta_get "$TARGET_META" spawn_gen)
@@ -1018,6 +1032,7 @@ else
     CURRENT_INBOX_BACKEND=
     CURRENT_INBOX_SPAWN_GEN=
     if [ -f "$TARGET_META" ]; then
+      fm_send_accept_meta "$TARGET_META" || { fm_lock_release "$INBOX_META_LOCK"; exit 1; }
       CURRENT_INBOX_TARGET=$(fm_backend_target_of_meta "$TARGET_META")
       CURRENT_INBOX_BACKEND=$(fm_backend_of_meta "$TARGET_META")
       CURRENT_INBOX_SPAWN_GEN=$(fm_meta_get "$TARGET_META" spawn_gen)

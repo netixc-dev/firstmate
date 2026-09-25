@@ -952,6 +952,15 @@ test_queued_enter_verdict_does_not_convert_other_states() {
   pass "fm_composer_queued_enter_verdict: only proven pending is converted"
 }
 
+test_gemini_delivery_busy_signal() {
+  printf '%s\n' '(esc to cancel, 1s)' | fm_busy_lines_match gemini || fail "Gemini busy footer must confirm delivery"
+  printf '%s\n' '(esc to cancel, 1s)' | fm_busy_lines_match || fail "harness-less submit core must recognize Gemini busy footer"
+  if printf '%s\n' 'gemini idle' | fm_busy_lines_match gemini; then fail "Gemini idle pane read busy"; fi
+  if printf '%s\n' '(esc to cancel, 1s)' | fm_busy_lines_match codex; then fail "Codex borrowed Gemini's busy footer"; fi
+  pass "Gemini delivery signal is shared only with the harness-less submit core"
+}
+
+test_gemini_delivery_busy_signal
 test_queued_enter_verdict_busy_pending_is_empty
 test_queued_enter_verdict_idle_pending_stays_pending
 test_queued_enter_verdict_does_not_convert_other_states

@@ -760,6 +760,39 @@ case "$EFFORT" in
   ;;
 esac
 
+spawn_refuse_removed_harness() { # <harness-or-command>
+  local input=$1 word
+  case "$input" in *[![:space:]]*) ;; *) return 0 ;; esac
+  local words=()
+  read -r -a words <<< "$input"
+  for word in "${words[@]}"; do
+    word=${word#\"}
+    word=${word#\'}
+    word=${word%\"}
+    word=${word%\'}
+    case "${word##*/}" in
+    agy | antigravity)
+      echo "error: unsupported removed harness '$word'; refusing before task mutation" >&2
+      return 1
+      ;;
+    esac
+  done
+}
+
+spawn_refuse_removed_harness "$HARNESS_ARG" || exit 1
+if [ "$RELAUNCH" -eq 0 ]; then
+  if [ "$KIND" = secondmate ]; then
+    spawn_refuse_removed_harness "${POS[1]:-}" || exit 1
+    spawn_refuse_removed_harness "${POS[2]:-}" || exit 1
+  else
+    spawn_refuse_removed_harness "${POS[2]:-}" || exit 1
+  fi
+fi
+spawn_refuse_removed_harness "$("$SCRIPT_DIR/fm-harness.sh" crew)" || exit 1
+if [ "$KIND" = secondmate ]; then
+  spawn_refuse_removed_harness "$("$SCRIPT_DIR/fm-harness.sh" secondmate)" || exit 1
+fi
+
 # --relaunch reuses an existing task's endpoint, worktree, project, and kind,
 # so every axis this block resolves for a fresh spawn instead comes from that
 # task's own durable record below. Contradicting it on the command line is a
@@ -941,6 +974,7 @@ spawn_remote_secondmate() {
       echo "error: existing metadata for $id does not identify this remote secondmate route" >&2
       return 1
     fi
+    spawn_refuse_removed_harness "$(fm_meta_get "$meta" harness)" || return 1
   fi
   # Gate the host before anything is published or transferred, so a host that
   # cannot hold a durable Herdr endpoint refuses here rather than half-way
@@ -1384,6 +1418,14 @@ elif [ "$RELAUNCH" -eq 1 ]; then
   echo "error: spawn refused: state directory does not exist at $STATE" >&2
   exit 1
 fi
+if { [ "$RELAUNCH" -eq 1 ] || [ "$KIND" = secondmate ]; } &&
+  { [ -e "$STATE/$ID.meta" ] || [ -L "$STATE/$ID.meta" ]; }; then
+  fm_backlog_record_present "$STATE/$ID.meta" "task record" "$STATE" || {
+    echo "error: spawn refused: $FM_BACKLOG_TRANSITION_ERROR" >&2
+    exit 1
+  }
+  spawn_refuse_removed_harness "$(fm_meta_get "$STATE/$ID.meta" harness)" || exit 1
+fi
 # Role partition: spawning NEW work is MAIN-owned while attended. A relaunch of
 # an existing task is legitimate branch recovery (fm-control drives it through
 # this same entrypoint), so only a fresh spawn refuses the branch actor
@@ -1626,6 +1668,7 @@ if [ "$RELAUNCH" -eq 1 ]; then
       ;;
   esac
   RELAUNCH_PRIOR_HARNESS=$(fm_meta_get "$RELAUNCH_META" harness)
+  spawn_refuse_removed_harness "$RELAUNCH_PRIOR_HARNESS" || exit 1
   KIND=$(fm_meta_get "$RELAUNCH_META" kind)
   [ -n "$KIND" ] || KIND=ship
   # A secondmate whose endpoint is gone already has ONE owner for that

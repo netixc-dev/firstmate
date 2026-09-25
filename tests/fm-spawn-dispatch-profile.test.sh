@@ -129,13 +129,53 @@ test_removed_harness_pin_refuses_before_task_mutation() {
   before=$(git -C "$WT_DIR" status --short)
   out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR"); rc=$?
   expect_code 1 "$rc" "a removed harness pin should refuse"
-  assert_contains "$out" "unsupported harness '$removed'" "the removed harness refusal should be named"
+  assert_contains "$out" "unsupported removed harness '$removed'" "the removed harness refusal should be named"
   [ ! -e "$HOME_DIR/state/$id.meta" ] || fail "removed harness refusal wrote task metadata"
   [ ! -e "$HOME_DIR/state/$id.status" ] || fail "removed harness refusal wrote task status"
   [ ! -s "$LAUNCH_LOG" ] || fail "removed harness refusal launched a worker"
   after=$(git -C "$WT_DIR" status --short)
   [ "$after" = "$before" ] || fail "removed harness refusal changed the isolated copy"
   pass "spawn rejects a removed harness pin before task mutation or launch"
+}
+
+test_removed_adapter_inputs_preserve_task() {
+  local rec id out rc removed meta_before form
+  removed=$(printf 'a%s' gy)
+  id=removed-input-z1
+  rec=$(make_spawn_case removed-input codex "$id")
+  read_case_record "$rec"
+  for form in flag raw env positional static secondmate; do
+    : > "$LAUNCH_LOG"
+    case "$form" in
+    flag) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "$removed"); rc=$? ;;
+    raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "/opt/bin/$removed --prompt-interactive"); rc=$? ;;
+    env) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "env KEY=value $removed --prompt-interactive"); rc=$? ;;
+    positional) out=$(run_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$removed" --secondmate); rc=$? ;;
+    static)
+      printf '%s\n' "$removed" > "$HOME_DIR/config/crew-harness"
+      out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness codex); rc=$?
+      printf '%s\n' codex > "$HOME_DIR/config/crew-harness"
+      ;;
+    secondmate)
+      printf '%s\n' "$removed" > "$HOME_DIR/config/secondmate-harness"
+      out=$(run_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" --secondmate --harness codex); rc=$?
+      ;;
+    esac
+    expect_code 1 "$rc" "$form must refuse a removed adapter"
+    assert_contains "$out" "unsupported removed harness" "$form did not name the refusal"
+    assert_absent "$HOME_DIR/state/$id.meta" "$form wrote task metadata"
+    assert_absent "$HOME_DIR/state/$id.status" "$form wrote task status"
+    [ ! -s "$LAUNCH_LOG" ] || fail "$form launched a worker"
+  done
+  printf '%s\n' codex > "$HOME_DIR/config/secondmate-harness"
+  fm_write_meta "$HOME_DIR/state/$id.meta" "window=sess:fm-$id" "worktree=$WT_DIR" "harness=$removed" "kind=ship"
+  meta_before=$(cat "$HOME_DIR/state/$id.meta")
+  out=$(run_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" --relaunch --harness codex); rc=$?
+  expect_code 1 "$rc" "legacy relaunch must refuse even with a replacement harness"
+  assert_contains "$out" "unsupported removed harness" "legacy relaunch did not identify the recorded harness"
+  [ "$(cat "$HOME_DIR/state/$id.meta")" = "$meta_before" ] || fail "legacy relaunch changed its record"
+  [ ! -s "$LAUNCH_LOG" ] || fail "legacy relaunch launched another runtime"
+  pass "removed adapter inputs and legacy relaunch refuse before task mutation"
 }
 
 test_no_profile_keeps_claude_profile_defaults() {
@@ -1501,6 +1541,7 @@ test_non_claude_harness_ignores_claude_permission_mode() {
 
 test_worker_launch_delivers_role_scope
 test_removed_harness_pin_refuses_before_task_mutation
+test_removed_adapter_inputs_preserve_task
 test_no_profile_keeps_claude_profile_defaults
 test_non_cursor_launch_clears_inherited_cursor_markers
 test_relative_home_overrides_launch_with_absolute_cross_process_paths
