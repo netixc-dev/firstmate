@@ -156,6 +156,7 @@ See [`docs/cmux-backend.md`](cmux-backend.md#runtime-detection) for why cmux can
 Auto-detected Herdr stays silent like tmux, while auto-detected cmux prints a stderr notice naming `config/backend` and `--backend tmux` because cmux remains experimental.
 Zellij is never auto-detected; select it by putting the name in a local `config/backend` file, by exporting `FM_BACKEND=zellij`, or by telling the first mate in chat.
 Any value other than `tmux`, `herdr`, `zellij`, or `cmux` is rejected until another adapter is implemented and verified.
+If a home still selects the removed Orca backend in `FM_BACKEND` or `config/backend`, choose a retained backend for future spawns; changing that selection does not migrate existing tasks.
 `fm-spawn.sh` accepts `tmux`, `herdr`, `zellij`, and `cmux` for ship and scout tasks; `backend=cmux` still refuses `--secondmate` until secondmate launch semantics are designed for it.
 The session-start secondmate liveness sweep uses the recovery-grade `fm_backend_agent_state` classifier where verified.
 The comment above that function in `bin/fm-backend.sh` is the single owner of its detailed state contract and recovery authorization.
@@ -172,11 +173,13 @@ A cmux task additionally records `cmux_workspace_id=` and `cmux_surface_id=`.
 Task selectors for `fm-peek.sh`, `fm-send.sh`, and `fm-crew-state.sh` resolve centrally through `fm_backend_resolve_selector`.
 A selector containing `:` is passed through as an explicit backend endpoint escape hatch.
 Otherwise an exact task id matching `state/<id>.meta` wins before the legacy `fm-<id>` label fallback, so task ids that themselves start with `fm-` route to their own metadata instead of being stripped.
-A metadata-routed selector returns the recorded backend's `window=` target, and matching explicit targets can still recover the recorded backend when metadata contains the same endpoint.
+For retained backends, a metadata-routed selector returns the recorded `window=` target, and matching explicit targets can still recover the recorded backend when metadata contains the same endpoint.
 Only metadata-routed task selectors carry secondmate-marker and Codex-harness context; explicit endpoint escape hatches do not.
 These five sentences are the single owner of the task-selector vocabulary; backend guides and other documents point here instead of restating the resolution order.
 `fm-teardown.sh <id>` takes a task id directly and validates the complete metadata-only endpoint identity before any runtime dispatch or cleanup mutation.
 Missing, empty, duplicate, malformed, backend-inconsistent, or task-mismatched endpoint records are preserved and refused.
+An existing `backend=orca` task record is not a tmux task: metadata-routed selectors and teardown refuse it rather than operating on its terminal or releasing its worktree, even with `--force`; keep the record and unlanded work for deliberate manual reconciliation instead of relabeling its backend.
+A nonempty `cleanup_recovery=` marks an incomplete cleanup, not a launched worker: bootstrap excludes that record from backlog transitions and teardown refuses it even with `--force`, leaving it for manual reconciliation.
 Legacy tmux metadata remains cleanup-compatible when its exact window name is `fm-<id>`; opaque non-tmux endpoints require their recorded `endpoint_task_id=` binding.
 `FM_HOME` determines Herdr's home label: the primary home uses `firstmate`, and a secondmate home marked by `.fm-secondmate-home` uses `2ndmate-<secondmate-id>`.
 [`herdr-backend.md`](herdr-backend.md#watching-and-task-containers) owns launcher-bound workspace placement, the label-only fallback, collision handling, and recovery behavior.

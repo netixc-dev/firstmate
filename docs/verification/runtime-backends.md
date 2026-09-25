@@ -305,7 +305,7 @@ Herdr's Claude idle-native submit confirmation is pinned by `tests/fm-backend-he
 
 ### Cleanup endpoint identity
 
-The cleanup identity boundary was validated on 2026-07-28 with tmux 3.6a and metadata fixtures for every supported backend.
+The tmux cleanup identity boundary was validated on 2026-07-28 with tmux 3.6a; the portable metadata fixtures now cover every retained backend.
 
 ```sh
 tests/fm-teardown-endpoint-safety.test.sh
@@ -315,7 +315,7 @@ tests/fm-backend-zellij.test.sh
 tests/fm-backend-cmux.test.sh
 ```
 
-Bounded output from the incident regression:
+Current regression labels include:
 
 ```text
 ok - fm-teardown: missing, empty, malformed, ambiguous, and task-mismatched endpoints refuse before every mutation or runtime call
@@ -358,7 +358,7 @@ The refusal is reached only through a close that could not do its job, and each 
 | cmux | 0, silent | 0, not yet distinguishable |
 | herdr | 0, silent | 0 from this arm; `bin/fm-teardown.sh` gates every Herdr record removal on `fm_backend_herdr_endpoint_confirmed_gone` instead |
 
-The three arms that still report 0 need a presence re-read taken after their own close, and the close-then-read timing that re-read depends on cannot be established without the real Zellij and cmux binaries.
+The Zellij and cmux arms need a presence re-read after their own close, whose timing cannot be established without those real binaries; Herdr has its separate confirmed-gone teardown gate.
 Guessing it is what a refusal must never rest on: a gate that refused an already-exited session would break ordinary cleanup on every task, which is a worse failure than the stranded endpoint it would be trying to prevent.
 tmux's re-read is deliberately exact - `=session` plus a whole-line window-name match - because a prefix match would read a neighboring window as this window's survivor, which is the same exactness the cleanup identity boundary above already requires.
 It is also deliberately conservative about the read itself, sharing `fm_backend_tmux_window_inventory` with `fm_backend_tmux_agent_state` so both mean the same thing by an absent session: only a definitive missing-session, missing-server, or connect-error response proves the window gone.
