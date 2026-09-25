@@ -106,7 +106,7 @@ Portable shards, each portable serial shard, and the Herdr lane upload runner-ge
 
 ## Lint partitions and end-to-end latency
 
-The reversible runner pilot uses `blacksmith-2vcpu-ubuntu-2404` for Linux coverage, portable shards, Herdr, timing aggregation, and invariants, and `blacksmith-4vcpu-ubuntu-2404` for the memory-intensive lint partitions.
+The reversible runner pilot uses `blacksmith-2vcpu-ubuntu-2404` for all Linux CI jobs, including lint.
 The portable parallel-1 and serial shards set up Node 24 before installing Pi so the runner image's older Node does not select an incompatible Pi release or fail to load TypeScript tests.
 The stock Bash compatibility job remains on GitHub-hosted `macos-latest`, while the separate `Require no-mistakes` compliance workflow remains on GitHub-hosted `ubuntu-latest`, with no dependency on Blacksmith jobs.
 The workflows own runner routing; [`tests/fm-ci-workflow.test.sh`](../tests/fm-ci-workflow.test.sh) checks this hosting split against their parsed jobs.

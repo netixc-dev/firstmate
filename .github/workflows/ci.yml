@@ -29,7 +29,7 @@ concurrency:
 jobs:
   lint:
     name: Lint ${{ matrix.partition }}
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     # Normal tier (see the timeout policy above).
     timeout-minutes: 30
     strategy:
