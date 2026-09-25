@@ -1,0 +1,17 @@
+isolated-tmux-socket=nm-raw-39135
+spawned raw-live harness=printf kind=scout window=firstmate:fm-raw-live worktree=/Users/control/.no-mistakes/worktrees/874f0de57f61/01M3CY6461SPSCRFW7KBF3VSV5/.nm-test-tmp/raw-live/pool/.treehouse/project-569e49/1/project
+spawn-exit=0
+rendered-output:
+control@controls-MacBook-Air project % treehouse get
+🌳 Setting up worktree...
+🌳 Entered worktree at /Users/control/.no-mistakes/worktrees/874f0de57f61/01M3CY
+6461SPSCRFW7KBF3VSV5/.nm-test-tmp/raw-live/pool/.treehouse/project-569e49/1/proj
+ect. Type 'exit' to return.
+control@controls-MacBook-Air project % export GOTMPDIR=/tmp/fm-raw-live/gotmp
+control@controls-MacBook-Air project % export COMPACT_ADVISER_DISABLE=1
+control@controls-MacBook-Air project % export FM_TASK_ID=raw-live
+control@controls-MacBook-Air project % . '/tmp/fm-raw-live+8c22ef50ec866f5032f51
+de023084b28cac435e444f5a388ca0ad2d36493e480/launch.s1790362940.39142.19765.sh'
+RAW_HARNESS_EXECUTED
+recorded-harness=harness=printf
+worktree=worktree=/Users/control/.no-mistakes/worktrees/874f0de57f61/01M3CY6461SPSCRFW7KBF3VSV5/.nm-test-tmp/raw-live/pool/.treehouse/project-569e49/1/project

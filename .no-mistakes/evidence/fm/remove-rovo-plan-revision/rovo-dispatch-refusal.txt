@@ -1,0 +1,12 @@
+profile=rule
+error: malformed rules file: /Users/control/.no-mistakes/worktrees/874f0de57f61/01M3CY6461SPSCRFW7KBF3VSV5/.nm-test-tmp/rovo-public-cli/home/config/crew-dispatch.json - each use profile must name a verified harness
+exit=2
+profile=array
+error: malformed rules file: /Users/control/.no-mistakes/worktrees/874f0de57f61/01M3CY6461SPSCRFW7KBF3VSV5/.nm-test-tmp/rovo-public-cli/home/config/crew-dispatch.json - each use profile must name a verified harness
+exit=2
+profile=default
+error: malformed rules file: /Users/control/.no-mistakes/worktrees/874f0de57f61/01M3CY6461SPSCRFW7KBF3VSV5/.nm-test-tmp/rovo-public-cli/home/config/crew-dispatch.json - each default profile must name a verified harness
+exit=2
+profile=default-array
+error: malformed rules file: /Users/control/.no-mistakes/worktrees/874f0de57f61/01M3CY6461SPSCRFW7KBF3VSV5/.nm-test-tmp/rovo-public-cli/home/config/crew-dispatch.json - each default profile must name a verified harness
+exit=2

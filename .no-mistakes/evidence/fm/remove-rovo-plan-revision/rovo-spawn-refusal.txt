@@ -1,0 +1,9 @@
+invocation=flag
+error: unsupported removed harness 'rovo'; refusing before task mutation
+exit=1 task-meta=absent task-status=absent
+invocation=positional
+error: unsupported removed harness 'rovo'; refusing before task mutation
+exit=1 task-meta=absent task-status=absent
+invocation=pin
+error: unsupported removed harness 'rovo'; refusing before task mutation
+exit=1 task-meta=absent task-status=absent

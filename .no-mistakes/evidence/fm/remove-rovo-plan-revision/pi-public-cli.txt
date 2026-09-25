@@ -1,0 +1,10 @@
+Pi native Ultra:
+exit=0
+Pi ordinary max:
+exit=0
+ordinary provider rejects native-only Ultra:
+error: ultra effort requires pi or pi-signed with an explicit codex-native/<model> model
+exit=1
+Pi identity despite inherited Rovo markers:
+pi
+exit=0

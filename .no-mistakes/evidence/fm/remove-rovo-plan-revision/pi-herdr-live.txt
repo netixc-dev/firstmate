@@ -1,0 +1,6 @@
+live Pi agent: {"agent":"pi","status":"idle"}
+live Pi process: {"foreground":[{"name":"node","argv0":"pi"}]}
+quit Pi response: {"error":"agent_not_found"}
+killed Pi response: {"error":"agent_not_found"}
+ok - agent get distinguishes leftover-shell (dead/no-agent) from live idle Pi
+ok - pane get agent_status lag cannot keep an exited occupant classified alive

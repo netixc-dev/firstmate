@@ -1,0 +1,3 @@
+mail account: lab@example.invalid
+imap: imap.example.invalid:993 smtp: smtp.example.invalid:465
+cursor: (none)
