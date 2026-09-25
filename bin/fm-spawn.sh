@@ -762,7 +762,8 @@ esac
 
 spawn_refuse_removed_harness() { # <harness-or-command>
   local input=$1 executable legacy='a'gy
-  executable=${input%%[[:space:]]*}
+  executable=${input#"${input%%[![:space:]]*}"}
+  executable=${executable%%[[:space:]]*}
   case "${executable##*/}" in
   "$legacy")
     if [[ $executable =~ ^[[:alnum:]_./:@%+,=-]+$ ]]; then
