@@ -1327,7 +1327,9 @@ clear_relaunch_harness_wiring() {
   # as, say, `grok-2` would have wiring armed and never retired. An
   # unrecognized value resolves to no adapter, which is also the case in which
   # no wiring was armed to begin with.
-  harness=$(fm_control_harness_family "$harness") || harness=
+  if [ "$harness" != devin ]; then
+    harness=$(fm_control_harness_family "$harness") || harness=
+  fi
   token_path=$(fm_control_harness_turnend_token_path "$harness" "$state" "$id") || return 1
   token=
   if [ -n "$token_path" ] && [ -f "$token_path" ]; then
