@@ -273,7 +273,14 @@ test_supported_backend_endpoint_records_validate() {
   fm_write_meta "$dir/home/state/$id.meta" \
     "window=lab:7" "endpoint_task_id=$id" "worktree=$dir/worktree" "project=$dir/project" \
     "backend=zellij" "zellij_session=lab" "zellij_tab_id=3" "zellij_pane_id=7"
-  fm_backend_validate_task_endpoint "$dir/home/state/$id.meta" "$id" || fail "valid Zellij endpoint refused"
+  zellij_meta_before=$(cat "$dir/home/state/$id.meta")
+  if fm_backend_validate_task_endpoint "$dir/home/state/$id.meta" "$id" 2>"$dir/zellij-refusal"; then
+    fail "legacy Zellij endpoint unexpectedly validated"
+  fi
+  assert_contains "$(cat "$dir/zellij-refusal")" "unknown backend identity" \
+    "legacy Zellij endpoint refusal did not name the unknown backend"
+  [ "$(cat "$dir/home/state/$id.meta")" = "$zellij_meta_before" ] \
+    || fail "legacy Zellij metadata changed during endpoint refusal"
 
   id=cmux-task
   fm_write_meta "$dir/home/state/$id.meta" \
@@ -285,14 +292,30 @@ test_supported_backend_endpoint_records_validate() {
   assert_contains "$(cat "$dir/cmux-refusal")" "unknown backend identity" \
     "stale cmux endpoint refusal did not preserve the task"
 
-  for backend in tmux herdr zellij; do
+  for backend in tmux herdr; do
     set +e
     fm_backend_kill "$backend" "" >/dev/null 2>&1
     target=$?
     set -e
     [ "$target" -ne 0 ] || fail "$backend generic kill accepted an empty target"
   done
-  pass "cleanup identity: valid tmux, Herdr, and Zellij records validate; stale cmux records and empty targets refuse"
+  pass "cleanup identity: valid tmux and Herdr records validate; stale Zellij/cmux records and empty targets refuse"
+}
+
+test_generic_kill_rejects_extra_argument() {
+  local dir rc
+  dir=$(make_case kill-arity)
+  set +e
+  FM_RUNTIME_LOG="$dir/runtime.log" PATH="$dir/fakebin:$PATH" \
+    bash -c '. "$1/bin/fm-backend.sh"; fm_backend_kill tmux "$2" extra' _ "$ROOT" "firstmate:fm-task" \
+    > "$dir/stdout" 2> "$dir/stderr"
+  rc=$?
+  set -e
+  [ "$rc" -ne 0 ] || fail "generic backend kill accepted an extra positional argument"
+  assert_contains "$(cat "$dir/stderr")" "exactly <backend> <target>" \
+    "generic backend kill did not report its exact arity"
+  [ ! -s "$dir/runtime.log" ] || fail "generic backend kill invoked the runtime before rejecting its arity"
+  pass "generic backend kill rejects extra backend-specific arguments before dispatch"
 }
 
 test_tmux_empty_target_refuses_without_invocation() {
@@ -1311,6 +1334,7 @@ test_control_lock_contention_refuses_before_mutation
 test_non_pool_teardown_ignores_task_set_lock
 test_metadata_lock_serializes_destructive_cleanup
 test_supported_backend_endpoint_records_validate
+test_generic_kill_rejects_extra_argument
 test_tmux_empty_target_refuses_without_invocation
 test_recorded_process_identity_cleanup_is_exact
 test_isolated_tmux_invalid_and_valid_cleanup

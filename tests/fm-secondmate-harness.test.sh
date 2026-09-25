@@ -336,12 +336,12 @@ test_propagate_lib() {
   printf '{"default":{"harness":"claude"}}\n' > "$src/crew-dispatch.json"
   printf 'claude\n' > "$src/crew-harness"
   printf 'tasks-axi\n' > "$src/backlog-backend"
-  printf 'zellij\n' > "$src/backend"
+  printf 'herdr\n' > "$src/backend"
   propagate_inheritable_config "$src" "$dest"
   [ "$(cat "$dest/crew-dispatch.json")" = '{"default":{"harness":"claude"}}' ] || fail "changed dispatch profile did not converge"
   [ "$(cat "$dest/crew-harness")" = claude ] || fail "changed value did not converge"
   [ "$(cat "$dest/backlog-backend")" = tasks-axi ] || fail "changed backlog backend did not converge"
-  [ "$(cat "$dest/backend")" = zellij ] || fail "changed backend did not converge"
+  [ "$(cat "$dest/backend")" = herdr ] || fail "changed backend did not converge"
 
   outside="$d/outside-target"
   rm -f "$dest/crew-harness" "$outside"
@@ -493,7 +493,7 @@ test_spawn_split_and_inherit() {
   printf 'claude\n' > "$w/home/config/crew-harness"
   printf 'codex\n' > "$w/home/config/secondmate-harness"
   printf 'manual\n' > "$w/home/config/backlog-backend"
-  printf 'zellij\n' > "$w/home/config/backend"
+  printf 'herdr\n' > "$w/home/config/backend"
   make_seeded_home "$sm" sm
 
   spawn_secondmate "$w" sm "$sm"
@@ -508,11 +508,39 @@ test_spawn_split_and_inherit() {
     || fail "split: home crew-dispatch.json not inherited"
   [ "$(cat "$sm/config/backlog-backend" 2>/dev/null)" = manual ] \
     || fail "split: home backlog-backend not inherited as manual"
-  [ "$(cat "$sm/config/backend" 2>/dev/null)" = zellij ] \
-    || fail "split: home backend not inherited as zellij"
+  [ "$(cat "$sm/config/backend" 2>/dev/null)" = herdr ] \
+    || fail "split: home backend not inherited as herdr"
   [ -e "$sm/config/secondmate-harness" ] \
     && fail "split: secondmate-harness leaked into the secondmate home"
   pass "B2 spawn: secondmate runs the secondmate harness; its home inherits declared config"
+}
+
+test_spawn_inherited_zellij_refuses_before_child_mutation() {
+  local w sm launchlog out status
+  w="$TMP_ROOT/spawn-inherited-zellij"
+  sm="$w/sm"
+  launchlog="$w/launch.log"
+  mkdir -p "$w/home/config"
+  printf 'zellij\n' > "$w/home/config/backend"
+  make_seeded_home "$sm" sm
+  propagate_inheritable_config "$w/home/config" "$sm/config" \
+    || fail "the inherited zellij fixture could not be copied to the child home"
+  [ "$(cat "$sm/config/backend")" = zellij ] \
+    || fail "the inherited zellij fixture was not copied byte-for-byte"
+  [ "$(FM_ROOT_OVERRIDE="$ROOT" FM_HOME="$w/home" FM_CONFIG_OVERRIDE="$w/home/config" FM_BACKEND='' bash -c '. "$1/bin/fm-backend.sh"; fm_backend_name' _ "$ROOT")" = zellij ] \
+    || fail "the inherited-backend fixture did not resolve zellij before spawn"
+
+  unset FM_BACKEND
+  out=$(spawn_secondmate_capture "$w" sm "$sm" "$launchlog" 2>&1); status=$?
+  export FM_BACKEND=tmux
+  [ "$status" -ne 0 ] || fail "an inherited zellij backend should refuse before child launch: $out"
+  assert_contains "$out" "unknown backend 'zellij'" \
+    "an inherited zellij backend should name the removed backend"
+  [ "$(cat "$sm/config/backend")" = zellij ] \
+    || fail "inherited zellij config was silently normalized"
+  [ ! -e "$sm/state/sm.meta" ] || fail "inherited zellij refusal created child metadata"
+  [ ! -s "$launchlog" ] || fail "inherited zellij refusal launched a child"
+  pass "B2 spawn: inherited zellij config is preserved and refused before child mutation"
 }
 
 # Backward-compat: secondmate-harness absent -> the secondmate launches on the
@@ -1307,7 +1335,7 @@ test_bootstrap_sweep_propagates_and_reconverges() {
   printf '{"default":{"harness":"claude"}}\n' > "$w/home/config/crew-dispatch.json"
   printf 'claude\n' > "$w/home/config/crew-harness"
   printf 'tasks-axi\n' > "$w/home/config/backlog-backend"
-  printf 'zellij\n' > "$w/home/config/backend"
+  printf 'herdr\n' > "$w/home/config/backend"
   run_bootstrap "$w" >/dev/null
   [ "$(cat "$w/sm/config/crew-harness" 2>/dev/null)" = claude ] \
     || fail "sweep: home did not re-converge to the primary's new crew-harness"
@@ -1315,7 +1343,7 @@ test_bootstrap_sweep_propagates_and_reconverges() {
     || fail "sweep: home did not re-converge to the primary's new crew-dispatch.json"
   [ "$(cat "$w/sm/config/backlog-backend" 2>/dev/null)" = tasks-axi ] \
     || fail "sweep: home did not re-converge to the primary's new backlog-backend"
-  [ "$(cat "$w/sm/config/backend" 2>/dev/null)" = zellij ] \
+  [ "$(cat "$w/sm/config/backend" 2>/dev/null)" = herdr ] \
     || fail "sweep: home did not re-converge to the primary's new backend"
 
   # Mirror absence: primary clears inherited config; the home's copies are removed.
@@ -1479,11 +1507,11 @@ test_backend_inheritance_present_and_absent() {
     "backend present reread must include exact bytes"
 
   printf 'herdr\n' > "$w/sm/config/backend"
-  printf 'zellij\n' > "$w/home/config/backend"
+  printf 'tmux\n' > "$w/home/config/backend"
   out=$(run_config_push "$w" 2>"$err"); status=$?
   expect_code 0 "$status" "backend changed push should succeed"
   assert_contains "$out" "backend: pushed" "backend changed value should report pushed"
-  [ "$(cat "$w/sm/config/backend")" = zellij ] \
+  [ "$(cat "$w/sm/config/backend")" = tmux ] \
     || fail "primary backend did not overwrite the divergent destination"
 
   rm -f "$w/home/config/backend"
@@ -2640,6 +2668,7 @@ test_pi_signed_detection_and_session_lock_identity
 test_dash_leading_process_names_are_basename_operands
 test_propagate_lib
 test_spawn_split_and_inherit
+test_spawn_inherited_zellij_refuses_before_child_mutation
 test_spawn_backward_compat_crew_fallback
 test_spawn_bare_backward_compat
 test_spawn_explicit_harness_wins

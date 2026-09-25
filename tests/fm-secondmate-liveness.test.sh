@@ -192,12 +192,12 @@ test_agent_state_dispatcher_and_compatibility() {
   out=$(bash -c '. "$0/bin/fm-backend.sh"; fm_backend_source herdr; fm_backend_herdr_pane_agent_state() { printf "live"; }; fm_backend_agent_state herdr sess:p1' "$ROOT")
   [ "$out" = alive ] || fail "detailed dispatcher should route Herdr, got '$out'"
 
-  out=$(bash -c '. "$0/bin/fm-backend.sh"; fm_backend_agent_state zellij sess:7' "$ROOT")
-  [ "$out" = unverified ] || fail "Zellij should remain unverified, got '$out'"
-  out=$(bash -c '. "$0/bin/fm-backend.sh"; fm_backend_agent_alive zellij sess:7' "$ROOT")
+  out=$(bash -c '. "$0/bin/fm-backend.sh"; fm_backend_agent_state bogus sess:7' "$ROOT")
+  [ "$out" = unverified ] || fail "an unknown backend should remain unverified, got '$out'"
+  out=$(bash -c '. "$0/bin/fm-backend.sh"; fm_backend_agent_alive bogus sess:7' "$ROOT")
   [ "$out" = unknown ] || fail "the compatibility dispatcher should map unverified to unknown, got '$out'"
 
-  pass "fm_backend_agent_state: routes tmux/Herdr and keeps Zellij unverified"
+  pass "fm_backend_agent_state: routes tmux/Herdr and keeps unknown backends unverified"
 }
 
 # --- sweep level: bin/fm-bootstrap.sh's secondmate_liveness_sweep -----------

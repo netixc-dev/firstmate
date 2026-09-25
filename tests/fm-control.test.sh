@@ -493,7 +493,7 @@ test_unverified_harness_is_refused() {
 
 test_backend_key_capability_matrix() {
   local backend key
-  for backend in tmux herdr zellij; do    # C-u is the composer clear muse's interrupt needs; every retained session
+  for backend in tmux herdr; do    # C-u is the composer clear muse's interrupt needs; every retained session
     # provider normalizes it (bin/backends/*.sh).
     for key in Escape Enter C-c C-u; do
       fm_control_backend_supports_key "$backend" "$key" \
@@ -538,13 +538,13 @@ test_unverified_state_backends_refuse_stop_verbs() {
   } >> "$dir/home/state/t1.meta"
   out=$(run_control "$dir" t1 exit); rc=$?
   expect_code 1 "$rc" "exit on $backend should refuse"$'\n'"$out"
-  assert_contains "$out" "no recovery-grade agent-state classifier" \
-    "the $backend refusal should name the missing stop proof"
+  assert_contains "$out" "unknown backend identity" \
+    "the $backend refusal should name the removed backend identity: $out"
   [ -z "$(literals "$dir")" ] || fail "$backend must receive no exit command"
   out=$(run_control "$dir" t1 relaunch --note x); rc=$?
   expect_code 1 "$rc" "relaunch on $backend should refuse"$'\n'"$out"
-  assert_contains "$out" "no recovery-grade agent-state classifier" \
-    "the $backend relaunch refusal should name the missing stop proof"
+  assert_contains "$out" "unknown backend identity" \
+    "the $backend relaunch refusal should name the removed backend identity: $out"
   pass "fm-control: a backend that cannot prove an agent stopped refuses exit and relaunch"
 }
 
@@ -552,7 +552,7 @@ test_state_verified_backends_are_exactly_tmux_and_herdr() {
   fm_control_backend_state_verified tmux || fail "tmux has a recovery-grade classifier"
   fm_control_backend_state_verified herdr || fail "herdr has a recovery-grade classifier"
   fm_control_backend_state_verified zellij \
-    && fail "zellij has no recovery-grade classifier and must not claim one"
+    && fail "zellij is removed and must not claim a recovery-grade classifier"
   pass "fm-control-lib: stop-proving verbs are gated on the backends that really classify agent state"
 }
 

@@ -518,6 +518,22 @@ SH
   pass "bootstrap requires git with an install instruction"
 }
 
+test_removed_zellij_reports_invalid_configuration() {
+  local case_dir fakebin out
+  case_dir="$TMP_ROOT/zellij-backend-removed"
+  mkdir -p "$case_dir/home/config"
+  printf '%s\n' manual > "$case_dir/home/config/backlog-backend"
+  printf '%s\n' zellij > "$case_dir/home/config/backend"
+  fakebin=$(make_fake_toolchain "$case_dir")
+  out=$(PATH="$fakebin:$BASE_PATH" FM_HOME="$case_dir/home" FM_ROOT_OVERRIDE="$case_dir/home" \
+    FM_FAKE_TREEHOUSE_LEASE_HELP=1 "$ROOT/bin/fm-bootstrap.sh")
+  assert_contains "$out" "BACKEND_INVALID: zellij (known: tmux herdr)" \
+    "bootstrap should report removed zellij as an invalid backend"
+  assert_not_contains "$out" "MISSING: zellij" "invalid zellij must not emit install guidance"
+  assert_not_contains "$out" "MISSING: jq" "invalid zellij must not demand a removed backend dependency"
+  pass "bootstrap: removed zellij configuration is invalid without dependency guidance"
+}
+
 test_removed_orca_reports_invalid_configuration() {
   local case_dir fakebin out
   case_dir="$TMP_ROOT/orca-backend-removed"
@@ -527,7 +543,7 @@ test_removed_orca_reports_invalid_configuration() {
   fakebin=$(make_fake_toolchain "$case_dir")
   out=$(PATH="$fakebin:$BASE_PATH" FM_HOME="$case_dir/home" FM_ROOT_OVERRIDE="$case_dir/home" \
     FM_FAKE_TREEHOUSE_LEASE_HELP=1 "$ROOT/bin/fm-bootstrap.sh")
-  assert_contains "$out" "BACKEND_INVALID: orca (known: tmux herdr zellij)" \
+  assert_contains "$out" "BACKEND_INVALID: orca (known: tmux herdr)" \
     "bootstrap should report removed orca as an invalid backend"
   assert_not_contains "$out" "MISSING: orca" "bootstrap must not emit Orca install guidance"
   assert_not_contains "$out" "treehouse" "invalid orca must not claim an Orca-specific treehouse exception"
@@ -538,7 +554,7 @@ test_removed_orca_reports_invalid_configuration() {
 # plus jq added, so a backend that must NOT require tmux can be proven silent
 # with tmux absent. Echoes the fakebin dir. The removed tmux is what makes these
 # cases catch the old "every backend demands tmux" bug: with the buggy
-# TOOLS list a herdr/zellij home would report MISSING: tmux here.
+# TOOLS list a Herdr home would report MISSING: tmux here.
 make_fake_toolchain_no_tmux() {  # <case-dir> <extra-cli...>
   local dir=$1 fakebin
   shift
@@ -550,8 +566,8 @@ make_fake_toolchain_no_tmux() {  # <case-dir> <extra-cli...>
 
 test_session_provider_backends_do_not_require_tmux() {
   local backend cli case_dir fakebin out
-  # herdr/zellij are session providers only: they require their own CLI, jq,
-  # and treehouse, never tmux. With all genuine deps present and tmux absent,
+  # Herdr is a session provider: it requires its own CLI, jq, and treehouse,
+  # never tmux. With all genuine deps present and tmux absent,
   # bootstrap must be silent.
   while IFS='^' read -r backend cli; do
     [ -n "$backend" ] || continue
@@ -565,14 +581,13 @@ test_session_provider_backends_do_not_require_tmux() {
     [ -z "$out" ] || fail "backend=$backend with tmux absent but its own deps present should be silent, got: $out"
   done <<'ROWS'
 herdr^herdr
-zellij^zellij
 ROWS
-  pass "bootstrap: session-provider backends require their own CLI + jq + treehouse, never tmux"
+  pass "bootstrap: Herdr requires its own CLI + jq + treehouse, never tmux"
 }
 
 test_session_provider_backends_gate_own_cli_not_tmux() {
   local backend cli case_dir fakebin out missing
-  # With the backend's OWN session CLI absent (and tmux also absent), bootstrap
+  # With Herdr's OWN session CLI absent (and tmux also absent), bootstrap
   # must fail closed on the genuine dep and never substitute a false tmux demand.
   while IFS='^' read -r backend cli; do
     [ -n "$backend" ] || continue
@@ -584,22 +599,15 @@ test_session_provider_backends_gate_own_cli_not_tmux() {
     fakebin=$(make_fake_toolchain_no_tmux "$case_dir")
     out=$(PATH="$fakebin:$BASE_PATH" FM_HOME="$case_dir/home" FM_ROOT_OVERRIDE="$case_dir/home" \
       FM_FAKE_TREEHOUSE_LEASE_HELP=1 "$ROOT/bin/fm-bootstrap.sh")
-    if [ "$backend" = herdr ]; then
-      missing="MISSING_MANUAL: herdr (instructions: https://herdr.dev)"
-    else
-      missing="MISSING: $cli"
-    fi
+    missing="MISSING_MANUAL: herdr (instructions: https://herdr.dev)"
     assert_contains "$out" "$missing" "backend=$backend must fail closed on its own missing session CLI"
-    if [ "$backend" = herdr ]; then
-      assert_not_contains "$out" "MISSING: herdr (install:" \
-        "backend=herdr must not advertise manual guidance as an executable install command"
-    fi
+    assert_not_contains "$out" "MISSING: herdr (install:" \
+      "backend=herdr must not advertise manual guidance as an executable install command"
     assert_not_contains "$out" "MISSING: tmux" "backend=$backend must not demand tmux when its own CLI is missing"
   done <<'ROWS'
 herdr^herdr
-zellij^zellij
 ROWS
-  pass "bootstrap: a session-provider backend gates its own CLI, never a false tmux requirement"
+  pass "bootstrap: Herdr gates its own CLI, never a false tmux requirement"
 }
 
 test_herdr_install_requires_manual_action() {
@@ -621,7 +629,7 @@ test_unknown_backend_reports_invalid_configuration() {
   fakebin=$(make_fake_toolchain "$case_dir")
   out=$(PATH="$fakebin:$BASE_PATH" FM_HOME="$case_dir/home" FM_ROOT_OVERRIDE="$case_dir/home" \
     FM_FAKE_TREEHOUSE_LEASE_HELP=1 "$ROOT/bin/fm-bootstrap.sh")
-  assert_contains "$out" "BACKEND_INVALID: bogus (known: tmux herdr zellij)" \
+  assert_contains "$out" "BACKEND_INVALID: bogus (known: tmux herdr)" \
     "bootstrap should report an unknown resolved backend"
   assert_not_contains "$out" "MISSING: tmux" "an unknown backend should not silently fall back to tmux dependencies"
   pass "bootstrap: unknown resolved backends fail closed with an actionable diagnostic"
@@ -629,7 +637,7 @@ test_unknown_backend_reports_invalid_configuration() {
 
 test_json_backends_require_jq_not_tmux() {
   local backend case_dir fakebin bash_env out
-  # herdr/zellij parse their backend's JSON output, so jq is a genuine dep.
+  # Herdr parses its backend's JSON output, so jq is a genuine dep.
   # jq lives in a system BASE_PATH dir on many hosts, so force it missing with a
   # command()/jq() override (the same technique the git-required case uses) to keep
   # the assertion host-independent.
@@ -661,9 +669,8 @@ SH
     assert_not_contains "$out" "MISSING: tmux" "backend=$backend must not demand tmux when jq is missing"
   done <<'ROWS'
 herdr
-zellij
 ROWS
-  pass "bootstrap: JSON-emitting backends require jq (their genuine dep), never tmux"
+  pass "bootstrap: Herdr requires jq (its genuine dep), never tmux"
 }
 
 test_treehouse_lease_check_follows_resolved_backend() {
@@ -1203,6 +1210,7 @@ test_lavish_axi_min_version
 test_tasks_axi_min_version
 test_quota_axi_min_version
 test_git_is_required_with_supported_install_instruction
+test_removed_zellij_reports_invalid_configuration
 test_removed_orca_reports_invalid_configuration
 test_session_provider_backends_do_not_require_tmux
 test_session_provider_backends_gate_own_cli_not_tmux

@@ -393,10 +393,6 @@ family_for_basename() {
     fm-fleet-snapshot-view.test.sh|fm-home-summary-refresh.test.sh)
       printf '%s\n' snapshot-bearings
       ;;
-    fm-backend-zellij.test.sh|fm-backend-zellij-smoke.test.sh)
-      printf '%s\n' zellij
-      ;;
-
     fm-branch-supervision.test.sh|fm-busy-adapter-wiring.test.sh|\
     fm-busy-state.test.sh|fm-classify-corr-token.test.sh|\
     fm-claude-stop-autoarm.test.sh|fm-cursor-harness.test.sh|\
@@ -424,7 +420,6 @@ expected_gate_skip_for_family() {
   case "$1" in
     real-herdr-gated) printf '%s\n' herdr ;;
     live-harness-optin) printf '%s\n' live-capability ;;
-    zellij) printf '%s\n' optional-binary ;;
     snapshot-bearings) printf '%s\n' optional-binary ;;
     *) printf '%s\n' none ;;
   esac
@@ -442,7 +437,6 @@ backend-dispatch
 pr-forge
 afk
 snapshot-bearings
-zellij
 standalone
 unclassified
 EOF
@@ -671,8 +665,6 @@ tests/fm-agy-harness.test.sh 47933
 tests/fm-agy-signals-live-e2e.test.sh 49
 tests/fm-ask-user-authority.test.sh 131
 tests/fm-backend-tmux-smoke.test.sh 363
-tests/fm-backend-zellij-smoke.test.sh 21
-tests/fm-backend-zellij.test.sh 9064
 tests/fm-backend.test.sh 21658
 tests/fm-backlog-atomicity.test.sh 196948
 tests/fm-backlog-handoff.test.sh 51990
@@ -1379,14 +1371,10 @@ families_for_changed_path() {
       printf '%s\n' real-herdr-gated
       printf '%s\n' backend-dispatch
       ;;
-    bin/backends/zellij*|tests/zellij-test-safety.sh)
-      printf '%s\n' zellij
-      printf '%s\n' backend-dispatch
-      ;;
     bin/backends/tmux.sh)
       printf '%s\n' backend-dispatch
       ;;
-    bin/fm-backend.sh|bin/fm-backend-hometag-lib.sh)
+    bin/fm-backend.sh)
       printf '%s\n' backend-dispatch
       printf '%s\n' real-herdr-gated
       ;;
