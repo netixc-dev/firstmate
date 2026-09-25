@@ -67,7 +67,7 @@
 #                              id and drop the record (recovery after a crash).
 #
 # Supported backends: herdr, tmux. Zellij has no verified
-# non-visible-launch primitive here yet and refuse loudly.
+# non-visible-launch primitive here yet and is refused loudly.
 #
 # Test seam: FM_AFK_LAUNCH_ENTRY overrides the command run in the created
 # terminal (default bin/fm-afk-start.sh), so a topology test can run a harmless

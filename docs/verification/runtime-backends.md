@@ -318,7 +318,7 @@ Current regression labels include:
 
 ```text
 ok - fm-teardown: missing, empty, malformed, ambiguous, and task-mismatched endpoints refuse before every mutation or runtime call
-ok - cleanup identity: valid tmux, Herdr, and Zellij records validate while every empty backend target refuses
+ok - cleanup identity: valid tmux, Herdr, and Zellij records validate; stale cmux records and empty targets refuse
 ok - tmux backend: direct empty target returns nonzero without invoking tmux
 ok - process cleanup: creation-time PID identity removes only the exact child and preserves the control child
 ok - fm-teardown: dedicated-socket invalid cleanup preserves target/control and valid cleanup removes only the exact target
@@ -1854,7 +1854,7 @@ All seven live panes of the running default session - one Pi, four Claude, two p
 
 **Typed-submit confirmation is verified on tmux and Herdr only.**
 Zellij uses a submit core that never consults the busy footer, so a typed-plane Cursor send there lands but `fm-send` reports delivery unconfirmed and exits non-zero; ordinary text steers ride the durable inbox and exit 0 at enqueue.
-Teaching that shared core the same transition is deliberately separate work, because it changes the submit path for every harness on both backends and needs its own live validation on each.
+Teaching Zellij's submit core the same transition is deliberately separate work, because it changes the submit path for every harness there and needs live validation.
 
 The portable regression is `tests/fm-cursor-harness.test.sh`, the composer captures are pinned in `tests/fm-composer-lib.test.sh`, and the Herdr submit and footer behavior is pinned in `tests/fm-backend-herdr.test.sh`.
 Refresh this harness-dependent proof before accepting a cursor upgrade:

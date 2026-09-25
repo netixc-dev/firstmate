@@ -155,14 +155,14 @@ If more than one runtime marker is present, detection resolves innermost-first: 
 Auto-detected Herdr stays silent like tmux.
 Zellij is never auto-detected; select it by putting the name in a local `config/backend` file, by exporting `FM_BACKEND=zellij`, or by telling the first mate in chat.
 Any value other than `tmux`, `herdr`, or `zellij` is rejected until another adapter is implemented and verified.
-If a home still selects the removed Orca backend in `FM_BACKEND` or `config/backend`, choose a retained backend for future spawns; changing that selection does not migrate existing tasks.
+If a home still selects a removed backend (`orca` or `cmux`) in `FM_BACKEND` or `config/backend`, choose a retained backend for future spawns; changing that selection does not migrate existing tasks.
 `fm-spawn.sh` accepts `tmux`, `herdr`, and `zellij` for ship and scout tasks.
 The session-start secondmate liveness sweep uses the recovery-grade `fm_backend_agent_state` classifier where verified.
 The comment above that function in `bin/fm-backend.sh` is the single owner of its detailed state contract and recovery authorization.
 The compatibility helper `fm_backend_agent_alive` continues to collapse those detailed results to `alive`, `dead`, or `unknown` for older callers.
 A herdr spawn additionally version-gates against the installed `herdr` binary's protocol and requires `jq`, refusing loudly on an incompatible or missing installation.
 A zellij spawn additionally version-gates against the installed `zellij` binary's version and requires `jq`, refusing loudly when either is missing or the version is older than 0.44.
-A backend spawn refusal from a missing dependency, version gate, or unauthenticated socket is terminal for that selected backend; firstmate surfaces it as a blocker instead of silently retrying another backend.
+A backend spawn refusal from a missing dependency or version gate is terminal for that selected backend; firstmate surfaces it as a blocker instead of silently retrying another backend.
 Task meta records `backend=` only for a non-default backend; an absent `backend=` means `tmux`, preserving existing default-path meta files.
 Every new task records `endpoint_task_id=` as the cleanup binding between the metadata filename and its opaque runtime endpoint.
 A herdr task additionally records `herdr_session=`, `herdr_workspace_id=`, `herdr_tab_id=`, and `herdr_pane_id=`.
@@ -175,7 +175,7 @@ Only metadata-routed task selectors carry secondmate-marker and Codex-harness co
 These five sentences are the single owner of the task-selector vocabulary; backend guides and other documents point here instead of restating the resolution order.
 `fm-teardown.sh <id>` takes a task id directly and validates the complete metadata-only endpoint identity before any runtime dispatch or cleanup mutation.
 Missing, empty, duplicate, malformed, backend-inconsistent, or task-mismatched endpoint records are preserved and refused.
-An existing `backend=orca` task record is not a tmux task: metadata-routed selectors and teardown refuse it rather than operating on its terminal or releasing its worktree, even with `--force`; keep the record and unlanded work for deliberate manual reconciliation instead of relabeling its backend.
+An existing `backend=orca` or `backend=cmux` task record is not a tmux task: metadata-routed selectors and teardown refuse it rather than operating on its endpoint or releasing its worktree, even with `--force`; keep the record and unlanded work for deliberate manual reconciliation instead of relabeling its backend.
 A nonempty `cleanup_recovery=` marks an incomplete cleanup, not a launched worker: bootstrap excludes that record from backlog transitions and teardown refuses it even with `--force`, leaving it for manual reconciliation.
 Legacy tmux metadata remains cleanup-compatible when its exact window name is `fm-<id>`; opaque non-tmux endpoints require their recorded `endpoint_task_id=` binding.
 `FM_HOME` determines Herdr's home label: the primary home uses `firstmate`, and a secondmate home marked by `.fm-secondmate-home` uses `2ndmate-<secondmate-id>`.
@@ -339,7 +339,7 @@ The full zellij home label also includes a short hash of the resolved `FM_ROOT` 
 claude, codex, opencode, pi, pi-signed, grok, kimi, cursor, and omp are empirically verified for crewmate and secondmate launches; gemini is verified for crewmate and scout launches only, and [README requirements](../README.md#requirements) own the set supported for the primary session.
 A cursor secondmate or primary runs the tracked project-scope `.cursor/hooks.json` in its own home and must be launched with `--trust`, or no project hook loads; [`docs/supervision-protocols/cursor.md`](supervision-protocols/cursor.md) owns its supervision protocol.
 Cursor typed-submit confirmation is verified on tmux and Herdr only.
-On Zellij a typed-plane Cursor send (a harness-native invocation or an explicit backend target; ordinary text steers ride the durable inbox and exit 0 at enqueue) lands, but `fm-send` reports delivery unconfirmed and exits non-zero because its shared submit core does not consult the busy footer; [runtime backend verification](verification/runtime-backends.md#cursor-agent-cli) owns the evidence and transcript-state boundary.
+On Zellij a typed-plane Cursor send (a harness-native invocation or an explicit backend target; ordinary text steers ride the durable inbox and exit 0 at enqueue) lands, but `fm-send` reports delivery unconfirmed and exits non-zero because Zellij's submit core does not consult the busy footer; [runtime backend verification](verification/runtime-backends.md#cursor-agent-cli) owns the evidence and transcript-state boundary.
 muse is verified for crewmate and scout launches ONLY, and `fm-spawn.sh` refuses it for a secondmate, because muse ships no usable hook surface for a primary session's turn-end supervision; [`docs/verification/muse.md`](verification/muse.md) owns that evidence.
 muse also needs a worker-reachable credential before spawning, and the portable fleet path is the `<config>/muse/auth.json` credential stored by `muse login`, because a caller-only `META_API_KEY` does not cross a long-lived backend daemon.
 gemini is likewise refused for secondmates because it has no primary supervision protocol; [its adapter reference](../.agents/skills/harness-adapters/references/harness/gemini.md) owns the credential precondition, canonical-launch wiring, and raw-launch limitations.

@@ -52,7 +52,7 @@ Herdr reports Cursor `blocked` in every state, so its native idle path is unreac
 Zellij does not consult that footer.
 A typed-plane native invocation or explicit backend send lands but reports unconfirmed and exits nonzero; ordinary steering uses the durable inbox and exits zero at enqueue.
 Treat this as confirmation failure, not loss, because text lands and busy state comes from the transcript.
-Teaching those backends is separate cross-harness work requiring live checks.
+Teaching Zellij that confirmation is separate cross-harness work requiring live checks.
 
 Reverse-video placeholder remnants and Herdr half-block edges belong to `../../../bin/fm-composer-lib.sh`; without the edges a bare composer swallows the footer and idle reads pending.
 `../../../docs/verification/runtime-backends.md` owns captures.

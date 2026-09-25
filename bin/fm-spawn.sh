@@ -93,9 +93,8 @@
 #   never auto-detected.
 #   Default tmux spawns do not write backend= to meta; absent backend= means
 #   tmux.
-#   A backend spawn refusal (missing dependency, version gate, unauthenticated
-#   socket, or unsupported secondmate mode) is terminal for that selected backend;
-#   callers must surface it instead of silently retrying another backend.
+#   A backend spawn refusal is terminal for that selected backend; callers
+#   must surface it instead of silently retrying another backend.
 #   A herdr crewmate or scout is placed in the exact workspace of the firstmate
 #   or secondmate process launching it, resolved from that process's own herdr
 #   pane rather than from a workspace label (herdr enforces no label uniqueness,
