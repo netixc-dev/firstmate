@@ -209,5 +209,17 @@ assert_exited_to_shell "$P_QUIT" '/quit leftover shell'
 assert_exited_to_shell "$P_KILL" 'SIGKILL leftover shell'
 assert_live_idle "$P_LIVE" 'sibling live-idle after exits'
 
+# Expose the real named-session protocol reads alongside the verdicts so a
+# reviewer can see the running Pi and the two agent-free shells, not just a
+# test reporter's summary.
+printf 'live Pi agent: '
+lab agent get "$P_LIVE" | jq -c '{agent: .result.agent.agent, status: .result.agent.agent_status}'
+printf 'live Pi process: '
+lab pane process-info --pane "$P_LIVE" | jq -c '{foreground: [.result.process_info.foreground_processes[]? | {name, argv0}]}'
+printf 'quit Pi response: '
+lab agent get "$P_QUIT" 2>&1 | jq -c '{error: .error.code}'
+printf 'killed Pi response: '
+lab agent get "$P_KILL" 2>&1 | jq -c '{error: .error.code}'
+
 pass 'agent get distinguishes leftover-shell (dead/no-agent) from live idle Pi'
 pass 'pane get agent_status lag cannot keep an exited occupant classified alive'

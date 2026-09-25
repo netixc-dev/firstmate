@@ -25,8 +25,8 @@ Operational paths keep the context named by their owner: `config/` and active-ho
 ## Non-negotiable safety
 
 Never dispatch a crewmate or secondmate on an unverified adapter.
-If `config/crew-harness` or `config/secondmate-harness` names an unverified adapter other than either retired CLI worker adapter, tell the captain under `../../../AGENTS.md` section 9 that the requested runtime is not verified, use firstmate's own verified runtime for current work, and ask only whether to verify the requested runtime for future work.
-The retired `agy` and Devin CLI worker adapters are exceptions to that fallback; follow the refusal boundary in [`docs/configuration.md`](../../../docs/configuration.md#harness-support).
+If `config/crew-harness` or `config/secondmate-harness` names an unverified adapter other than a retired CLI worker adapter, tell the captain under `../../../AGENTS.md` section 9 that the requested runtime is not verified, use firstmate's own verified runtime for current work, and ask only whether to verify the requested runtime for future work.
+For retired CLI worker adapters, follow the refusal boundary in [`docs/configuration.md`](../../../docs/configuration.md#harness-support) instead of falling back.
 Do not pause current work for that choice when fallback is allowed.
 
 On `unknown`, ask the captain instead of guessing.
@@ -34,7 +34,7 @@ A current captain override beats detection, while a per-task override governs on
 For recovery and control, use the exact `harness=` in `state/<id>.meta`; never infer it from a model or provider.
 
 Deliver lifecycle actions for tasks with verified control mechanics only through `../../../bin/fm-control.sh <task-id> interrupt|exit|relaunch`.
-For legacy `harness=devin` records, follow the [control-plane refusal boundary](../../../docs/agent-control.md#fail-closed-boundaries) rather than improvising lifecycle input.
+For legacy records of retired adapters, follow the [control-plane refusal boundary](../../../docs/agent-control.md#fail-closed-boundaries) rather than improvising lifecycle input.
 Never type an interrupt key or exit command through `fm-send`, where routing-marked lifecycle text becomes chat.
 Trust handling is complete only when inspection proves the target started processing its instructions; delivery success alone is not proof.
 Muse and Gemini are verified only for crewmate and scout work, never a secondmate or primary.
