@@ -154,7 +154,7 @@ New spawns choose the backend in this order: an explicit `--backend` flag that c
 If more than one runtime marker is present, detection resolves innermost-first: `$TMUX` is checked before `HERDR_ENV=1`, while unrelated terminal markers are ignored.
 Auto-detected Herdr stays silent like tmux.
 Any value other than `tmux` or `herdr` is rejected until another adapter is implemented and verified.
-If a home still selects a removed backend (`orca` or `cmux`) in `FM_BACKEND` or `config/backend`, choose a retained backend for future spawns; changing that selection does not migrate existing tasks.
+If a home still selects a removed backend (`orca`, `cmux`, or `zellij`) in `FM_BACKEND` or `config/backend`, choose a retained backend for future spawns; changing that selection does not migrate existing tasks.
 `fm-spawn.sh` accepts `tmux` and `herdr` for ship and scout tasks.
 The session-start secondmate liveness sweep uses the recovery-grade `fm_backend_agent_state` classifier where verified.
 The comment above that function in `bin/fm-backend.sh` is the single owner of its detailed state contract and recovery authorization.
@@ -172,7 +172,8 @@ Only metadata-routed task selectors carry secondmate-marker and Codex-harness co
 These five sentences are the single owner of the task-selector vocabulary; backend guides and other documents point here instead of restating the resolution order.
 `fm-teardown.sh <id>` takes a task id directly and validates the complete metadata-only endpoint identity before any runtime dispatch or cleanup mutation.
 Missing, empty, duplicate, malformed, backend-inconsistent, or task-mismatched endpoint records are preserved and refused.
-An existing `backend=orca` or `backend=cmux` task record is not a tmux task: metadata-routed selectors and teardown refuse it rather than operating on its endpoint or releasing its worktree, even with `--force`; keep the record and unlanded work for deliberate manual reconciliation instead of relabeling its backend.
+An existing `backend=orca`, `backend=cmux`, or `backend=zellij` task record is not a tmux task: metadata-routed selectors and teardown refuse it rather than operating on its endpoint or releasing its worktree, even with `--force`; keep the record and unlanded work for deliberate manual reconciliation instead of relabeling its backend.
+Session start reports the endpoint as unknown/refused without probing it.
 A nonempty `cleanup_recovery=` marks an incomplete cleanup, not a launched worker: bootstrap excludes that record from backlog transitions and teardown refuses it even with `--force`, leaving it for manual reconciliation.
 Legacy tmux metadata remains cleanup-compatible when its exact window name is `fm-<id>`; opaque non-tmux endpoints require their recorded `endpoint_task_id=` binding.
 `FM_HOME` determines Herdr's home label: the primary home uses `firstmate`, and a secondmate home marked by `.fm-secondmate-home` uses `2ndmate-<secondmate-id>`.
