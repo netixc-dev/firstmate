@@ -84,10 +84,10 @@
 #                                   resolves the runtime firstmate itself is
 #                                   executing inside - $TMUX_PANE selects tmux,
 #                                   $HERDR_ENV=1 selects herdr - falling back to
-#                                   tmux). zellij is not yet
-#                                   supported as supervisor backends; the daemon
-#                                   refuses loudly at startup rather than trying
-#                                   tmux primitives against a non-tmux pane.
+#                                   tmux). Other backends are not supported as
+#                                   supervisor backends; the daemon refuses
+#                                   loudly at startup rather than trying tmux
+#                                   primitives against a non-tmux pane.
 #          FM_INJECT_SKIP           |-prefixes force-self-handle bypassing
 #                                   classification (default "heartbeat"); empty
 #                                   disables. Use sparingly: it overrides the
@@ -195,13 +195,9 @@ FM_HOME="${FM_HOME:-${FM_ROOT_OVERRIDE:-$FM_ROOT}}"
 . "$FM_DAEMON_DIR/fm-busy-lib.sh"
 
 # --- tunables ---------------------------------------------------------------
-# Supervisor backends this daemon knows how to inject into today. Zellij is a
-# real backend elsewhere in firstmate (bin/fm-backend.sh), but this daemon has
-# no verified composer/busy primitives wired up for it yet - see
-# docs/herdr-backend.md and AGENTS.md section 4's
-# harness-verification discipline. Selecting it refuses loudly at startup
-# instead of silently running tmux primitives against a pane that is not a tmux
-# pane.
+# Supervisor backends this daemon knows how to inject into today. The daemon
+# refuses any other backend at startup instead of silently running tmux
+# primitives against a pane that is not a tmux or Herdr pane.
 FM_SUPERVISOR_SUPPORTED_BACKENDS="tmux herdr"
 INJECT_SKIP_DEFAULT="heartbeat"
 STALE_ESCALATE_SECS_DEFAULT=240
@@ -1600,10 +1596,8 @@ fm_super_main() {
   local BACKEND="$FM_SUPERVISOR_BACKEND"
 
   # --- refuse an unsupported supervisor backend loudly, before ever trying a
-  # tmux/herdr-specific call against it (zellij has no verified
-  # composer/busy primitives wired up for this daemon yet - AGENTS.md section 4
-  # harness-verification discipline). This is the clear refusal the task calls
-  # for, instead of a confusing "does not resolve to a tmux pane" error.
+  # tmux/herdr-specific call against it. This is the clear refusal the task
+  # calls for, instead of a confusing "does not resolve to a tmux pane" error.
   if ! fm_backend_list_contains "$FM_SUPERVISOR_SUPPORTED_BACKENDS" "$BACKEND"; then
     echo "error: away-mode daemon does not support supervisor backend '$BACKEND' yet (supported: $FM_SUPERVISOR_SUPPORTED_BACKENDS); set FM_SUPERVISOR_BACKEND=tmux|herdr and FM_SUPERVISOR_TARGET to run firstmate's own pane under a supported backend" >&2
     log "startup failed: unsupported supervisor backend '$BACKEND' (source=$backend_source)"

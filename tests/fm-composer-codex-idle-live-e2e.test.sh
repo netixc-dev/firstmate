@@ -14,7 +14,7 @@
 # its screen with styling preserved, and requires the classifier to reach
 # `empty` through BOTH capability profiles that read it in production - the
 # cursor-anchored tmux read (fm_tmux_composer_state) and the cursorless styled
-# read that Herdr and Zellij use, which is the profile that failed live. It
+# read that Herdr uses, which is the profile that failed live. It
 # fails naming codex and `codex --version`.
 #
 # Reading an idle screen submits no prompt, so no model tokens are spent and

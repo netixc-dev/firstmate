@@ -936,9 +936,8 @@ test_busy_idle_observation_via_backend_abstraction() {
 }
 
 test_unknown_backend_state_uses_capture_fallback() {
-  local backend
-  for backend in tmux zellij; do
-    (
+  local backend=tmux
+  (
       local home state corr rec sm_home
       home=$(setup_parent "fallback-$backend")
       state="$home/state"
@@ -979,9 +978,8 @@ test_unknown_backend_state_uses_capture_fallback() {
       fm_pending_reply_tick "$state"
       [ "$(phase_of "$state" "$corr")" = escalated ] \
         || fail "$backend capture busy-to-idle should complete recovery turn"
-    ) || fail "$backend unknown-state capture fallback failed"
-  done
-  pass "tmux and zellij unknown states use bounded capture fallback"
+  ) || fail "$backend unknown-state capture fallback failed"
+  pass "tmux unknown states use bounded capture fallback"
 }
 
 test_kimi_capture_fallback_uses_recorded_harness() (

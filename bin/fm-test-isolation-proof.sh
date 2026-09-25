@@ -142,10 +142,6 @@ exclusion_reason() {
     fm-backend-herdr-workspace-per-home-e2e.test.sh|fm-herdr-session-cleanup-e2e.test.sh)
       printf '%s\n' 'real Herdr-gated; Herdr lane is a later phase'
       ;;
-    fm-backend-zellij.test.sh|fm-backend-zellij-smoke.test.sh)
-      printf '%s\n' 'zellij optional backend; keep out of pure parallel pool'
-      ;;
-
     *)
       return 1
       ;;

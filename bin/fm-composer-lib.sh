@@ -2,8 +2,8 @@
 # bin/fm-composer-lib.sh - the ONE fleet-wide owner of composer classification:
 # every shape a verified harness draws, every glyph, every container proof, and
 # the empty|pending|pending-unproven|unknown verdict, shared by every
-# session-provider adapter (tmux via bin/fm-tmux-lib.sh, and
-# bin/backends/{herdr,zellij}.sh) and by fm-spawn.sh's kimi
+# session-provider adapters (tmux via bin/fm-tmux-lib.sh and
+# bin/backends/herdr.sh) and by fm-spawn.sh's kimi
 # launch-readiness check.
 #
 # WHY THIS EXISTS (tasks fm-composer-shellglyph-safety and
@@ -23,7 +23,7 @@
 # judged; they never change what the shapes ARE:
 #   styled=1    the capture preserves ANSI styling, so ghost/placeholder text
 #               is detectable and can be stripped (tmux -e, herdr --format
-#               ansi, zellij dump-screen --ansi). All retained adapters use it.
+#               ansi). All retained styled adapters use it.
 #   styled=0    when styling is unavailable, ghost text is unreadable, so a
 #               bare glyph row or left-bar row carrying trailing non-idle text
 #               degrades to `unknown` rather than `pending`: the text may be
@@ -233,7 +233,7 @@ fm_composer_normalize_trim_var() {  # <varname>
 # fm_composer_strip_ghost: the ONE fleet-wide ANSI-aware extractor of "real typed
 # content" from a captured, styled composer row. Reads the styled line on stdin
 # (from `tmux capture-pane -e`, `herdr pane read --format ansi`, or
-# `zellij action dump-screen --ansi`) and prints the
+# the adapter's styled capture and prints the
 # plain, non-ghost text on stdout, dropping:
 #   - dim/faint runs (SGR 2): how claude and codex render ghost/suggestion text.
 #     A reset (SGR 0) or normal-intensity (SGR 22) ends a dim run.
@@ -341,8 +341,7 @@ fm_composer_strip_ghost() {
 # single backend adapter, because every backend needs them for the SAME job:
 # proving a submitted Enter actually landed. Keeping them in bin/fm-tmux-lib.sh
 # made cursor's signature reachable only from tmux, even though herdr and
-# zellij run the same harnesses and face the same acknowledgement
-# problem.
+# Herdr runs the same harnesses and faces the same acknowledgement problem.
 #
 # This is a DELIVERY guard, deliberately NOT a worker-state source. The semantic
 # busy contract - what firstmate records and supervises on - is owned by
@@ -1573,7 +1572,7 @@ EOF
     # A styled agent-glyph placeholder disappears above when ghost stripping
     # proves it is furniture. If the same placeholder-looking bytes survive
     # styling, they are real user input and must remain in the extracted content
-    # (the zellij paste proof depends on observing exactly what was typed).
+    # (the backend paste proof depends on observing exactly what was typed).
     # OpenCode's left-bar hint and legacy shell-glyph boxed placeholders have no
     # such styling proof, so their structurally fixed positions remain the two
     # idle-regex exceptions here.
@@ -1702,7 +1701,7 @@ EOF
 }
 
 # fm_composer_submit_retry_core: the ONE verify-and-retry-Enter submit loop
-# for the cursor-less zellij backend, parameterised by the
+# for cursor-less backends, parameterised by the
 # adapter's send-key and composer-state functions. The caller has already
 # typed the text ONCE (send_literal) and settled; this loop submits with
 # Enter, re-reading the composer verdict, and retries Enter ONLY - never

@@ -297,7 +297,6 @@ Both recorded runtime identities now classify the exact `pi-launcher` foreground
 Backend applicability was reviewed across every spawn adapter.
 Tmux needs the exact `pi-launcher`, `pi-signed`, `pi`, and `Pi` process identities for recovery-grade liveness.
 Herdr uses native registered-agent state and needs no process-name branch.
-Zellij has no verified recovery-grade agent process probe, so it retains its existing generic ordinary-launch semantics without a new liveness matcher.
 
 The current classifier matrix and its refresh guard are recorded in [Composer classification matrix](#composer-classification-matrix), with portable shape coverage in `tests/fm-composer-lib.test.sh` and `tests/fm-composer-ghost.test.sh`.
 Kimi pointer delivery and OpenCode 1.18.4 busy-queue behavior remain pinned by `tests/fm-kimi-harness.test.sh`, `tests/fm-tmux-submit-busy.test.sh`, and `tests/fm-composer-lib.test.sh`.
@@ -311,14 +310,13 @@ The tmux cleanup identity boundary was validated on 2026-07-28 with tmux 3.6a; t
 tests/fm-teardown-endpoint-safety.test.sh
 tests/fm-teardown.test.sh
 tests/fm-backend-herdr.test.sh
-tests/fm-backend-zellij.test.sh
 ```
 
 Current regression labels include:
 
 ```text
 ok - fm-teardown: missing, empty, malformed, ambiguous, and task-mismatched endpoints refuse before every mutation or runtime call
-ok - cleanup identity: valid tmux, Herdr, and Zellij records validate; stale cmux records and empty targets refuse
+ok - cleanup identity: valid tmux and Herdr records validate; stale Zellij/cmux records and empty targets refuse
 ok - tmux backend: direct empty target returns nonzero without invoking tmux
 ok - process cleanup: creation-time PID identity removes only the exact child and preserves the control child
 ok - fm-teardown: dedicated-socket invalid cleanup preserves target/control and valid cleanup removes only the exact target
@@ -326,14 +324,13 @@ ok - fm-teardown: dedicated-socket invalid cleanup preserves target/control and 
 
 The dedicated tmux cell removed ambient tmux variables, required a socket-bound wrapper, kept one target and one independent control window, and proved the wrapper was not called for invalid metadata or a direct empty target.
 Valid cleanup removed only the exact task-bound target and left the control window live.
-The metadata-only validation covers tmux, Herdr, and Zellij before backend dispatch.
+The metadata-only validation covers retained endpoints and removed-backend refusal before backend dispatch; [`configuration.md`](../configuration.md#runtime-backend-configbackend--fm_backend) owns the operator recovery guidance.
 Claude, Codex, OpenCode, Pi, pi-signed, Grok, Kimi, Cursor, and Muse share that backend cleanup boundary; their harness-specific hook files, tokens, transcript bindings, and session-log sidecars are cleaned only after it, so no harness needs a separate endpoint parser.
 
 ### Endpoint close
 
 A reported close failure costs teardown every durable record of the task, so what each backend's close actually returns was measured before that status was given any authority.
 Verified on 2026-09-14 with tmux 3.7c by driving `fm_backend_kill` against real tmux endpoints.
-Zellij was not driven with its CLI absent; the table below states what that arm reports today rather than claiming a measurement.
 
 ```sh
 tests/fm-teardown-endpoint-safety.test.sh
@@ -353,10 +350,8 @@ The refusal is reached only through a close that could not do its job, and each 
 | Backend | already gone | a close that failed |
 | --- | --- | --- |
 | tmux | 0, silent | 1, resolved by re-reading the window's exact recorded identity; a read that itself could not run refuses rather than passing for absence |
-| zellij | 0, silent | 0, not yet distinguishable |
 | herdr | 0, silent | 0 from this arm; `bin/fm-teardown.sh` gates every Herdr record removal on `fm_backend_herdr_endpoint_confirmed_gone` instead |
 
-The Zellij arm needs a presence re-read after its own close, whose timing cannot be established without the real binary; Herdr has its separate confirmed-gone teardown gate.
 Guessing it is what a refusal must never rest on: a gate that refused an already-exited session would break ordinary cleanup on every task, which is a worse failure than the stranded endpoint it would be trying to prevent.
 tmux's re-read is deliberately exact - `=session` plus a whole-line window-name match - because a prefix match would read a neighboring window as this window's survivor, which is the same exactness the cleanup identity boundary above already requires.
 It is also deliberately conservative about the read itself, sharing `fm_backend_tmux_window_inventory` with `fm_backend_tmux_agent_state` so both mean the same thing by an absent session: only a definitive missing-session, missing-server, or connect-error response proves the window gone.
@@ -674,7 +669,7 @@ An earlier untrusted-worktree run left Claude, Grok, and Muse unverified because
 FM_COMPOSER_MATRIX_LIVE=1 tests/fm-composer-matrix-live-e2e.test.sh
 ```
 
-Observed output:
+Retained-surface excerpt of observed output:
 
 ```text
 ok - claude (2.1.227 (Claude Code)): real idle composer classifies empty
@@ -685,12 +680,10 @@ ok - grok (grok 1.0.0 (3cd0d0cbcebe)): real idle composer classifies empty
 # harness absent, not verified here: kimi
 ok - muse (Muse Code 0.1.0 (0.1.0-R708.1)): real idle composer classifies empty
 ok - strict posture live: a blank shell row classifies unknown and injection defers
-ok - zellij (zellij 0.44.0): unrelated pane change never confirms delivery (verdict: unknown)
-ok - live composer-matrix guard verified 8 live surface(s)
 ```
 
 All six installed harnesses' real idle composers reached a proven `empty` (Claude auto-updated to 2.1.227 between the audit and this rerun, so the shipped classifier is proven against the newer release as well), including Pi through the tmux foreground-process identity probe, Grok through the titled-bottom-border tolerance, and OpenCode through the left-bar shape; Codex and OpenCode first parked on vendor update-available modals that the strict classifier correctly refused until the guard's single non-submitting Escape dismissed them.
-The strict blank-row posture held live (a blank shell row deferred injection), and a zellij pane changing for reasons unrelated to submission never confirmed a delivery, replacing the retired content-diff heuristic's false positive.
+The strict blank-row posture held live (a blank shell row deferred injection), preserving the conservative delivery boundary.
 Kimi was not installed on the verification machine; its bordered shape is pinned by the portable byte-capture regressions in `tests/fm-composer-lib.test.sh`, which also carry the other five adapters' capability profiles for every harness under both a UTF-8 locale and `LC_ALL=C`.
 This guard is the refresh command after an upgrade to any matrix-covered harness; rerun it and update the versions above rather than trusting this table across releases.
 The 2026-08-23 steering-inbox doorbell run observed grok 1.0.5's idle composer classifying `unknown` (and sometimes pending-family), never `empty`.
@@ -699,8 +692,6 @@ The classifier now accepts only that exact three-column overhang (`FM_COMPOSER_G
 Grok was not installed on the verification machine for this 2026-09-14 change, so the live guard still owes a refresh against the current release rather than treating the portable capture as current live evidence; the three-column width is not live-verified and may need adjustment if Grok's title rendering changes or scales with title length.
 This closes only #3436's idle-composer-misclassification symptom (Grok/Herdr composer read `unknown` instead of `empty`, blocking away-mode injection). The issue's second symptom - a leftover watcher never yielding and never being taken over or refused at AFK start - is unrelated to composer classification and is tracked separately in #2270, where #3436's reproduction serves as corroborating evidence.
 Cursor is deliberately outside this cursor-anchored empty-composer matrix because its terminal cursor is parked outside the composer; tmux's Cursor-specific, process-identity-gated cursorless fallback is covered by the [Cursor Agent CLI](#cursor-agent-cli) section's separate live evidence and drift guard.
-
-`zellij action dump-screen --pane-id <id> --ansi` was verified at zellij 0.44.0 to preserve ANSI styling (real Claude Code rendered inside a zellij pane dumped `ESC[m` `❯` U+00A0 for its idle composer row), which is the capability the zellij composer classifier reads.
 
 ### 2026-09-20 claude 2.1.236 statusLine footer through Herdr
 
@@ -776,11 +767,11 @@ empty
 
 Before the fix the bare `›` shape extended its wrap region over the two rows beneath the glyph (`kind=bare first=17 last=19` within the 20-row tail), read the surviving starfield cells and the footer as wrapped typed input, and answered `pending`.
 The steering doorbell (`fm_task_inbox_ring` in `bin/fm-task-inbox-lib.sh`) defers on exactly that verdict, so every ring for the pane was recorded as skipped and the marked request was reported as a missed delivery.
-After the fix, braille-only rows bound the wrap region (the status footer sits beneath the starfield row, so the region never reaches it), starfield cells behind the placeholder are stripped from the glyph row, and the same capture reads `empty` under the Herdr and Zellij styled profiles and with a tmux cursor on the glyph row, while a plain (`styled=0`) capture still reads `unknown`, never `pending`.
+After the fix, braille-only rows bound the wrap region (the status footer sits beneath the starfield row, so the region never reaches it), starfield cells behind the placeholder are stripped from the glyph row, and the same capture reads `empty` under the Herdr styled profile and with a tmux cursor on the glyph row, while a plain (`styled=0`) capture still reads `unknown`, never `pending`.
 A second read-only capture of the same pane, taken during the fix with a bright starfield cell drawn between the `›` and the placeholder, read `pending` before and `empty` after as well.
 `test_matrix_codex_idle_starfield_furniture` in `tests/fm-composer-lib.test.sh` carries both samples byte-for-byte, the divergence (the same screen with letters in place of the starfield reads `pending`), and the over-stripping negatives (wrapped typed input, braille mixed with text, a typed row with a middle dot, and the footer or a starfield row alone).
 
-The live guard that refreshes this entry launches the installed codex idle in an isolated tmux server and asserts `empty` through both the cursor-anchored tmux read and the cursorless styled read Herdr and Zellij use, naming codex and `codex --version` on failure; it is default-on wherever codex and tmux are installed and spends no tokens:
+The live guard that refreshes this entry launches the installed codex idle in an isolated tmux server and asserts `empty` through both the cursor-anchored tmux read and the cursorless styled Herdr read, naming codex and `codex --version` on failure; it is default-on wherever codex and tmux are installed and spends no tokens:
 
 ```sh
 tests/fm-composer-codex-idle-live-e2e.test.sh
@@ -1672,35 +1663,6 @@ The current catch-up reporting boundary is pinned by `tests/fm-afk-return.test.s
 The fixture captures submitted input through Pi's `input` extension hook, so the lab agent directory needs no provider credentials.
 The daemon injection transport into a live composer keeps its coverage in `tests/fm-afk-inject-herdr-e2e.test.sh` for the harnesses that still run the daemon, and the dedicated Herdr daemon workspace topology is covered by `tests/fm-afk-launch.test.sh` and preserves the captain tab's pane count.
 
-## Zellij
-
-The current compatibility floor and latest verification are Zellij 0.44.0 with `jq` on macOS aarch64.
-All real tests use a uniquely named session and `tests/zellij-test-safety.sh`; they never touch a session named `firstmate` or call all-session deletion.
-
-| Guarantee | Command shape | Result |
-| --- | --- | --- |
-| Headless session | `zellij attach -b <name>` without a TTY | Created a persistent background session and returned. |
-| Session list | `zellij list-sessions --short --no-formatting` | Returned one plain name per line without starting a session. |
-| Create tab | `zellij action new-tab --cwd <dir> --name <title>` | Returned a numeric tab id and focused the new tab when a client was attached. |
-| Pane discovery | `zellij action list-panes --json` | Included terminal pane id, tab id, plugin flag, and top-level `pane_cwd`. |
-| Literal send | `zellij action paste --pane-id <id> -- <text>` | Left text unsubmitted. |
-| Keys | `send-keys --pane-id <id> Enter`, `Esc`, and one argument `Ctrl c` | All three shared operations worked. |
-| Capture | `dump-screen --pane-id <id>` or `--full` | Worked with no attached client; no line-bound flag exists. |
-| Styled capture | `dump-screen --pane-id <id> --ansi` | Preserved ANSI styling ("Composer classification matrix" above); feeds the zellij composer classifier. |
-| Close | `close-tab-by-id <id>` | Removed the live task pane and tab together. |
-| Failure exit | actions against missing targets | Returned exit 0, requiring structural preflight and output-shape validation. |
-
-`pane_cwd` stayed frozen when a foreground subshell changed directory.
-The marker-delimited `pwd` probe returned the live nested cwd and is covered by the real smoke.
-The focus mitigation restored the previously active tab after `new-tab`, with the unavoidable narrow race documented in the operator guide.
-
-```sh
-tests/fm-backend-zellij.test.sh
-tests/fm-backend-zellij-smoke.test.sh
-```
-
-The real lifecycle smoke proved spawn, metadata, nested-subshell worktree discovery, send, capture, unlanded-work refusal, approved local landing, exact tab cleanup, and session cleanup without retaining task-specific ids or branch names here.
-
 ## Cursor Agent CLI
 
 Cursor runs crewmate, scout, secondmate, and primary work; [`supervision.md`](supervision.md#cursor-primary-park-2026-08-13) owns the primary evidence.
@@ -1853,8 +1815,6 @@ Other harnesses on Herdr are unaffected by the edge-detector change.
 All seven live panes of the running default session - one Pi, four Claude, two plain shells - classified identically under the pre-fix and current classifiers.
 
 **Typed-submit confirmation is verified on tmux and Herdr only.**
-Zellij uses a submit core that never consults the busy footer, so a typed-plane Cursor send there lands but `fm-send` reports delivery unconfirmed and exits non-zero; ordinary text steers ride the durable inbox and exit 0 at enqueue.
-Teaching Zellij's submit core the same transition is deliberately separate work, because it changes the submit path for every harness there and needs live validation.
 
 The portable regression is `tests/fm-cursor-harness.test.sh`, the composer captures are pinned in `tests/fm-composer-lib.test.sh`, and the Herdr submit and footer behavior is pinned in `tests/fm-backend-herdr.test.sh`.
 Refresh this harness-dependent proof before accepting a cursor upgrade:

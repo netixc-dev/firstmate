@@ -221,11 +221,11 @@ test_backend_name_explicit_beats_detection() {
 
 test_backend_validate_refuses_unknown() {
   fm_backend_validate tmux 2>/dev/null || fail "fm_backend_validate should accept tmux"
-  [ "$FM_BACKEND_KNOWN" = "tmux herdr zellij" ] || fail "known backend set changed: $FM_BACKEND_KNOWN"
-  [ "$FM_BACKEND_SPAWN" = "tmux herdr zellij" ] || fail "spawn-capable backend set changed: $FM_BACKEND_SPAWN"
-  [ "$FM_BACKEND_VISIBLE_CAPTURE" = "tmux herdr zellij" ] || fail "visible capture backend set changed: $FM_BACKEND_VISIBLE_CAPTURE"
+  [ "$FM_BACKEND_KNOWN" = "tmux herdr" ] || fail "known backend set changed: $FM_BACKEND_KNOWN"
+  [ "$FM_BACKEND_SPAWN" = "tmux herdr" ] || fail "spawn-capable backend set changed: $FM_BACKEND_SPAWN"
+  [ "$FM_BACKEND_VISIBLE_CAPTURE" = "tmux herdr" ] || fail "visible capture backend set changed: $FM_BACKEND_VISIBLE_CAPTURE"
   local out
-  # The known and spawn-capable adapter sets are exactly tmux, herdr, and zellij.
+  # The known and spawn-capable adapter sets are exactly tmux and herdr.
   out=$(fm_backend_validate bogus 2>&1) && fail "fm_backend_validate should refuse bogus (no such adapter)"
   assert_contains "$out" "unknown backend 'bogus'" "fm_backend_validate did not name the rejected backend"
   out=$(fm_backend_validate codex-app 2>&1) && fail "fm_backend_validate should refuse codex-app"
@@ -234,6 +234,8 @@ test_backend_validate_refuses_unknown() {
   assert_contains "$out" "unknown backend 'tmux herdr'" "fm_backend_validate accepted a multi-token backend name"
   out=$(fm_backend_validate cmux 2>&1) && fail "fm_backend_validate should refuse removed cmux"
   assert_contains "$out" "unknown backend 'cmux'" "fm_backend_validate accepted removed cmux"
+  out=$(fm_backend_validate zellij 2>&1) && fail "fm_backend_validate should refuse removed zellij"
+  assert_contains "$out" "unknown backend 'zellij'" "fm_backend_validate accepted removed zellij"
   pass "fm_backend_validate: retained adapters accepted and removed backends refused loudly"
 }
 
@@ -302,7 +304,8 @@ test_backend_validate_spawn_accepts_retained_backends() {
   local out
   fm_backend_validate_spawn tmux 2>/dev/null || fail "fm_backend_validate_spawn should accept tmux"
   fm_backend_validate_spawn herdr 2>/dev/null || fail "fm_backend_validate_spawn should accept herdr"
-  fm_backend_validate_spawn zellij 2>/dev/null || fail "fm_backend_validate_spawn should accept zellij"
+  out=$(fm_backend_validate_spawn zellij 2>&1) && fail "fm_backend_validate_spawn should refuse removed zellij"
+  assert_contains "$out" "unknown backend 'zellij'" "fm_backend_validate_spawn accepted removed zellij"
   out=$(fm_backend_validate_spawn cmux 2>&1) && fail "fm_backend_validate_spawn should refuse removed cmux"
   assert_contains "$out" "unknown backend 'cmux'" "fm_backend_validate_spawn accepted removed cmux"
   out=$(fm_backend_validate_spawn bogus 2>&1) && fail "fm_backend_validate_spawn should still refuse unknown backends"
@@ -323,6 +326,9 @@ test_meta_get_and_backend_of_meta() {
 
   printf 'backend=tmux\n' >> "$meta"
   [ "$(fm_backend_of_meta "$meta")" = tmux ] || fail "fm_backend_of_meta should read an explicit backend=tmux"
+  printf 'backend=zellij\n' >> "$meta"
+  [ "$(fm_backend_of_meta "$meta")" = zellij ] \
+    || fail "fm_backend_of_meta must preserve an explicit legacy backend rather than defaulting it to tmux"
 
   printf 'token=first\ntoken=last=value' > "$edge"
   [ "$(fm_meta_get "$edge" token)" = "last=value" ] \
@@ -394,6 +400,7 @@ test_backend_of_selector_matches_explicit_target_meta() {
   fm_write_meta "$state/tmux-task.meta" "window=firstmate:fm-tmux-task"
   fm_write_meta "$state/custom-window-task.meta" "window=custom-window"
   fm_write_meta "$state/cmux-task.meta" "window=fm-cmux-task" "terminal=term-cmux-task" "backend=cmux"
+  fm_write_meta "$state/zellij-task.meta" "window=lab:7" "backend=zellij" "zellij_session=lab" "zellij_tab_id=3" "zellij_pane_id=7"
 
   [ "$(fm_backend_of_selector 'dotfiles-d6' 'default:wA:p2' "$state")" = herdr ] \
     || fail "bare non-fm task id selector should use its recorded backend"
@@ -407,6 +414,10 @@ test_backend_of_selector_matches_explicit_target_meta() {
   assert_contains "$out" "unknown backend 'cmux'" "raw stale cmux selector did not refuse"
   out=$(fm_backend_of_selector 'term-cmux-task' 'term-cmux-task' "$state" 2>&1) && fail "backend lookup for stale cmux metadata should refuse"
   assert_contains "$out" "unknown backend 'cmux'" "stale cmux endpoint lookup did not refuse"
+  out=$(fm_backend_resolve_selector 'zellij-task' "$state" 2>&1) && fail "exact selector for legacy zellij metadata should refuse"
+  assert_contains "$out" "unknown backend 'zellij'" "exact legacy zellij selector did not refuse"
+  out=$(fm_backend_of_selector 'zellij-task' 'lab:7' "$state" 2>&1) && fail "backend lookup for legacy zellij metadata should refuse"
+  assert_contains "$out" "unknown backend 'zellij'" "legacy zellij backend lookup did not refuse"
   [ "$(fm_backend_resolve_selector 'custom-window' "$state")" = custom-window ] \
     || fail "raw window selector matching metadata should not require tmux fallback"
   [ "$(fm_backend_of_selector 'default:w1:p2' 'default:w1:p2' "$state")" = herdr ] \
@@ -815,8 +826,7 @@ test_teardown_conformance_old_vs_new() {
 
 test_spawn_refuses_unknown_backend_flag() {
   local out status
-  # bogus names a backend with no adapter at all; zellij remains known while
-  # graduated to real adapters and have their own spawn tests.
+  # bogus names a backend with no adapter at all.
   out=$(FM_ROOT_OVERRIDE='' FM_HOME='' FM_STATE_OVERRIDE='' FM_DATA_OVERRIDE='' \
     FM_PROJECTS_OVERRIDE='' FM_CONFIG_OVERRIDE='' FM_SPAWN_NO_GUARD=1 \
     "$ROOT/bin/fm-spawn.sh" nope-backend-z1 projects/none claude --mode no-mistakes --yolo off --backend bogus 2>&1)
@@ -875,6 +885,46 @@ test_spawn_refuses_cmux_selection_before_mutation() {
   [ -z "$(find "$state" -type f -maxdepth 1 -name '*.meta' -print -quit)" ] || fail "cmux selection created task metadata"
   [ -z "$(find "$state" -type f -maxdepth 1 -name '.spawn-*' -print -quit)" ] || fail "cmux selection left a spawn lock"
   pass "fm-spawn.sh refuses explicit, environment, and config cmux selection before task mutation"
+}
+
+test_spawn_refuses_zellij_selection_before_mutation() {
+  local out status state data config projects id before after
+  state="$TMP_ROOT/zellij-selection-state"
+  data="$TMP_ROOT/zellij-selection-data"
+  config="$TMP_ROOT/zellij-selection-config"
+  projects="$TMP_ROOT/zellij-selection-projects"
+  mkdir -p "$state" "$data" "$config" "$projects"
+  printf 'backlog-before\n' > "$data/backlog.md"
+  for id in zellij-explicit-z1 zellij-env-z2 zellij-config-z3; do
+    before=$(find "$state" "$data" "$projects" -mindepth 1 -maxdepth 2 -print | sort)
+    case "$id" in
+      zellij-explicit-z1)
+        out=$(FM_ROOT_OVERRIDE="$ROOT" FM_HOME="$TMP_ROOT/zellij-explicit-home" FM_STATE_OVERRIDE="$state" FM_DATA_OVERRIDE="$data" FM_CONFIG_OVERRIDE="$config" FM_PROJECTS_OVERRIDE="$projects" FM_SPAWN_NO_GUARD=1 \
+          "$ROOT/bin/fm-spawn.sh" "$id" projects/none claude --mode no-mistakes --yolo off --backend zellij 2>&1)
+        status=$?
+        ;;
+      zellij-env-z2)
+        out=$(FM_ROOT_OVERRIDE="$ROOT" FM_HOME="$TMP_ROOT/zellij-env-home" FM_STATE_OVERRIDE="$state" FM_DATA_OVERRIDE="$data" FM_CONFIG_OVERRIDE="$config" FM_PROJECTS_OVERRIDE="$projects" FM_SPAWN_NO_GUARD=1 FM_BACKEND=zellij \
+          "$ROOT/bin/fm-spawn.sh" "$id" projects/none claude --mode no-mistakes --yolo off 2>&1)
+        status=$?
+        ;;
+      zellij-config-z3)
+        printf '%s\n' zellij > "$config/backend"
+        out=$(FM_ROOT_OVERRIDE="$ROOT" FM_HOME="$TMP_ROOT/zellij-config-home" FM_STATE_OVERRIDE="$state" FM_DATA_OVERRIDE="$data" FM_CONFIG_OVERRIDE="$config" FM_PROJECTS_OVERRIDE="$projects" FM_SPAWN_NO_GUARD=1 FM_BACKEND='' \
+          "$ROOT/bin/fm-spawn.sh" "$id" projects/none claude --mode no-mistakes --yolo off 2>&1)
+        status=$?
+        ;;
+    esac
+    [ "$status" -ne 0 ] || fail "$id should refuse removed zellij"
+    assert_contains "$out" "unknown backend 'zellij'" "$id did not report removed zellij as unknown"
+    after=$(find "$state" "$data" "$projects" -mindepth 1 -maxdepth 2 -print | sort)
+    [ "$before" = "$after" ] || fail "$id changed endpoint, worktree, task, status, inbox, or backlog paths"
+    rm -f "$config/backend"
+  done
+  [ "$(cat "$data/backlog.md")" = backlog-before ] || fail "zellij selection changed the backlog transition marker"
+  [ -z "$(find "$state" -type f -maxdepth 1 -name '*.meta' -print -quit)" ] || fail "zellij selection created task metadata"
+  [ -z "$(find "$state" -type f -maxdepth 1 -name '.spawn-*' -print -quit)" ] || fail "zellij selection left a spawn lock"
+  pass "fm-spawn.sh refuses explicit, environment, and config zellij selection before task mutation"
 }
 
 test_spawn_refuses_unknown_fm_backend_env() {
@@ -989,6 +1039,7 @@ test_teardown_conformance_old_vs_new
 test_spawn_refuses_unknown_backend_flag
 test_spawn_refuses_codex_app_backend_flag
 test_spawn_refuses_cmux_selection_before_mutation
+test_spawn_refuses_zellij_selection_before_mutation
 test_spawn_refuses_unknown_fm_backend_env
 test_spawn_default_backend_writes_no_meta_field
 test_spawn_explicit_backend_flag_beats_autodetect_herdr_env

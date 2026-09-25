@@ -87,10 +87,9 @@
 #   config/backend, then runtime auto-detection from the runtime firstmate's
 #   environment: $TMUX or HERDR_ENV=1 (via bin/fm-backend.sh's
 #   fm_backend_detect), then tmux.
-#   Spawn-capable backends are the reference tmux adapter, verified herdr
-#   adapter, and experimental zellij adapter. All retained spawn backends use
-#   Treehouse worktrees. Auto-detected herdr stays silent like tmux; zellij is
-#   never auto-detected.
+#   Spawn-capable backends are the reference tmux adapter and verified herdr
+#   adapter. Both retained spawn backends use Treehouse worktrees, and
+#   auto-detected herdr stays silent like tmux.
 #   Default tmux spawns do not write backend= to meta; absent backend= means
 #   tmux.
 #   A backend spawn refusal is terminal for that selected backend; callers
@@ -279,10 +278,9 @@
 #   Unset names stay unset and empty values stay empty.
 #   The fixed operational floor is HOME PATH USER LOGNAME SHELL TERM COLORTERM
 #   LANG LC_ALL LC_CTYPE TMPDIR TMP TEMP GOTMPDIR, plus backend identity/routing:
-#   TMUX TMUX_PANE HERDR_ENV HERDR_SESSION HERDR_SOCKET_PATH HERDR_PANE_ID
-#   ZELLIJ ZELLIJ_SESSION_NAME ZELLIJ_PANE_ID FM_ZELLIJ_SESSION, plus the task
-#   marker FM_TASK_ID that ship and scout panes receive above, plus the
-#   compact-adviser kill switch COMPACT_ADVISER_DISABLE, which the floor also
+#   TMUX TMUX_PANE HERDR_ENV HERDR_SESSION HERDR_SOCKET_PATH HERDR_PANE_ID,
+#   plus the task marker FM_TASK_ID that ship and scout panes receive above,
+#   plus the compact-adviser kill switch COMPACT_ADVISER_DISABLE, which the floor also
 #   pins to 1 with a literal assignment so it survives the cleared environment
 #   even on a host that never had it set.
 #   An enabled task trace also retains TRACEPARENT. Explicit Firstmate launch
@@ -2900,9 +2898,9 @@ BRIEF_REAL="$BRIEF_DIR_REAL/$(basename "$BRIEF")"
 
 # PROJ_ABS can still carry a symlinked path component (e.g. macOS's /tmp ->
 # /private/tmp) when it came from the ship/scout branch's logical `pwd` above.
-# Every backend's own current-path read (tmux's pane_current_path, herdr's
-# foreground_cwd, or zellij's active pwd probe against the live shell) can
-# report the OS-level, physically-resolved cwd, so comparing it against a
+# Every retained backend's own current-path read (tmux's pane_current_path or
+# Herdr's foreground_cwd) can report the OS-level, physically-resolved cwd, so
+# comparing it against a
 # still-symlinked PROJ_ABS can misfire both ways: false-negative (the poll
 # below never notices the pane left the project) or false-positive (the
 # isolation guard refuses a spawn that never actually tangled). Canonicalize
@@ -3506,18 +3504,6 @@ EOF
     fi
     T="$HERDR_SES:$HERDR_PANE_ID"
     ;;
-  zellij)
-    ZELLIJ_SES=$(fm_backend_zellij_container_ensure) || exit 1
-    ZELLIJ_TASK_IDS=$(fm_backend_zellij_create_task "$ZELLIJ_SES" "$W" "$PROJ_ABS") || exit 1
-    read -r ZELLIJ_TAB_ID ZELLIJ_PANE_ID <<EOF
-$ZELLIJ_TASK_IDS
-EOF
-    if [ -z "$ZELLIJ_TAB_ID" ] || [ -z "$ZELLIJ_PANE_ID" ]; then
-      echo "error: zellij did not return a tab/pane id for $W" >&2
-      exit 1
-    fi
-    T="$ZELLIJ_SES:$ZELLIJ_PANE_ID"
-    ;;
   esac
 fi
 if [ "$KIND" = secondmate ]; then
@@ -3535,28 +3521,24 @@ spawn_send_text_line() { # <target> <text>
   case "$BACKEND" in
   tmux) fm_backend_tmux_send_text_line "$1" "$2" ;;
   herdr) fm_backend_herdr_send_text_line "$1" "$2" ;;
-  zellij) fm_backend_zellij_send_text_line "$1" "$2" "$W" ;;
   esac
 }
 spawn_current_path() { # <target>
   case "$BACKEND" in
   tmux) fm_backend_tmux_current_path "$1" ;;
   herdr) fm_backend_herdr_current_path "$1" ;;
-  zellij) fm_backend_zellij_current_path "$1" "$W" ;;
   esac
 }
 spawn_send_literal() { # <target> <text>
   case "$BACKEND" in
   tmux) fm_backend_tmux_send_literal "$1" "$2" ;;
   herdr) fm_backend_herdr_send_literal "$1" "$2" ;;
-  zellij) fm_backend_zellij_send_literal "$1" "$2" "$W" ;;
   esac
 }
 spawn_send_key() { # <target> <key>
   case "$BACKEND" in
   tmux) fm_backend_tmux_send_key "$1" "$2" ;;
   herdr) fm_backend_herdr_send_key "$1" "$2" ;;
-  zellij) fm_backend_zellij_send_key "$1" "$2" "$W" ;;
   esac
 }
 
@@ -3787,9 +3769,7 @@ rovo_spawn_fail() { # <detail>
 # orphaned autonomous agent outside task control. Mirrors fm-teardown.sh's
 # generic kill call.
 rovo_endpoint_cleanup() {
-  local tab_id=
-  [ "$BACKEND" = zellij ] && tab_id=$ZELLIJ_TAB_ID
-  fm_backend_kill "$BACKEND" "$T" "$tab_id" "fm-$ID" 2>/dev/null || true
+  fm_backend_kill "$BACKEND" "$T" 2>/dev/null || true
 }
 
 # agy carries its brief on the launch command, so it needs no delivery gate,
@@ -4498,7 +4478,7 @@ SPAWN_META_PATH=$SPAWN_META_TMP
 preserve_relaunch_meta() {
   awk -F= '
     BEGIN {
-      split("window endpoint_task_id worktree project harness kind mode yolo branch tasktmp model effort account account_provider busy_gen spawn_gen traceparent backend herdr_session herdr_workspace_id herdr_tab_id herdr_pane_id zellij_session zellij_tab_id zellij_pane_id home projects control_relaunch_tx", keys, " ")
+      split("window endpoint_task_id worktree project harness kind mode yolo branch tasktmp model effort account account_provider busy_gen spawn_gen traceparent backend herdr_session herdr_workspace_id herdr_tab_id herdr_pane_id home projects control_relaunch_tx", keys, " ")
       for (i in keys) owned[keys[i]] = 1
     }
     !($1 in owned)
@@ -4533,11 +4513,6 @@ preserve_relaunch_meta() {
     echo "herdr_workspace_id=$HERDR_WORKSPACE_ID"
     echo "herdr_tab_id=$HERDR_TAB_ID"
     echo "herdr_pane_id=$HERDR_PANE_ID"
-  fi
-  if [ "$BACKEND" = zellij ]; then
-    echo "zellij_session=$ZELLIJ_SES"
-    echo "zellij_tab_id=$ZELLIJ_TAB_ID"
-    echo "zellij_pane_id=$ZELLIJ_PANE_ID"
   fi
   if [ "$KIND" = secondmate ]; then
     echo "home=$PROJ_ABS"
@@ -4824,8 +4799,7 @@ if [ "$LAUNCH_ENV_ENABLED" = 1 ]; then
   # authoritative setter.
   for env_name in HOME PATH USER LOGNAME SHELL TERM COLORTERM LANG LC_ALL LC_CTYPE \
     TMPDIR TMP TEMP GOTMPDIR TMUX TMUX_PANE HERDR_ENV HERDR_SESSION HERDR_SOCKET_PATH \
-    HERDR_PANE_ID ZELLIJ ZELLIJ_SESSION_NAME ZELLIJ_PANE_ID FM_ZELLIJ_SESSION \
-    FM_TASK_ID COMPACT_ADVISER_DISABLE LAVISH_AXI_HOST \
+    HERDR_PANE_ID FM_TASK_ID COMPACT_ADVISER_DISABLE LAVISH_AXI_HOST \
     $LAUNCH_ENV_NAMES; do
     # Only validated names enter shell syntax. Values expand once, quoted, in
     # the pane shell and never become source text or spawn-process snapshots.

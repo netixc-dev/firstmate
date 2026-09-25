@@ -5002,8 +5002,8 @@ test_dispatch_composer_state_routes_by_backend() {
   # fm_backend_composer_state (the generic per-backend composer/pending-input
   # classifier the away-mode daemon dispatches through - bin/fm-supervise-daemon.sh's
   # pane_input_pending) must route to each backend's OWN named classifier with
-  # the target passed through unchanged - every backend has one now, all thin
-  # wrappers over the shared fm_composer_classify_screen - and report unknown
+  # the target passed through unchanged - every retained backend has one now,
+  # all thin wrappers over the shared fm_composer_classify_screen - and report unknown
   # for an unrecognized backend name.
   # Sourced-guards are pre-set so fm_backend_source no-ops and these stubs are
   # never clobbered by the real per-backend files trying (and failing) a live call.
@@ -5012,13 +5012,10 @@ test_dispatch_composer_state_routes_by_backend() {
     . "$ROOT/bin/fm-backend.sh"
     _FM_BACKEND_TMUX_SOURCED=1
     _FM_BACKEND_HERDR_SOURCED=1
-    _FM_BACKEND_ZELLIJ_SOURCED=1
     fm_tmux_composer_state() { [ "$1" = "sess:win" ] || fail "tmux composer_state got wrong target: $1"; printf 'pending'; }
     fm_backend_herdr_composer_state() { [ "$1" = "default:w1:p2" ] || fail "herdr composer_state got wrong target: $1"; printf 'empty'; }
-    fm_backend_zellij_composer_state() { [ "$1" = "sess:7" ] || fail "zellij composer_state got wrong target: $1"; printf 'empty'; }
     [ "$(fm_backend_composer_state tmux sess:win)" = pending ] || fail "composer_state did not dispatch to the tmux classifier"
     [ "$(fm_backend_composer_state herdr default:w1:p2)" = empty ] || fail "composer_state did not dispatch to the herdr classifier"
-    [ "$(fm_backend_composer_state zellij sess:7)" = empty ] || fail "composer_state did not dispatch to the zellij classifier"
     [ "$(fm_backend_composer_state bogus x)" = unknown ] || fail "composer_state should report unknown for an unrecognized backend"
   ) || fail "composer_state dispatch subshell failed"
   pass "fm_backend_composer_state dispatches retained backends to their named thin classifiers, unknown for unrecognized backends"

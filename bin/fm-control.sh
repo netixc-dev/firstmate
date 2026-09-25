@@ -113,8 +113,7 @@
 #   - A backend that cannot deliver the harness's interrupt key is refused.
 #   - `exit` and `relaunch` require a backend with a recovery-grade agent-state
 #     classifier (tmux, herdr), because without one the "the agent stopped"
-#     postcondition cannot be proven. zellij is refused rather than
-#     reported as successful blind.
+#     postcondition cannot be proven.
 #   - An ambiguous or unreadable endpoint state refuses; only a positively
 #     classified state acts.
 #   - A composer that visibly holds pending text refuses before an exit command
