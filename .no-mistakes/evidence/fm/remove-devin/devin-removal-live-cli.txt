@@ -1,0 +1,31 @@
+Session: fm-lab-devin-removal-4231-26892
+Lab status: {"running":true,"compatible":true}
+
+SCENARIO: Removed standalone CLI refusal (real spawn)
+explicit exit=1; diagnostic=error: unsupported removed harness 'devin'; refusing before task mutation
+no rejected task metadata
+static pin exit=1; diagnostic=error: unsupported removed harness 'devin'; refusing before task mutation
+
+SCENARIO: Generic raw command launches and can receive steering (real Herdr endpoint)
+raw exit=0; output=spawned raw-worker harness=sh kind=ship mode=no-mistakes yolo=off window=fm-lab-devin-removal-4231-26892:w1:p2 worktree=/Users/control/.no-mistakes/worktrees/874f0de57f61/01M3CB9S4PF6MVZ2ZQZT63CPME/.fm-devin-live-lab/treehouse/.treehouse/project-1faaf9/1/project 
+published metadata:
+harness=sh
+backend=herdr
+herdr_session=fm-lab-devin-removal-4231-26892
+herdr_pane_id=w1:p2
+Herdr pane: {"pane_id":"w1:p2","tab_id":"w1:t2"}
+inbox send exit=0
+inbox message: /Users/control/.no-mistakes/worktrees/874f0de57f61/01M3CB9S4PF6MVZ2ZQZT63CPME/.fm-devin-live-lab/home/state/raw-worker.inbox/001.msg
+--
+lab steering message
+SCENARIO: Pre-marker harness=devin metadata still steers the same live endpoint
+legacy send exit=0; recorded harness=devin
+/Users/control/.no-mistakes/worktrees/874f0de57f61/01M3CB9S4PF6MVZ2ZQZT63CPME/.fm-devin-live-lab/home/state/raw-worker.inbox/002.msg
+legacy raw steer/Users/control/.no-mistakes/worktrees/874f0de57f61/01M3CB9S4PF6MVZ2ZQZT63CPME/.fm-devin-live-lab/home/state/raw-worker.inbox/001.msg
+lab steering message
+SCENARIO: Pi extension provider discovery
+[pi-web-access] Dynamic tool activation requires Pi 0.86.1 or newer; web tools remain eagerly available.
+No models matching "devin"
+
+Final task panes in lab: [{"workspace_id":"w1","label":"firstmate"}]
+Teardown named lab: verified default-session tripwire unchanged
