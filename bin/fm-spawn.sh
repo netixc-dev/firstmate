@@ -165,8 +165,8 @@
 #   and absolute paths included); wrapped or dynamic shell commands remain
 #   caller-owned, as do unrelated raw arguments and existing secondmate home
 #   paths named agy. The removed Devin adapter is refused for explicit selections,
-#   static pins, dispatch profiles, and recorded relaunches, while whitespace-
-#   containing raw commands remain caller-owned even when their executable is Devin.
+#   static pins, and dispatch profiles, while whitespace-containing raw commands
+#   remain caller-owned even when their executable is Devin.
 #   For pi and pi-signed, fm-spawn resolves the selected executable
 #   name from PATH once, probes that concrete path with --help, and launches the
 #   same path. It adds --tui-mode regular only when that help advertises the flag;
@@ -4358,7 +4358,7 @@ SPAWN_META_PATH=$SPAWN_META_TMP
 preserve_relaunch_meta() {
   awk -F= '
     BEGIN {
-      split("window endpoint_task_id worktree project harness raw_launch kind mode yolo branch tasktmp model effort account account_provider busy_gen spawn_gen traceparent backend herdr_session herdr_workspace_id herdr_tab_id herdr_pane_id home projects control_relaunch_tx", keys, " ")
+      split("window endpoint_task_id worktree project harness kind mode yolo branch tasktmp model effort account account_provider busy_gen spawn_gen traceparent backend herdr_session herdr_workspace_id herdr_tab_id herdr_pane_id home projects control_relaunch_tx", keys, " ")
       for (i in keys) owned[keys[i]] = 1
     }
     !($1 in owned)
