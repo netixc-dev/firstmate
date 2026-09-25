@@ -3,7 +3,7 @@ name: harness-adapters
 description: >-
   Agent-only reference for firstmate harness operations.
   Use before spawning or recovering a crewmate or secondmate, handling a trust dialog, sending a harness-specific skill invocation, interrupting or exiting an agent, resuming an exited agent, or verifying a new harness adapter.
-  Contains verified facts for claude, codex, opencode, pi, pi-signed, grok, kimi, cursor, gemini, muse, rovo, omp, and devin.
+  Contains verified facts for claude, codex, opencode, pi, pi-signed, grok, kimi, cursor, gemini, muse, rovo, and omp.
 user-invocable: false
 metadata:
   internal: true
@@ -25,18 +25,19 @@ Operational paths keep the context named by their owner: `config/` and active-ho
 ## Non-negotiable safety
 
 Never dispatch a crewmate or secondmate on an unverified adapter.
-If `config/crew-harness` or `config/secondmate-harness` names an unverified adapter other than the retired CLI worker adapter, tell the captain under `../../../AGENTS.md` section 9 that the requested runtime is not verified, use firstmate's own verified runtime for current work, and ask only whether to verify the requested runtime for future work.
-The retired `agy` CLI worker adapter is the exception to that fallback; follow the refusal boundary in [`docs/configuration.md`](../../../docs/configuration.md#harness-support).
+If `config/crew-harness` or `config/secondmate-harness` names an unverified adapter other than either retired CLI worker adapter, tell the captain under `../../../AGENTS.md` section 9 that the requested runtime is not verified, use firstmate's own verified runtime for current work, and ask only whether to verify the requested runtime for future work.
+The retired `agy` and Devin CLI worker adapters are exceptions to that fallback; follow the refusal boundary in [`docs/configuration.md`](../../../docs/configuration.md#harness-support).
 Do not pause current work for that choice when fallback is allowed.
 
 On `unknown`, ask the captain instead of guessing.
 A current captain override beats detection, while a per-task override governs only that dispatch.
 For recovery and control, use the exact `harness=` in `state/<id>.meta`; never infer it from a model or provider.
 
-Deliver lifecycle actions only through `../../../bin/fm-control.sh <task-id> interrupt|exit|relaunch`.
+Deliver lifecycle actions for tasks with verified control mechanics only through `../../../bin/fm-control.sh <task-id> interrupt|exit|relaunch`.
+For legacy `harness=devin` records, follow the [control-plane refusal boundary](../../../docs/agent-control.md#fail-closed-boundaries) rather than improvising lifecycle input.
 Never type an interrupt key or exit command through `fm-send`, where routing-marked lifecycle text becomes chat.
 Trust handling is complete only when inspection proves the target started processing its instructions; delivery success alone is not proof.
-Muse, Gemini, and Devin are verified only for crewmate and scout work, never a secondmate or primary.
+Muse, Gemini, and Rovo are verified only for crewmate and scout work, never a secondmate or primary.
 
 ## Detection
 
@@ -95,8 +96,7 @@ A new tool remains undispatchable until the `verify` plan, its harness entry, ev
     "gemini": "references/harness/gemini.md",
     "muse": "references/harness/muse.md",
     "rovo": "references/harness/rovo.md",
-    "omp": "references/harness/omp.md",
-    "devin": "references/harness/devin.md"
+    "omp": "references/harness/omp.md"
   }
 }
 ```

@@ -94,7 +94,7 @@ setup_home() {  # <name> -> echoes home dir
 test_removed_record_refuses_all_delivery_planes() {
   local dir fb home err log rc removed meta before target mode
   removed=$(printf 'a%s' gy)
-  dir="$TMP_ROOT/removed-record"; mkdir -p "$dir"
+  dir="$TMP_ROOT/removed-record-$removed"; mkdir -p "$dir"
   fb=$(make_stubs "$dir"); home=$(setup_home removed); err="$dir/send.err"; log="$dir/tmux.log"; : > "$log"
   meta="$home/state/lane-old.meta"
   fm_write_meta "$meta" "window=sess:fm-lane-old" "kind=ship" "harness=$removed"
@@ -122,6 +122,26 @@ test_removed_record_refuses_all_delivery_planes() {
   [ ! -s "$log" ] || fail "remote legacy record sent terminal input"
   [ ! -e "$home/state/lane-old.inbox" ] || fail "remote legacy record wrote a local inbox"
   pass "fm-send rejects legacy adapter metadata on every delivery plane"
+}
+
+test_legacy_devin_record_accepts_local_steering() {
+  local dir fb home err log rc target mode
+  dir="$TMP_ROOT/legacy-devin"; mkdir -p "$dir"
+  fb=$(make_stubs "$dir"); home=$(setup_home legacydevin); err="$dir/send.err"; log="$dir/tmux.log"; : > "$log"
+  fm_write_meta "$home/state/lane-raw.meta" "window=sess:fm-lane-raw" "kind=ship" "harness=devin"
+  for mode in inbox key window; do
+    case "$mode" in
+      inbox) target=lane-raw; set -- "raw worker steer" ;;
+      key) target=fm-lane-raw; set -- --key Enter ;;
+      window) target=sess:fm-lane-raw; set -- --key Escape ;;
+    esac
+    PATH="$fb:$PATH" FM_HOME="$home" FM_ROOT_OVERRIDE="$home" FM_TMUX_LOG="$log" FM_SEND_SETTLE=0 \
+      "$SEND" "$target" "$@" >/dev/null 2>"$err"; rc=$?
+    expect_code 0 "$rc" "$mode steering must not mistake a raw command for the removed adapter"
+  done
+  assert_contains "$(cat "$home/state/lane-raw.inbox/001.msg")" "raw worker steer" "raw worker inbox was not written"
+  assert_contains "$(cat "$log")" "target=sess:fm-lane-raw literal=0 arg=Escape" "raw worker key was not delivered"
+  pass "fm-send accepts pre-marker Devin records on local steering planes"
 }
 
 test_exact_lane_id_send_still_works() {
@@ -266,6 +286,7 @@ test_key_send_exit_status_follows_delivery() {
 
 test_exact_lane_id_send_still_works
 test_removed_record_refuses_all_delivery_planes
+test_legacy_devin_record_accepts_local_steering
 test_key_send_exit_status_follows_delivery
 test_unset_fm_home_fails
 test_unresolvable_target_does_not_tmux_fallback

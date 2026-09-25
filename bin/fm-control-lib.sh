@@ -63,7 +63,7 @@ fm_control_verb_allowed() {  # <verb>
 # section 4's verified-adapter list; an unverified adapter is refused rather
 # than guessed at, exactly as a spawn on it would be.
 fm_control_harnesses() {
-  printf '%s\n' claude codex opencode pi pi-signed grok kimi cursor gemini muse rovo omp devin
+  printf '%s\n' claude codex opencode pi pi-signed grok kimi cursor gemini muse rovo omp
 }
 
 fm_control_harness_supported() {  # <harness>
@@ -87,7 +87,6 @@ fm_control_harness_family() {  # <recorded-harness>
     pi) printf 'pi' ;;
     pi-signed) printf 'pi-signed' ;;
     omp) printf 'omp' ;;
-    devin) printf 'devin' ;;
     claude*) printf 'claude' ;;
     codex*) printf 'codex' ;;
     opencode*) printf 'opencode' ;;
@@ -101,8 +100,8 @@ fm_control_harness_family() {  # <recorded-harness>
   esac
 }
 
-# Which task kinds an adapter is verified to run. muse, gemini, rovo, and devin
-# are crewmate/scout adapters only: none has a primary supervision protocol,
+# Which task kinds an adapter is verified to run. muse, gemini, and rovo are
+# crewmate/scout adapters only: none has a primary supervision protocol,
 # and bin/fm-spawn.sh refuses a --secondmate launch on any of them. The control
 # plane asks this BEFORE it stops anything, so an incompatible relaunch target is
 # refused while the current agent is still running rather than after it has
@@ -111,7 +110,7 @@ fm_control_harness_supports_kind() {  # <harness> <kind>
   local harness=${1-} kind=${2-}
   fm_control_harness_supported "$harness" || return 1
   case "$harness" in
-    muse|gemini|rovo|devin) [ "$kind" != secondmate ] || return 1 ;;
+    muse|gemini|rovo) [ "$kind" != secondmate ] || return 1 ;;
   esac
   return 0
 }
@@ -126,17 +125,17 @@ fm_control_harness_supports_kind() {  # <harness> <kind>
 # through Herdr).
 fm_control_interrupt_key() {  # <harness>
   case "${1-}" in
-    claude|codex|opencode|pi|pi-signed|omp|kimi|cursor|gemini|muse|rovo|devin) printf 'Escape' ;;
+    claude|codex|opencode|pi|pi-signed|omp|kimi|cursor|gemini|muse|rovo) printf 'Escape' ;;
     grok) printf 'C-c' ;;
     *) return 1 ;;
   esac
 }
 
-# How many times the interrupt key must be delivered. OpenCode and Devin need a double
+# How many times the interrupt key must be delivered. OpenCode needs a double
 # Escape; every other verified adapter interrupts on a single press.
 fm_control_interrupt_repeat() {  # <harness>
   case "${1-}" in
-    opencode|devin) printf '2' ;;
+    opencode) printf '2' ;;
     claude|codex|pi|pi-signed|omp|grok|kimi|cursor|gemini|muse|rovo) printf '1' ;;
     *) return 1 ;;
   esac
@@ -144,29 +143,17 @@ fm_control_interrupt_repeat() {  # <harness>
 
 # The rendered proof, read from the visible viewport between presses, that the
 # first interrupt press landed on a RUNNING turn; empty when the adapter sends
-# its presses blind. Devin needs it because the same fast double Escape that
-# cancels a running turn opens its /revert "Revert to step" picker on an idle
-# agent, where a later Enter reverts file changes. One Escape on a running turn
-# renders `esc again to interrupt` for about three seconds, while an idle agent
-# renders nothing, so the second press is sent only after that proof and never
-# sooner than fm_control_interrupt_press_gap: an unproven arm sends nothing
-# more. Verified live on devin 3000.11.1: an idle pair opened the picker at a
-# 0.05-0.1 s gap and did not at 0.15 s or more, and a running turn cancelled
-# with a 0.6 s gap.
+# its presses blind.
 fm_control_interrupt_arm_signal() {  # <harness>
   case "${1-}" in
-    devin) printf '%s' 'esc again to interrupt' ;;
     claude|codex|opencode|pi|pi-signed|omp|grok|kimi|cursor|gemini|muse|rovo) ;;
     *) return 1 ;;
   esac
 }
 
-# The minimum seconds between two presses of an armed interrupt: several times
-# Devin's observed idle double-tap window, well inside its three-second armed
-# window. A turn that ends between the presses therefore cannot pair them.
+# The minimum seconds between two presses of an armed interrupt.
 fm_control_interrupt_press_gap() {  # <harness>
   case "${1-}" in
-    devin) printf '0.5' ;;
     claude|codex|opencode|pi|pi-signed|omp|grok|kimi|cursor|gemini|muse|rovo) printf '0.2' ;;
     *) return 1 ;;
   esac
@@ -174,12 +161,9 @@ fm_control_interrupt_press_gap() {  # <harness>
 
 # A rendered surface that a mistimed interrupt press can open and that must be
 # dismissed with one more interrupt key before anything else is typed; empty
-# when the adapter has none. Devin's revert picker is recognized by either of
-# two independent rows, its `Revert to step:` title or its `↵ revert` footer,
-# and Escape cancels it without reverting (verified live, devin 3000.11.1).
+# when the adapter has none.
 fm_control_interrupt_hazard_signal() {  # <harness>
   case "${1-}" in
-    devin) printf '%s' 'Revert to step:|↵ revert' ;;
     claude|codex|opencode|pi|pi-signed|omp|grok|kimi|cursor|gemini|muse|rovo) ;;
     *) return 1 ;;
   esac
@@ -201,7 +185,7 @@ fm_control_interrupt_hazard_signal() {  # <harness>
 fm_control_interrupt_clear_key() {  # <harness>
   case "${1-}" in
     muse) printf 'C-u' ;;
-    claude|codex|opencode|pi|pi-signed|omp|grok|kimi|cursor|gemini|rovo|devin) ;;
+    claude|codex|opencode|pi|pi-signed|omp|grok|kimi|cursor|gemini|rovo) ;;
     *) return 1 ;;
   esac
 }
@@ -216,7 +200,7 @@ fm_control_interrupt_ack_source() {  # <harness>
     # rovo's TUI prints "Agent cancelled" on Escape, but for parity with
     # claude/cursor this stays 'none': the ack is a rendered string, not a
     # recorded state source, and rovo has no busy wiring to confirm against.
-    claude|codex|opencode|pi|pi-signed|omp|grok|kimi|cursor|gemini|rovo|devin) printf 'none' ;;
+    claude|codex|opencode|pi|pi-signed|omp|grok|kimi|cursor|gemini|rovo) printf 'none' ;;
     *) return 1 ;;
   esac
 }
@@ -225,7 +209,7 @@ fm_control_interrupt_ack_source() {  # <harness>
 fm_control_exit_command() {  # <harness>
   case "${1-}" in
     claude|opencode|grok|kimi|cursor|muse|rovo) printf '/exit' ;;
-    codex|pi|pi-signed|omp|gemini|devin) printf '/quit' ;;
+    codex|pi|pi-signed|omp|gemini) printf '/quit' ;;
     *) return 1 ;;
   esac
 }
@@ -356,6 +340,8 @@ fm_control_harness_wiring_paths() {  # <harness> <worktree> <state-dir> <id>
     # is written into the worktree, whose own .gemini/settings.json belongs to
     # the project, and nothing global is installed.
     gemini) printf '%s\n' "$state/$id.gemini-settings.json" ;;
+    # Retire only the exact private sidecar from a legacy Devin task on replacement;
+    # this cleanup does not restore its removed launch or control adapter.
     devin) printf '%s\n' "$state/$id.devin-config.json" ;;
   esac
 }

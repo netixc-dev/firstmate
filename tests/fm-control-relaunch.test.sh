@@ -1208,6 +1208,22 @@ test_muse_session_binding_is_retired_on_a_harness_switch() {
   pass "fm-spawn --relaunch: switching away from muse retires its session binding"
 }
 
+test_legacy_devin_sidecar_is_retired_on_a_harness_switch() {
+  local dir out rc
+  dir=$(new_case devinwiring rl80)
+  add_ship_task "$dir" rl80 devin
+  printf 'legacy\n' > "$dir/home/state/rl80.devin-config.json"
+  printf 'other\n' > "$dir/home/state/other.devin-config.json"
+  printf 'zsh' > "$dir/fake/command"
+  printf 'codex' > "$dir/fake/becomes"
+  out=$(run_spawn "$dir" rl80 --relaunch --harness codex); rc=$?
+  expect_code 0 "$rc" "a stopped legacy Devin task should relaunch on codex: $out"
+  assert_absent "$dir/home/state/rl80.devin-config.json" "legacy Devin sidecar outlived the replacement"
+  assert_present "$dir/home/state/other.devin-config.json" "another task's sidecar was removed"
+  assert_grep 'harness=codex' "$dir/home/state/rl80.meta" "replacement harness was not recorded"
+  pass "fm-spawn --relaunch: switching away from Devin removes only its legacy sidecar"
+}
+
 test_cursor_session_binding_is_retired_on_a_harness_switch() {
   local dir
   dir=$(new_case cursorwiring rl35)
@@ -2365,6 +2381,7 @@ test_spawn_relaunch_of_promoted_scout_uses_the_recorded_branch
 test_promoted_scout_relaunch_receives_the_current_delivery_contract
 test_prefixed_prior_harness_wiring_is_still_retired
 test_muse_session_binding_is_retired_on_a_harness_switch
+test_legacy_devin_sidecar_is_retired_on_a_harness_switch
 test_cursor_session_binding_is_retired_on_a_harness_switch
 test_missing_worktree_refuses_before_stopping_anything
 test_missing_instructions_refuse_before_stopping_anything
