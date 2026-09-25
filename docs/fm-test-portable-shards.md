@@ -5,9 +5,10 @@
 
 ## Verification inputs
 
-Balance hints come from serial runs of the real lanes on `ubuntu-latest`.
+Existing balance hints come from serial runs of the real lanes on GitHub-hosted `ubuntu-latest` before the Blacksmith Linux pilot.
 The concurrent isolation proof in [fm-test-isolation-proof.md](fm-test-isolation-proof.md) establishes concurrency safety, not serial CI duration.
-Local timings are not interchangeable with CI timings: platform and machine load can affect each script differently and change their relative weights.
+Local timings and these pre-pilot hints are not interchangeable with Blacksmith CI timings: platform and machine load can affect each script differently and change their relative weights.
+Refresh hints from completed Blacksmith lane artifacts before treating the current packing estimates as representative of the pilot.
 
 The retained hints are the slowest completed value each script reached across six CI runs on 2026-09-10: [34459949083](https://github.com/kunchenguid/firstmate/actions/runs/34459949083), [34460760299](https://github.com/kunchenguid/firstmate/actions/runs/34460760299), [34462530836](https://github.com/kunchenguid/firstmate/actions/runs/34462530836), [34462758357](https://github.com/kunchenguid/firstmate/actions/runs/34462758357), [34466966385](https://github.com/kunchenguid/firstmate/actions/runs/34466966385), and [34470382458](https://github.com/kunchenguid/firstmate/actions/runs/34470382458).
 Shard 2 completed in all six, so its scripts come from the uploaded `fm-test-timing-portable-parallel-2` artifacts.
@@ -105,13 +106,17 @@ Portable shards, each portable serial shard, and the Herdr lane upload runner-ge
 
 ## Lint partitions and end-to-end latency
 
+The reversible runner pilot uses `blacksmith-2vcpu-ubuntu-2404` for the Linux jobs in `.github/workflows/ci.yml`: lint, coverage, portable shards, Herdr, timing aggregation, and invariants.
+The stock Bash compatibility job remains on GitHub-hosted `macos-latest`, while the separate `Require no-mistakes` compliance workflow remains on GitHub-hosted `ubuntu-latest`, with no dependency on Blacksmith jobs.
+The workflows own runner routing; [`tests/fm-ci-workflow.test.sh`](../tests/fm-ci-workflow.test.sh) checks this hosting split against their parsed jobs.
+
 `bin/fm-lint.sh` owns three canonical CI partitions, each running the same full source-aware ShellCheck analysis with two bounded workers, pinned versions, workflow validation, and backend-purity checks.
 Its `--list-files` interface exposes partition membership; `tests/fm-lint.test.sh` verifies complete/disjoint executed roots and unchanged analysis flags.
 The workflow uploads each partition's quiet telemetry to distinguish analysis cost, memory use, and host contention.
-No fast mode, path skips, reduced checks, or paid runner provisioning is part of this layout.
+The runner pilot does not change the checks: no fast mode, path skips, or reduced analysis.
 
-The performance objective is a complete green run under fifteen minutes including start delay: roughly twelve minutes of longest-path execution, at most two minutes of runner delay, and less than one minute of other overhead.
-The candidate uses fifteen long-lived Linux jobs (nine serial, two parallel, Herdr, three lint), plus short checks and macOS; insufficient shared account capacity can erase the packing gain.
+The existing performance objective is a complete green run under fifteen minutes including start delay: roughly twelve minutes of longest-path execution, at most two minutes of runner delay, and less than one minute of other overhead.
+That estimate predates Blacksmith; runner availability and start delay can erase the packing gain, so it is not evidence of the pilot's end-to-end latency.
 Compare complete before/after runs, preserve cancelled and partial-run evidence, and measure a representative normal-run sample before claiming a P95 improvement.
 The workflow retains per-PR supersession without cancelling main pushes or changing the compliance workflow's event semantics.
 
