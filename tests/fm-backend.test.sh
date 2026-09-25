@@ -1123,7 +1123,7 @@ test_spawn_refuses_orca_selection_before_mutation() {
         ;;
       orca-config-z3)
         printf '%s\n' orca > "$config/backend"
-        out=$(FM_ROOT_OVERRIDE="$ROOT" FM_HOME="$TMP_ROOT/orca-config-home" FM_STATE_OVERRIDE="$state" FM_DATA_OVERRIDE="$data" FM_CONFIG_OVERRIDE="$config" FM_PROJECTS_OVERRIDE="$projects" FM_SPAWN_NO_GUARD=1 FM_BACKEND= \
+        out=$(FM_ROOT_OVERRIDE="$ROOT" FM_HOME="$TMP_ROOT/orca-config-home" FM_STATE_OVERRIDE="$state" FM_DATA_OVERRIDE="$data" FM_CONFIG_OVERRIDE="$config" FM_PROJECTS_OVERRIDE="$projects" FM_SPAWN_NO_GUARD=1 FM_BACKEND='' \
           "$ROOT/bin/fm-spawn.sh" "$id" projects/none claude --mode no-mistakes --yolo off 2>&1)
         status=$?
         rm -f "$config/backend"

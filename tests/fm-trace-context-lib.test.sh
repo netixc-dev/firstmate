@@ -215,13 +215,14 @@ pass "entropy failure omits telemetry safely: mint reports failure, resolve retu
 
 sleep() { printf 'sleep\n' >> "$WORK/unexpected-command"; return 1; }
 timeout() { printf 'timeout\n' >> "$WORK/unexpected-command"; return 1; }
-printf '#!/usr/bin/env bash\n: > "$FM_TRACE_PROVIDER_MARK"\n' > "$WORK/provider"
+printf '#!/usr/bin/env bash\n: > "%s"\n' "\$FM_TRACE_PROVIDER_MARK" > "$WORK/provider"
 chmod +x "$WORK/provider"
 fm_trace_context_resolve "$CFG_OFF" "$NOMETA" >/dev/null || fail "resolve must return 0 when off"
 out=$(FM_TRACE_CONTEXT=on FM_TRACE_CONTEXT_COMMAND="$WORK/provider" \
   FM_TRACE_PROVIDER_MARK="$WORK/provider-ran" fm_trace_context_resolve "$CFG_OFF" "$NOMETA"); rc=$?
-[ "$rc" -eq 0 ] && fm_trace_context_valid "$out" \
-  || fail "enabled resolution must return a valid carrier without an external command provider (rc=$rc out='$out')"
+if [ "$rc" -ne 0 ] || ! fm_trace_context_valid "$out"; then
+  fail "enabled resolution must return a valid carrier without an external command provider (rc=$rc out='$out')"
+fi
 [ ! -e "$WORK/unexpected-command" ] && [ ! -e "$WORK/provider-ran" ] \
   || fail "resolving a carrier must not sleep, invoke a timeout, or execute a configured provider"
 pass "off and on resolution succeed without sleep, timeout, or a configured command provider"
