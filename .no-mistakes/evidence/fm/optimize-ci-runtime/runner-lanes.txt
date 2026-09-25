@@ -1,0 +1,13 @@
+portable-parallel-1
+portable-parallel-2
+portable-serial
+portable-serial-1of9
+portable-serial-2of9
+portable-serial-3of9
+portable-serial-4of9
+portable-serial-5of9
+portable-serial-6of9
+portable-serial-7of9
+portable-serial-8of9
+portable-serial-9of9
+real-herdr-gated

@@ -1,0 +1,12 @@
+workflow=CI
+expanded_jobs=19
+lint: runner="ubuntu-latest" matrix={"partition"=>[1, 2, 3]}
+test-coverage: runner="ubuntu-latest" matrix={}
+tests-portable-parallel-1: runner="ubuntu-latest" matrix={}
+tests-portable-parallel-2: runner="ubuntu-latest" matrix={}
+tests-portable-serial: runner="ubuntu-latest" matrix={"shard"=>[1, 2, 3, 4, 5, 6, 7, 8, 9]}
+tests-herdr: runner="ubuntu-latest" matrix={}
+tests-timing-aggregate: runner="ubuntu-latest" matrix={}
+macos-stock-bash: runner="macos-latest" matrix={}
+invariants: runner="ubuntu-latest" matrix={}
+independent_compliance=Require no-mistakes: jobs=check

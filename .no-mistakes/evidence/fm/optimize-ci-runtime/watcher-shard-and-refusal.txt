@@ -1,0 +1,6 @@
+Watcher placement across actual serial runner lanes:
+shard=1 tests/fm-watch-triage.test.sh
+shard=2 tests/fm-watch-triage-waits.test.sh
+Attempt to run new watcher suite with unproved parallelism:
+fm-test-run: --jobs 2 refused: tests/fm-watch-triage-waits.test.sh is not in the proven-isolated set (see bin/fm-test-isolation-proof.sh --list) and its family has no recorded concurrent proof. Unproven stateful scripts stay serial.
+exit=2
