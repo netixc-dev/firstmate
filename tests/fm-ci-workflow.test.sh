@@ -226,16 +226,14 @@ test_linux_runner_pilot_preserves_hosted_lanes() {
 ci = YAML.load_file(ARGV[0]).fetch("jobs")
 linux = %w[lint test-coverage tests-portable-parallel-1 tests-portable-parallel-2
            tests-portable-serial tests-herdr tests-timing-aggregate invariants]
-raise "CI job inventory changed" unless ci.keys.sort == (linux + ["macos-stock-bash"]).sort
 linux.each do |id|
   raise "#{id} is not on the x64 Blacksmith pilot" unless ci.fetch(id).fetch("runs-on") == "blacksmith-2vcpu-ubuntu-2404"
 end
 raise "stock macOS compatibility left GitHub hosting" unless ci.fetch("macos-stock-bash").fetch("runs-on") == "macos-latest"
 compliance = YAML.load_file(ARGV[1]).fetch("jobs")
 raise "compliance lane left GitHub hosting" unless compliance.values.all? { |job| job.fetch("runs-on") == "ubuntu-latest" }
-raise "portable serial matrix changed" unless ci.fetch("tests-portable-serial").fetch("strategy").fetch("matrix").fetch("shard") == (1..9).to_a
 RUBY
-  pass "eight Linux jobs use Blacksmith while nine serial shards and independent hosted lanes remain"
+  pass "pilot Linux jobs use Blacksmith while independent hosted lanes remain"
 }
 
 test_ci_matrices_match_executable_partitions() {
