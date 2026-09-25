@@ -353,8 +353,8 @@ hash_pane() {
 # adapter whose semantic state is missing, malformed, stale, or unverified is
 # treated as not-provably-working and surfaces rather than being absorbed.
 # <tail40> is the same bounded capture already read for hashing and is passed
-# into the contract's harness-scoped rendered-text checks: the Grok/Rovo
-# busy fallbacks and the launch-prompt backstop that keeps a launch pinned at
+# into the contract's harness-scoped rendered-text checks: the Grok
+# busy fallback and the launch-prompt backstop that keeps a launch pinned at
 # its fm-spawn seed from reading as provably working.
 window_is_busy() {  # <window> <tail40>
   local w=$1 tail40=$2 task meta verdict

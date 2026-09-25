@@ -211,6 +211,60 @@ test_devin_adapter_selections_refuse_and_raw_command_survives() {
   pass "Devin adapter selections refuse without blocking raw commands or home paths"
 }
 
+test_rovo_selections_refuse_but_raw_commands_and_home_paths_survive() {
+  local rec id=rovo-selection out rc form before after raw i=0 sm
+  rec=$(make_spawn_case rovo-selection pi "$id")
+  read_case_record "$rec"
+  before=$(find "$HOME_DIR/state" "$HOME_DIR/data" -type f -exec cksum {} \; | LC_ALL=C sort)
+  for form in flag equals positional scout secondmate crew-pin secondmate-pin; do
+    case "$form" in
+      flag) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness rovo); rc=$? ;;
+      equals) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness=rovo); rc=$? ;;
+      positional) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" rovo); rc=$? ;;
+      scout) out=$(run_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --scout --harness rovo); rc=$? ;;
+      secondmate) out=$(cd "$CASE_DIR" && run_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" rovo --secondmate); rc=$? ;;
+      crew-pin)
+        printf 'rovo\n' > "$HOME_DIR/config/crew-harness"
+        out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness pi); rc=$?
+        printf 'pi\n' > "$HOME_DIR/config/crew-harness"
+        ;;
+      secondmate-pin)
+        printf 'rovo model high\n' > "$HOME_DIR/config/secondmate-harness"
+        out=$(run_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" --secondmate --harness pi); rc=$?
+        rm "$HOME_DIR/config/secondmate-harness"
+        ;;
+    esac
+    expect_code 1 "$rc" "$form Rovo adapter selection must refuse"
+    assert_contains "$out" "unsupported removed harness 'rovo'" "$form did not identify the retired selection"
+    after=$(find "$HOME_DIR/state" "$HOME_DIR/data" -type f -exec cksum {} \; | LC_ALL=C sort)
+    [ "$before" = "$after" ] || fail "$form mutated task records or instructions"
+    [ ! -s "$LAUNCH_LOG" ] || fail "$form reached endpoint or worktree provisioning"
+    [ -z "$(git -C "$WT_DIR" status --short)" ] || fail "$form changed the isolated copy"
+  done
+
+  sm="$CASE_DIR/rovo"
+  make_seeded_secondmate_home "$sm" rovo-home
+  fm_test_spawn_brief "$HOME_DIR" rovo-home
+  out=$(cd "$CASE_DIR" && run_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" rovo-home rovo --secondmate --harness pi); rc=$?
+  expect_code 0 "$rc" "an existing relative rovo home must remain a path: $out"
+  assert_grep "home=$sm" "$HOME_DIR/state/rovo-home.meta" "same-named home was not selected"
+  assert_meta_profile "$HOME_DIR/state/rovo-home.meta" pi default default
+
+  for raw in 'rovo run --yolo' '/opt/bin/rovo run --yolo' 'env CUSTOM=1 rovo run' 'printf rovo'; do
+    i=$((i + 1)); id="rovo-raw-$i"
+    rec=$(make_spawn_case "$id" pi "$id")
+    read_case_record "$rec"
+    out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "$raw"); rc=$?
+    expect_code 0 "$rc" "caller-owned raw command must survive: $raw: $out"
+    assert_contains "$(cat "$LAUNCH_LOG")" "$raw" "raw command was rewritten"
+    assert_not_contains "$(cat "$LAUNCH_LOG")" 'allowedExternalPaths' "raw command received the retired permission grant"
+    assert_not_contains "$(cat "$LAUNCH_LOG")" 'Read the brief at' "raw command received the retired pointer gate"
+    assert_present "$HOME_DIR/state/$id.meta" "raw command did not publish its task"
+    [ "$i" -gt 2 ] || assert_grep 'harness=rovo' "$HOME_DIR/state/$id.meta" "raw basename provenance changed"
+  done
+  pass "Rovo selections refuse before mutation while raw commands and home paths remain caller-owned"
+}
+
 test_removed_adapter_inputs_preserve_task() {
   local rec id out rc removed meta_before form tab
   removed=$(printf 'a%s' gy)
@@ -1723,6 +1777,7 @@ test_non_claude_harness_ignores_claude_permission_mode() {
 test_worker_launch_delivers_role_scope
 test_removed_harness_pin_refuses_before_task_mutation
 test_devin_adapter_selections_refuse_and_raw_command_survives
+test_rovo_selections_refuse_but_raw_commands_and_home_paths_survive
 test_removed_adapter_inputs_preserve_task
 test_caller_owned_raw_launch_forms
 test_unrelated_raw_argument_keeps_survivor_launch

@@ -42,7 +42,7 @@
 #   fm-interrupt     the legacy Claude fm-send --key Escape idle event
 #   fm-recovery      a documented recovery reset after relaunch
 # Classifier-only sources (never written into a record):
-#   endpoint-gone, herdr-native, grok-regex, rovo-regex, muse-session-log,
+#   endpoint-gone, herdr-native, grok-regex, muse-session-log,
 #   cursor-transcript, missing, malformed, gen-mismatch, source-mismatch,
 #   kimi-unverified, codex-unverified, capture-failed, no-target, launch-prompt
 #
@@ -66,8 +66,8 @@
 #   4. no record at all: herdr's native busy verdict is trusted as busy
 #      (generation state is sufficient for busy, not for idle), then the
 #      muse session-log and cursor transcript pull sources, then the
-#      Grok/Rovo temporary regex fallbacks classify a grok or rovo task from
-#      its rendered tail, then unknown missing
+#      Grok temporary regex fallback classifies a grok task from its rendered
+#      tail, then unknown missing
 #   5. malformed, stale, or untrusted records -> unknown, never a fallback
 #
 # fm_busy_launch_prompt_parked (the launch-prompt classifier-only source): a
@@ -86,11 +86,10 @@
 # a real busy verdict once any hook has posted, and it defers to whatever
 # harness-specific trust pre-registration already exists (fm-claude-trust.sh,
 # GEMINI_CLI_TRUST_WORKSPACE) to stop the dialog from appearing at all.
-# Apart from the launch-prompt backstop above, Grok and Rovo are the only
-# rendered-text busy fallbacks that survive the redesign, because neither has a
-# credited-live-verified structured lifecycle. Rovo's clean ACP stopReason lives
-# outside the TUI path firstmate drives, see references/harness/rovo.md. Each
-# fallback is scoped to its own harness= and can never classify another adapter.
+# Apart from the launch-prompt backstop above, Grok is the only rendered-text
+# busy fallback that survives the redesign, because it has no credited-live-verified
+# structured lifecycle. Its fallback is scoped to its own harness= and can never
+# classify another adapter.
 # The delivery guards in bin/fm-composer-lib.sh match rendered footers for submit
 # acknowledgement and away-mode supervisor injection only; neither is a
 # recorded worker state source.
@@ -867,24 +866,11 @@ fm_busy_grok_tail_busy() {
     | grep -qiE "${FM_BUSY_REGEX:-${FM_DELIVERY_GROK_BUSY_REGEX_DEFAULT:-Ctrl\\+c:cancel}}"
 }
 
-# fm_busy_rovo_tail_busy: the Rovo-only temporary rendered-tail fallback.
-# Consumes the tail on stdin; 0 when Rovo's verified animated busy line
-# matches (the "Rovo is thinking..." text rendered while a turn is running,
-# verified live on rovo 202609.1.2; both observed glyph variants share this
-# literal text). rovo has no turn-end hook - its eventHooks fire at tool
-# granularity only - so this fallback, like Grok's, is the only source; it is
-# never armed as a semantic writer (fm_busy_sources_for_harness trusts
-# nothing for rovo). FM_BUSY_ROVO_REGEX overrides the signature.
-fm_busy_rovo_tail_busy() {
-  grep -v '^[[:space:]]*$' | tail -12 \
-    | grep -qiE "${FM_BUSY_ROVO_REGEX:-Rovo is thinking}"
-}
-
 # --- launch-prompt signatures (fm_busy_launch_prompt_parked) ----------------
 #
 # Each function consumes a captured pane tail on stdin (the caller's whole
-# tail40, NOT reduced to the last 12 non-blank lines the way the Grok/Rovo
-# busy footers above are): a bordered dialog box renders many short lines of
+# tail40, NOT reduced to the last 12 non-blank lines the way the Grok
+# busy footer above is): a bordered dialog box renders many short lines of
 # pure border/padding (`│  ...  │`) that are NOT whitespace-only, so a 12-line
 # non-blank reduction was verified live to push the box's own heading text
 # (e.g. Gemini's "How would you like to authenticate for this project?")
@@ -990,9 +976,9 @@ fm_busy_launch_prompt_parked() {  # <harness>
 # fm_busy_classify: semantic classification for a task whose endpoint the
 # caller has already established as present. Prints "<verdict> <source>":
 # busy|idle|unknown plus the producing source (see header). Never probes
-# process state. <tail40> is optional pre-captured plain output: the grok,
-# rovo arms capture it itself through fm_backend_capture when it
-# is absent (or report unknown capture-failed if that is unavailable too),
+# process state. <tail40> is optional pre-captured plain output: the grok
+# arm captures it itself through fm_backend_capture when it
+# is absent (or reports unknown capture-failed if that is unavailable too),
 # while the launch-prompt backstop below has no capture fallback of its own -
 # without a supplied tail40 it is skipped entirely and a record still pinned
 # at the fm-spawn seed keeps reading busy fm-spawn, unchanged.
@@ -1101,28 +1087,6 @@ fm_busy_classify() {  # <backend> <target> <harness> <id> <state-dir> [tail40]
       fi
       return 0
       ;;
-    rovo*)
-      if [ -z "$tail40" ]; then
-        if command -v fm_backend_capture >/dev/null 2>&1; then
-          tail40=$(fm_backend_capture "$backend" "$target" 40 2>/dev/null) || {
-            printf 'unknown capture-failed'
-            return 0
-          }
-        else
-          printf 'unknown capture-failed'
-          return 0
-        fi
-      fi
-      # This fallback is best-effort: a long turn can scroll the busy marker
-      # out of the captured tail, so its absence means "can't tell," never
-      # definitive idle - matching the muse and cursor arms above.
-      if printf '%s' "$tail40" | fm_busy_rovo_tail_busy; then
-        printf 'busy rovo-regex'
-      else
-        printf 'unknown rovo-regex'
-      fi
-      return 0
-      ;;
   esac
   printf 'unknown missing'
 }
@@ -1147,7 +1111,7 @@ fm_busy_classify_live() {  # <backend> <target> <harness> <id> <state-dir> [expe
 # consumer resolves backend, target, and harness the same way instead of
 # re-deriving them. Requires fm-backend.sh to be sourced. <tail40> is
 # optional pre-captured plain output reused by the contract's rendered-text
-# checks: the Grok/Rovo busy fallbacks and the launch-prompt backstop.
+# checks: the Grok busy fallback and the launch-prompt backstop.
 fm_busy_classify_meta() {  # <meta-file> <id> <state-dir> [tail40]
   local meta=$1 id=$2 state=$3 tail40=${4-} backend target harness
   [ -f "$meta" ] || { printf 'unknown missing'; return 0; }

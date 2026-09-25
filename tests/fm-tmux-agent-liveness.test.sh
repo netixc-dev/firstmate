@@ -121,6 +121,16 @@ chmod +x "$LAB/bin/agent-launcher"
 . "$ROOT/bin/fm-backend.sh"
 fm_backend_source tmux || fail "fm_backend_source tmux failed"
 
+for name in rovo rovo-wrapper atlassian_cli_rovodev provoke; do
+  [ "$(fm_agent_process_classify_name "$name")" = other ] \
+    || fail "removed Rovo identity must not be attributed as an agent: $name"
+done
+for name in pi pi-signed pi-launcher Pi; do
+  [ "$(fm_agent_process_classify_name "$name")" = agent ] \
+    || fail "retained Pi identity lost agent attribution: $name"
+done
+pass "the shared process classifier retires Rovo while preserving Pi identities"
+
 # The idle window names its shell explicitly rather than letting tmux fall back
 # to `default-shell`, which is whoever runs the suite. An operator's login shell
 # runs that operator's configuration, and a prompt or update hook that spawns a

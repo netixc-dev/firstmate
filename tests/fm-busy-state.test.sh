@@ -593,6 +593,20 @@ test_progress_is_generation_bound_and_not_semantic_state() {
   pass "native progress is generation-bound, separately recorded, and cleared on arm and retire"
 }
 
+test_removed_rovo_tail_is_not_a_busy_source() {
+  local state out harness tail
+  state=$(new_state_dir retired-rovo)
+  for harness in rovo rovo-wrapper; do
+    for tail in 'Rovo is thinking...' 'idle'; do
+      out=$(fm_busy_classify tmux w1 "$harness" t1 "$state" "$tail")
+      [ "$out" = 'unknown missing' ] || fail "retired $harness tail supplied a busy source: $out"
+    done
+  done
+  [ "$(fm_busy_sources_for_harness pi)" = 'pi-ext fm-spawn fm-interrupt fm-recovery' ] \
+    || fail "plain Pi semantic sources changed"
+  pass "removed Rovo rendered tails stay unknown without changing Pi sources"
+}
+
 test_progress_is_generation_bound_and_not_semantic_state
 
 test_arm_seeds_busy_spawn
@@ -617,6 +631,7 @@ test_launch_prompt_never_shortens_a_working_launch
 test_launch_prompt_scoped_to_armed_harnesses
 test_launch_prompt_never_reclassifies_an_advanced_record
 test_launch_prompt_requires_a_captured_tail
+test_removed_rovo_tail_is_not_a_busy_source
 test_grok_regex_isolated
 test_codex_unverified_gate
 test_kimi_unverified_gate

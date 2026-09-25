@@ -299,10 +299,12 @@ done
 
 REMOVED_RULE="$TMP_ROOT/removed-harness-rule.json"
 REMOVED_DEFAULT="$TMP_ROOT/removed-harness-default.json"
-for removed_harness in "$(printf 'a%s' gy)" devin; do
+for removed_harness in "$(printf 'a%s' gy)" devin rovo; do
   printf '{"rules":[{"when":"removed adapter work","use":{"harness":"%s"}}]}\n' "$removed_harness" > "$REMOVED_RULE"
   printf '{"default":{"harness":"%s"}}\n' "$removed_harness" > "$REMOVED_DEFAULT"
-  for removed_profile in "$REMOVED_RULE" "$REMOVED_DEFAULT"; do
+  printf '{"rules":[{"when":"removed adapter work","use":[{"harness":"claude"},{"harness":"%s"}]}]}\n' "$removed_harness" > "$REMOVED_RULE.array"
+  printf '{"default":[{"harness":"claude"},{"harness":"%s"}]}\n' "$removed_harness" > "$REMOVED_DEFAULT.array"
+  for removed_profile in "$REMOVED_RULE" "$REMOVED_DEFAULT" "$REMOVED_RULE.array" "$REMOVED_DEFAULT.array"; do
     cp "$removed_profile" "$RULES"
     reset_log
     TYPESAFE_API_KEY=$KEY run code out err "$BRIEF"
@@ -891,7 +893,6 @@ for bad in \
   '{"rules":[{"when":"x","use":{"harness":"spaceship"}}]}|each use profile must name a verified harness' \
   '{"rules":[{"when":"x","use":{"harness":"grok","effort":"max"}}]}|each use profile effort must be supported by its harness and model' \
   '{"rules":[{"when":"x","use":{"harness":"opencode","model":"anthropic/claude-sonnet-4-5"}}]}|use profiles whose harness lacks one authoritative provider family require provider: opencode' \
-  '{"rules":[{"when":"x","use":{"harness":"rovo"}}]}|use profiles whose harness lacks one authoritative provider family require provider: rovo' \
   '{"rules":[{"when":"x","use":{"harness":"codex"}}],"default":{"harness":"pi","model":"anthropic/claude-sonnet-5"}}|default profiles whose harness lacks one authoritative provider family require provider: pi'; do
   printf '%s\n' "${bad%%|*}" > "$RULES"
   TYPESAFE_API_KEY=$KEY run code out err "$BRIEF"

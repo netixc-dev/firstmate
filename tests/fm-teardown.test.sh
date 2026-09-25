@@ -727,6 +727,42 @@ test_teardown_removes_only_exact_legacy_devin_sidecar() {
   pass "teardown removes only the exact Firstmate-owned legacy Devin sidecar"
 }
 
+test_legacy_rovo_cleanup_preserves_unlanded_work() {
+  local case_dir mode out rc before head
+  for mode in landed dirty unlanded; do
+    case_dir=$(make_case "legacy-rovo-$mode")
+    write_meta "$case_dir" local-only ship
+    printf '%s\n' 'harness=rovo' >> "$case_dir/state/task-x1.meta"
+    wt_commit "$case_dir" "Rovo task work"
+    head=$(git -C "$case_dir/wt" rev-parse HEAD)
+    [ "$mode" = unlanded ] || add_fork_with_pushed_branch "$case_dir"
+    seed_backlog_in_flight "$case_dir"
+    if [ "$mode" = dirty ]; then printf 'dirty work\n' > "$case_dir/wt/uncommitted.txt"; fi
+    before=$(cat "$case_dir/state/task-x1.meta")
+    mkdir -p "$case_dir/vendor/.rovo"
+    printf 'vendor sentinel\n' > "$case_dir/vendor/.rovo/config.yml"
+    printf 'another task\n' > "$case_dir/state/unrelated.txt"
+    set +e
+    out=$(run_teardown "$case_dir" 2>&1); rc=$?
+    set -e
+    if [ "$mode" = landed ]; then
+      expect_code 0 "$rc" "landed Rovo task must clean up normally: $out"
+      assert_absent "$case_dir/state/task-x1.meta" "landed Rovo task record was stranded"
+    else
+      expect_code 1 "$rc" "$mode Rovo work must refuse cleanup: $out"
+      assert_contains "$out" REFUSED "$mode cleanup did not report the work-protection refusal"
+      [ "$(cat "$case_dir/state/task-x1.meta")" = "$before" ] || fail "$mode refusal changed task identity"
+      [ "$(git -C "$case_dir/wt" rev-parse HEAD)" = "$head" ] || fail "$mode refusal lost commits"
+      if [ "$mode" = dirty ]; then
+        assert_grep 'dirty work' "$case_dir/wt/uncommitted.txt" "cleanup lost uncommitted work"
+      fi
+    fi
+    assert_grep 'vendor sentinel' "$case_dir/vendor/.rovo/config.yml" "cleanup touched vendor state"
+    assert_grep 'another task' "$case_dir/state/unrelated.txt" "cleanup swept unrelated records"
+  done
+  pass "legacy Rovo cleanup retains ordinary landed, dirty and unlanded-work safeguards"
+}
+
 test_teardown_closes_the_backlog_item_itself() {
   local case_dir out
   case_dir=$(make_case tasks-axi-close)
@@ -3897,6 +3933,7 @@ EOF
 
 test_local_only_fork_remote_allows
 test_teardown_removes_only_exact_legacy_devin_sidecar
+test_legacy_rovo_cleanup_preserves_unlanded_work
 test_teardown_closes_the_backlog_item_itself
 test_teardown_manual_backend_leaves_the_backlog_to_the_operator
 test_local_only_truly_unpushed_refuses

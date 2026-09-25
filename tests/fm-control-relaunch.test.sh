@@ -1224,6 +1224,53 @@ test_legacy_devin_sidecar_is_retired_on_a_harness_switch() {
   pass "fm-spawn --relaunch: switching away from Devin removes only its legacy sidecar"
 }
 
+test_legacy_rovo_replacement_requires_explicit_agent_free_choice() {
+  local dir out rc before brief head state id=rl-rovo
+  dir=$(new_case rovo-replace "$id")
+  add_ship_task "$dir" "$id" rovo
+  printf 'unlanded work\n' > "$dir/wt/keep.txt"
+  git -C "$dir/wt" add keep.txt
+  git -C "$dir/wt" commit -qm 'work not yet landed'
+  head=$(git -C "$dir/wt" rev-parse HEAD)
+  printf 'uncommitted work\n' >> "$dir/wt/keep.txt"
+  before=$(cat "$dir/home/state/$id.meta")
+  brief=$(cat "$dir/home/data/$id/brief.md")
+  printf '#!/usr/bin/env bash\nprintf "Options: --tui-mode\\n"\n' > "$dir/fakebin/pi"
+  chmod +x "$dir/fakebin/pi"
+  printf pi > "$dir/fake/becomes"
+
+  for state in alive ambiguous unreadable missing implicit; do
+    printf zsh > "$dir/fake/command"
+    case "$state" in
+      alive) printf claude > "$dir/fake/command" ;;
+      ambiguous) printf rovo > "$dir/fake/command" ;;
+      unreadable) : > "$dir/fake/inventory-broken" ;;
+      missing) : > "$dir/fake/server-dead" ;;
+    esac
+    if [ "$state" = implicit ]; then
+      out=$(run_spawn "$dir" "$id" --relaunch); rc=$?
+      assert_contains "$out" "unsupported harness 'rovo'" "implicit relaunch did not refuse the removed selection"
+    else
+      out=$(run_spawn "$dir" "$id" --relaunch --harness pi); rc=$?
+      assert_contains "$out" 'endpoint' "$state replacement did not reach the endpoint safety check"
+    fi
+    expect_code 1 "$rc" "$state legacy Rovo relaunch must refuse: $out"
+    [ "$(cat "$dir/home/state/$id.meta")" = "$before" ] || fail "$state rewrote the legacy record"
+    [ "$(cat "$dir/home/data/$id/brief.md")" = "$brief" ] || fail "$state rewrote instructions"
+    [ ! -s "$dir/fake/literal" ] && [ ! -s "$dir/fake/keys" ] || fail "$state delivered lifecycle input"
+    rm -f "$dir/fake/inventory-broken" "$dir/fake/server-dead"
+  done
+
+  out=$(run_spawn "$dir" "$id" --relaunch --harness pi); rc=$?
+  expect_code 0 "$rc" "explicit agent-free Pi replacement must succeed: $out"
+  [ "$(meta_field "$dir" "$id" harness)" = pi ] || fail "replacement did not publish Pi"
+  [ "$(meta_field "$dir" "$id" worktree)" = "$dir/wt" ] || fail "replacement changed the local copy"
+  [ "$(git -C "$dir/wt" rev-parse HEAD)" = "$head" ] || fail "replacement lost unlanded commits"
+  assert_grep 'uncommitted work' "$dir/wt/keep.txt" "replacement lost dirty work"
+  [ -n "$(git -C "$dir/wt" status --porcelain)" ] || fail "replacement discarded dirty work"
+  pass "legacy Rovo records require deliberate agent-free replacement and preserve all work"
+}
+
 test_cursor_session_binding_is_retired_on_a_harness_switch() {
   local dir
   dir=$(new_case cursorwiring rl35)
@@ -2382,6 +2429,7 @@ test_promoted_scout_relaunch_receives_the_current_delivery_contract
 test_prefixed_prior_harness_wiring_is_still_retired
 test_muse_session_binding_is_retired_on_a_harness_switch
 test_legacy_devin_sidecar_is_retired_on_a_harness_switch
+test_legacy_rovo_replacement_requires_explicit_agent_free_choice
 test_cursor_session_binding_is_retired_on_a_harness_switch
 test_missing_worktree_refuses_before_stopping_anything
 test_missing_instructions_refuse_before_stopping_anything

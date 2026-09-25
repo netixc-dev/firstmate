@@ -3,7 +3,7 @@ name: harness-adapters
 description: >-
   Agent-only reference for firstmate harness operations.
   Use before spawning or recovering a crewmate or secondmate, handling a trust dialog, sending a harness-specific skill invocation, interrupting or exiting an agent, resuming an exited agent, or verifying a new harness adapter.
-  Contains verified facts for claude, codex, opencode, pi, pi-signed, grok, kimi, cursor, gemini, muse, rovo, and omp.
+  Contains verified facts for claude, codex, opencode, pi, pi-signed, grok, kimi, cursor, gemini, muse, and omp.
 user-invocable: false
 metadata:
   internal: true
@@ -37,7 +37,7 @@ Deliver lifecycle actions for tasks with verified control mechanics only through
 For legacy `harness=devin` records, follow the [control-plane refusal boundary](../../../docs/agent-control.md#fail-closed-boundaries) rather than improvising lifecycle input.
 Never type an interrupt key or exit command through `fm-send`, where routing-marked lifecycle text becomes chat.
 Trust handling is complete only when inspection proves the target started processing its instructions; delivery success alone is not proof.
-Muse, Gemini, and Rovo are verified only for crewmate and scout work, never a secondmate or primary.
+Muse and Gemini are verified only for crewmate and scout work, never a secondmate or primary.
 
 ## Detection
 
@@ -95,7 +95,6 @@ A new tool remains undispatchable until the `verify` plan, its harness entry, ev
     "cursor": "references/harness/cursor.md",
     "gemini": "references/harness/gemini.md",
     "muse": "references/harness/muse.md",
-    "rovo": "references/harness/rovo.md",
     "omp": "references/harness/omp.md"
   }
 }
