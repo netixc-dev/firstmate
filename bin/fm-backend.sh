@@ -87,16 +87,13 @@ fm_backend_is_known() {  # <name>
 
 fm_backend_detect() {
   FM_BACKEND_DETECTED=""
-  FM_BACKEND_DETECT_SIGNAL=""
   if [ -n "${TMUX:-}" ]; then
     FM_BACKEND_DETECTED=tmux
-    FM_BACKEND_DETECT_SIGNAL=TMUX
     printf 'tmux'
     return 0
   fi
   if [ "${HERDR_ENV:-}" = "1" ]; then
     FM_BACKEND_DETECTED=herdr
-    FM_BACKEND_DETECT_SIGNAL=HERDR_ENV
     printf 'herdr'
     return 0
   fi

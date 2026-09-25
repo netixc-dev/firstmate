@@ -500,7 +500,7 @@ test_matrix_codex_idle_starfield_furniture() {
   # the two rows beneath the glyph and read the survivors as wrapped typed
   # input: `pending`, which deferred every steering doorbell for that pane.
   local bg="${ESC}[48;2;57;57;57m" above glyph glyph2 below footer
-  local screen screen2 plain plain2 ascii_screen stripped out
+  local screen screen2 ascii_screen stripped out
   above="${ESC}[0m${bg}                         ${ESC}[0m$(codex_cell 82 ⢀)${bg}      ${ESC}[0m$(codex_cell 136 ⠂)${bg} ${ESC}[0m$(codex_cell 163 ⠄)${bg}     ${ESC}[0m$(codex_cell 118 ⠈)"
   glyph="${ESC}[0m${ESC}[1m${bg}›${ESC}[0m${bg} ${ESC}[0m${ESC}[2m${bg}Ask Codex to do anything${ESC}[0m$(codex_cell 117 ⡀)${bg}  ${ESC}[0m$(codex_cell 88 ⠈)${bg}       ${ESC}[0m$(codex_cell 156 ⠂)${bg}        ${ESC}[0m$(codex_cell 71 ⠁)$(codex_cell 161 ⠐)${bg} ${ESC}[0m$(codex_cell 165 ⠁)"
   # A second live sample of the same pane, minutes later: the animation had
@@ -510,8 +510,6 @@ test_matrix_codex_idle_starfield_furniture() {
   footer="  ${ESC}[0m${ESC}[38;2;246;226;183mgpt-6-astra high fast${ESC}[0m${ESC}[2m · ${ESC}[0m${ESC}[38;2;171;223;167m~/Projects/purser${ESC}[0m${ESC}[2m · ${ESC}[0m${ESC}[38;2;156;222;211mLaunch Purser desk brief${ESC}[0m"
   screen=$'transcript line\n\n'"$above"$'\n'"$glyph"$'\n'"$below"$'\n'"$footer"
   screen2=$'transcript line\n\n'"$above"$'\n'"$glyph2"$'\n'"$below"$'\n'"$footer"
-  plain=$(printf '%s\n' "$screen" | fm_composer_strip_ansi)
-  plain2=$(printf '%s\n' "$screen2" | fm_composer_strip_ansi)
 
   # NON-VACUOUSNESS: the ghost strip really leaves braille survivors behind the
   # placeholder and on the row below (cells above the luma ceiling), and the
