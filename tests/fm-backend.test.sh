@@ -180,8 +180,10 @@ test_backend_detect_precedence() {
   [ "$out" = tmux ] || fail "fm_backend_detect should report tmux for \$TMUX alone, got '$out'"
 
   for marker in CMUX_WORKSPACE_ID CMUX_SURFACE_ID CMUX_TAB_ID CMUX_PANEL_ID CMUX_SOCKET_PATH; do
-    out=$(unset TMUX HERDR_ENV; env "$marker=fake-marker" fm_backend_detect 2>/dev/null) \
-      && fail "removed marker $marker unexpectedly selected backend '$out'"
+    if out=$(unset TMUX HERDR_ENV; export "$marker=fake-marker"; fm_backend_detect); then
+      fail "removed marker $marker unexpectedly selected backend '$out'"
+    fi
+    [ -z "$out" ] || fail "removed marker $marker unexpectedly produced '$out'"
   done
 
   out=$(unset HERDR_ENV; TMUX='fake,1,0' CMUX_WORKSPACE_ID='fake-uuid' fm_backend_detect) \
