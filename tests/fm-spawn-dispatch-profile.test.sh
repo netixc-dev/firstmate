@@ -144,7 +144,7 @@ test_removed_adapter_inputs_preserve_task() {
   id=removed-input-z1
   rec=$(make_spawn_case removed-input codex "$id")
   read_case_record "$rec"
-  for form in flag raw env abs_env exec time nohup shell abs_shell combined_shell separator multiline quoted shellquote escaped ansi braces command conditional redirection positional positional_raw secondmate_raw static secondmate; do
+  for form in flag raw env abs_env exec time nice abs_nice nice_short nice_nested nice_positional shell abs_shell combined_shell separator multiline quoted shellquote escaped ansi braces command conditional redirection positional positional_raw secondmate_raw static secondmate; do
     : > "$LAUNCH_LOG"
     case "$form" in
     flag) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "$removed"); rc=$? ;;
@@ -153,7 +153,11 @@ test_removed_adapter_inputs_preserve_task() {
     abs_env) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "/usr/bin/env $removed --prompt-interactive"); rc=$? ;;
     exec) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "exec -a worker $removed --prompt-interactive"); rc=$? ;;
     time) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "time $removed --prompt-interactive"); rc=$? ;;
-    nohup) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "nohup $removed --prompt-interactive"); rc=$? ;;
+    nice) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "nice -n 5 $removed --prompt-interactive hi"); rc=$? ;;
+    abs_nice) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "/usr/bin/nice --adjustment=5 /opt/bin/$removed --prompt-interactive hi"); rc=$? ;;
+    nice_short) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "nice -5 $removed --prompt-interactive hi"); rc=$? ;;
+    nice_nested) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "env KEY=value nice -n 5 sh -ec '$removed --prompt-interactive hi'"); rc=$? ;;
+    nice_positional) out=$(run_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "nice -n 5 $removed --prompt-interactive hi" --secondmate); rc=$? ;;
     shell) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "bash -c '$removed --prompt-interactive'"); rc=$? ;;
     abs_shell) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "/bin/bash -c '$removed --prompt-interactive'"); rc=$? ;;
     combined_shell) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "sh -ec '$removed --prompt-interactive'"); rc=$? ;;
@@ -186,7 +190,7 @@ test_removed_adapter_inputs_preserve_task() {
     assert_absent "$HOME_DIR/state/$id.status" "$form wrote task status"
     [ ! -s "$LAUNCH_LOG" ] || fail "$form launched a worker"
   done
-  for form in "other --flag; echo ok" "sh -ec 'other --flag; echo ok'"; do
+  for form in "other --flag; echo ok" "sh -ec 'other --flag; echo ok'" "nohup $removed --prompt-interactive" "nice +5 $removed --prompt-interactive" "bash -O extglob -c '$removed --prompt-interactive'" "builtin eval '$removed --prompt-interactive'"; do
     out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "$form"); rc=$?
     expect_code 1 "$rc" "an uninspectable raw command must refuse before publication"
     assert_contains "$out" "unable to inspect launch command" "uninspectable raw command was not rejected"
@@ -209,11 +213,16 @@ test_removed_adapter_inputs_preserve_task() {
   assert_contains "$out" "unsupported removed harness" "raw relaunch override did not name the refusal"
   [ "$(cat "$HOME_DIR/state/$id.meta")" = "$meta_before" ] || fail "raw relaunch override changed its record"
   [ ! -s "$LAUNCH_LOG" ] || fail "raw relaunch override launched another runtime"
+  out=$(run_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" --relaunch --harness "nice -n 5 $removed --prompt-interactive hi"); rc=$?
+  expect_code 1 "$rc" "a nice relaunch override must refuse the removed executable"
+  assert_contains "$out" "unsupported removed harness" "nice relaunch did not name the refusal"
+  [ "$(cat "$HOME_DIR/state/$id.meta")" = "$meta_before" ] || fail "nice relaunch override changed its record"
+  [ ! -s "$LAUNCH_LOG" ] || fail "nice relaunch override launched another runtime"
   pass "removed adapter inputs and legacy relaunch refuse before task mutation"
 }
 
 test_unrelated_raw_argument_keeps_survivor_launch() {
-  local rec id quoted_id dollar_id substitution_id path_id shell_id other_id out rc removed other
+  local rec id quoted_id dollar_id substitution_id path_id shell_id nice_id other_id out rc removed other
   removed=$(printf 'a%s' gy)
   other=$(printf 'anti%s' gravity)
   id=removed-argument-z1
@@ -222,8 +231,9 @@ test_unrelated_raw_argument_keeps_survivor_launch() {
   substitution_id=removed-literal-substitution-z1
   path_id=removed-path-argument-z1
   shell_id=removed-safe-shell-z1
+  nice_id=removed-safe-nice-z1
   other_id=removed-other-command-z1
-  rec=$(make_spawn_case removed-argument codex "$id" "$quoted_id" "$dollar_id" "$substitution_id" "$path_id" "$shell_id" "$other_id")
+  rec=$(make_spawn_case removed-argument codex "$id" "$quoted_id" "$dollar_id" "$substitution_id" "$path_id" "$shell_id" "$nice_id" "$other_id")
   read_case_record "$rec"
   out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "other --prompt $removed"); rc=$?
   expect_code 0 "$rc" "an unrelated raw launch may pass a removed-name argument"
@@ -245,6 +255,9 @@ test_unrelated_raw_argument_keeps_survivor_launch() {
   out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$shell_id" "$PROJ_DIR" --harness "bash -c 'other --prompt $removed'"); rc=$?
   expect_code 0 "$rc" "a shell -c wrapper around an unrelated executable must remain available"
   assert_contains "$(cat "$LAUNCH_LOG")" "bash -c 'other --prompt $removed'" "safe shell wrapper changed its script argument"
+  out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$nice_id" "$PROJ_DIR" --harness "nice -n 5 other --prompt $removed"); rc=$?
+  expect_code 0 "$rc" "nice must preserve an unrelated leaf's removed-name argument"
+  assert_contains "$(cat "$LAUNCH_LOG")" "nice -n 5 other --prompt $removed" "nice changed the unrelated leaf argument"
   out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$other_id" "$PROJ_DIR" --harness "$other --flag"); rc=$?
   expect_code 0 "$rc" "an unrelated raw executable must remain available"
   assert_contains "$out" "spawned $other_id harness=$other" "unrelated raw executable was rejected as an alias"

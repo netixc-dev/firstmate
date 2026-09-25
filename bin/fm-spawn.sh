@@ -872,6 +872,7 @@ def tokenize(source):
     return tokens
 
 def inspect(source, depth=0):
+    """Accept leaf commands, env/command/exec/time/nice, and inspected shell -c scripts."""
     if depth > 4:
         raise Unsafe('nested shell depth')
     tokens = tokenize(source)
@@ -896,10 +897,12 @@ def inspect(source, depth=0):
             i += 1; continue
         if not quoted and text in ('!', 'if', 'then', 'elif', 'else', 'fi', 'while', 'until', 'do', 'done'):
             compound = True; i += 1; continue
-        if not quoted and text in ('case', 'select', 'for', 'function', 'eval', 'source', '.'):
+        if (not quoted and text in ('case', 'select', 'for', 'function')) or text in ('eval', 'source', '.', 'builtin'):
             raise Unsafe('indirect shell command')
         base = os.path.basename(text)
-        if base in ('env', 'command', 'exec', 'time', 'nohup'):
+        if base == 'nohup':
+            raise Unsafe('unsupported launch wrapper')
+        if base in ('env', 'command', 'exec', 'time', 'nice'):
             wrapper = base; i += 1; continue
         if wrapper == 'command' and text in ('-v', '-V'):
             expect = False; i += 2; continue
@@ -907,12 +910,18 @@ def inspect(source, depth=0):
             i += 2; continue
         if wrapper == 'env' and text in ('-u', '--unset', '-C', '--chdir'):
             i += 2; continue
+        if wrapper == 'nice' and text in ('-n', '--adjustment'):
+            if i + 1 >= len(tokens) or tokens[i + 1][0] != 'word' or not re.fullmatch(r'[+-]?[0-9]+', tokens[i + 1][1]):
+                raise Unsafe('invalid nice adjustment')
+            i += 2; continue
+        if wrapper == 'nice' and (re.fullmatch(r'-[0-9]+', text) or re.fullmatch(r'--adjustment=[+-]?[0-9]+', text)):
+            i += 1; continue
         allowed = {'env': ('-i', '-0', '--ignore-environment', '--null', '--'),
                    'command': ('-p', '--'), 'exec': ('-c', '-l', '--'),
-                   'time': ('-p', '--'), 'nohup': ('--',)}
+                   'time': ('-p', '--'), 'nice': ('--',)}
         if wrapper and text in allowed[wrapper]:
             i += 1; continue
-        if wrapper and text.startswith('-'):
+        if wrapper and (text.startswith('-') or (wrapper == 'nice' and text.startswith('+'))):
             raise Unsafe('unknown wrapper option')
         if re.match(r'^[A-Za-z_][A-Za-z_0-9]*=', text):
             i += 1; continue
@@ -924,7 +933,7 @@ def inspect(source, depth=0):
                 opt = tokens[j][1]
                 if opt == '--':
                     j += 1; break
-                if opt.startswith('--') or not opt[1:].isalpha():
+                if opt.startswith('--') or not opt[1:] or any(flag not in 'ceuxl' for flag in opt[1:]):
                     raise Unsafe('unknown shell option')
                 command_mode |= 'c' in opt[1:]
                 j += 1
