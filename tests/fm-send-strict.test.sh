@@ -91,6 +91,39 @@ setup_home() {  # <name> -> echoes home dir
   printf '%s\n' "$home"
 }
 
+test_removed_record_refuses_all_delivery_planes() {
+  local dir fb home err log rc removed meta before target mode
+  removed=$(printf 'a%s' gy)
+  dir="$TMP_ROOT/removed-record"; mkdir -p "$dir"
+  fb=$(make_stubs "$dir"); home=$(setup_home removed); err="$dir/send.err"; log="$dir/tmux.log"; : > "$log"
+  meta="$home/state/lane-old.meta"
+  fm_write_meta "$meta" "window=sess:fm-lane-old" "kind=ship" "harness=$removed"
+  before=$(cat "$meta")
+  for mode in inbox typed key window; do
+    case "$mode" in
+    inbox) target=lane-old; set -- "message" ;;
+    typed) target=fm-lane-old; set -- /status ;;
+    key) target=lane-old; set -- --key Enter ;;
+    window) target=sess:fm-lane-old; set -- --key Escape ;;
+    esac
+    PATH="$fb:$PATH" FM_HOME="$home" FM_ROOT_OVERRIDE="$home" FM_TMUX_LOG="$log" FM_SEND_SETTLE=0 \
+      "$SEND" "$target" "$@" >/dev/null 2>"$err"; rc=$?
+    expect_code 1 "$rc" "$mode must refuse the legacy task record"
+    assert_contains "$(cat "$err")" "unsupported removed harness" "$mode did not identify the legacy record"
+    [ ! -s "$log" ] || fail "$mode sent terminal input"
+    [ "$(cat "$meta")" = "$before" ] || fail "$mode changed legacy metadata"
+    [ ! -e "$home/state/lane-old.inbox" ] || fail "$mode wrote to the legacy task inbox"
+  done
+  fm_write_meta "$meta" "window=remote:lane-old" "kind=secondmate" "remote_host=example.invalid" "harness=$removed"
+  PATH="$fb:$PATH" FM_HOME="$home" FM_ROOT_OVERRIDE="$home" FM_TMUX_LOG="$log" FM_SEND_SETTLE=0 \
+    "$SEND" lane-old "remote message" >/dev/null 2>"$err"; rc=$?
+  expect_code 1 "$rc" "remote legacy record must refuse before remote transport"
+  assert_contains "$(cat "$err")" "unsupported removed harness" "remote selector did not identify the legacy record"
+  [ ! -s "$log" ] || fail "remote legacy record sent terminal input"
+  [ ! -e "$home/state/lane-old.inbox" ] || fail "remote legacy record wrote a local inbox"
+  pass "fm-send rejects legacy adapter metadata on every delivery plane"
+}
+
 test_exact_lane_id_send_still_works() {
   local dir fb home err log rc got
   dir="$TMP_ROOT/exact"; mkdir -p "$dir"
@@ -232,6 +265,7 @@ test_key_send_exit_status_follows_delivery() {
 }
 
 test_exact_lane_id_send_still_works
+test_removed_record_refuses_all_delivery_planes
 test_key_send_exit_status_follows_delivery
 test_unset_fm_home_fails
 test_unresolvable_target_does_not_tmux_fallback

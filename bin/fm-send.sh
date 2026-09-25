@@ -74,8 +74,8 @@
 # failure); any other nonzero = the send failed and nothing may be assumed
 # delivered. Submission dispatches through the target's recorded backend; the
 # tmux adapter shares its composer/submit core with the away-mode daemon via
-# bin/fm-tmux-lib.sh. Tune with FM_SEND_RETRIES (default 3; agy typed targets
-# default to 20 for agy's late busy render) / FM_SEND_SLEEP (0.4). Slash
+# bin/fm-tmux-lib.sh. Tune with FM_SEND_RETRIES (default 3) / FM_SEND_SLEEP
+# (0.4). Slash
 # commands, and codex `$...` skill invocations resolved through harness meta,
 # get a longer pre-Enter settle so completion popups do not swallow Enter.
 # A remote secondmate target has no typed text plane at all:
@@ -331,6 +331,15 @@ fm_send_meta_for_key_value() { # <state-dir> <key> <value>
   return 1
 }
 
+fm_send_accept_meta() { # <meta-file>
+  local harness legacy=agy
+  harness=$(fm_meta_get "$1" harness)
+  if [ "$harness" = "$legacy" ]; then
+    echo "error: task record $1 names unsupported removed harness '$harness'; refusing to send" >&2
+    return 1
+  fi
+}
+
 fm_send_count_colons() { # <string>
   local s=$1 no_colons
   no_colons=${s//:/}
@@ -352,6 +361,7 @@ fm_send_resolve_target() { # <raw-target>
 
   meta=$(fm_backend_meta_for_selector "$raw" "$STATE" 2>/dev/null || true)
   if [ -n "$meta" ]; then
+    fm_send_accept_meta "$meta" || return 1
     if [ -n "$(fm_meta_get "$meta" remote_host)" ]; then
       id=$(fm_send_id_from_meta "$meta")
       RESOLVED_TARGET="remote:$id"
@@ -405,6 +415,7 @@ fm_send_resolve_target() { # <raw-target>
 
   meta=$(fm_backend_meta_for_window "$raw" "$STATE" 2>/dev/null || true)
   if [ -n "$meta" ]; then
+    fm_send_accept_meta "$meta" || return 1
     target=$(fm_backend_target_of_meta "$meta")
     if [ -z "$target" ]; then
       echo "error: no backend target recorded in $meta (tried explicit target '$raw' via recorded window/terminal; backend=from-meta)" >&2
@@ -911,6 +922,7 @@ else
     CURRENT_REMOTE_HOST=
     CURRENT_REMOTE_SPAWN_GEN=
     if [ -f "$TARGET_META" ]; then
+      fm_send_accept_meta "$TARGET_META" || { fm_lock_release "$REMOTE_META_LOCK"; exit 1; }
       CURRENT_REMOTE_ID=$(fm_send_id_from_meta "$TARGET_META")
       CURRENT_REMOTE_HOST=$(fm_meta_get "$TARGET_META" remote_host)
       CURRENT_REMOTE_SPAWN_GEN=$(fm_meta_get "$TARGET_META" spawn_gen)
@@ -1018,6 +1030,7 @@ else
     CURRENT_INBOX_BACKEND=
     CURRENT_INBOX_SPAWN_GEN=
     if [ -f "$TARGET_META" ]; then
+      fm_send_accept_meta "$TARGET_META" || { fm_lock_release "$INBOX_META_LOCK"; exit 1; }
       CURRENT_INBOX_TARGET=$(fm_backend_target_of_meta "$TARGET_META")
       CURRENT_INBOX_BACKEND=$(fm_backend_of_meta "$TARGET_META")
       CURRENT_INBOX_SPAWN_GEN=$(fm_meta_get "$TARGET_META" spawn_gen)
@@ -1106,21 +1119,7 @@ else
     ;;
   *) settle=0.3 ;;
   esac
-  # Per-harness submit-confirm budget. agy's bare `>` composer verdict is
-  # `unknown`, so a landed submit is acknowledged only by the idle-to-busy
-  # transition poll, and agy renders its verified busy footer well after the
-  # shared budget expires: ~1.5s after Enter for a short steer, ~4-5s for a
-  # realistic longer brief (live-measured, agy 1.2.1), against the shared
-  # default's 3 x 0.4s. With the shared default a typed steer to an agy
-  # endpoint was reported exit-1 non-delivery for a message that landed and
-  # ran, inviting a duplicate resend. agy typed targets get a longer default
-  # budget (~8s at the default cadence, twice the worst measured render); an
-  # explicit FM_SEND_RETRIES still wins, and every other harness keeps the
-  # shared 3-retry default untouched.
-  case "$TARGET_HARNESS" in
-    agy) retries=${FM_SEND_RETRIES:-20} ;;
-    *) retries=${FM_SEND_RETRIES:-3} ;;
-  esac
+  retries=${FM_SEND_RETRIES:-3}
   sleep_s=${FM_SEND_SLEEP:-0.4}
   # Type once, submit, verify. Only exact empty confirms delivery; every other
   # verdict preserves the loud refusal boundary. Only LOCAL targets reach this

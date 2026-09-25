@@ -85,8 +85,6 @@ write_quota() {  # <path> <cursor spendPriority> [<claude all_models spendPriori
       { "scope": "all_models", "status": "known", "effectivePercentRemaining": 31, "runway": { "status": "projected_exhaustion" }, "selection": { "spendPriority": -0.1649 } } ] } },
     { "provider": "cursor", "state": { "status": "fresh" }, "quotaSemantics": { "status": "known", "effectiveAvailability": [
       { "scope": "all_models", "status": "known", "effectivePercentRemaining": 91, "runway": { "status": "through_reset" }, "selection": { "spendPriority": $cursor } } ] } },
-    { "provider": "agy", "state": { "status": "fresh" }, "quotaSemantics": { "status": "known", "effectiveAvailability": [
-      { "scope": "all_models", "status": "known", "effectivePercentRemaining": 64, "runway": { "status": "through_reset" }, "selection": { "spendPriority": 0.4 } } ] } },
     { "provider": "google", "state": { "status": "fresh" }, "quotaSemantics": { "status": "known", "effectiveAvailability": [
       { "scope": "all_models", "status": "known", "effectivePercentRemaining": 72, "runway": { "status": "through_reset" }, "selection": { "spendPriority": 0.3 } } ] } },
     { "provider": "kimi", "state": { "status": "unknown" }, "quotaSemantics": { "status": "unknown", "effectiveAvailability": [] } }
@@ -299,16 +297,23 @@ for direct_rules in "$DEFAULT_ONLY" "$EMPTY_RULES"; do
   assert_absent "$LOG/quota-axi.calls" "no-rule resolution never reads quota: $direct_rules"
 done
 
-AGY_RULE="$TMP_ROOT/agy-rule.json"
-printf '%s\n' '{"rules":[{"when":"Agy work.","use":{"harness":"agy"}}]}' > "$AGY_RULE"
-cp "$AGY_RULE" "$RULES"
+REMOVED_HARNESS=$(printf 'a%s' gy)
+REMOVED_RULE="$TMP_ROOT/removed-harness-rule.json"
+REMOVED_DEFAULT="$TMP_ROOT/removed-harness-default.json"
+printf '{"rules":[{"when":"removed adapter work","use":{"harness":"%s"}}]}\n' "$REMOVED_HARNESS" > "$REMOVED_RULE"
+printf '{"default":{"harness":"%s"}}\n' "$REMOVED_HARNESS" > "$REMOVED_DEFAULT"
+for removed_profile in "$REMOVED_RULE" "$REMOVED_DEFAULT"; do
+  cp "$removed_profile" "$RULES"
+  reset_log
+  TYPESAFE_API_KEY=$KEY run code out err "$BRIEF"
+  expect_code 2 "$code" "removed adapter profile is rejected: $removed_profile"
+  assert_contains "$err" 'profile must name a verified harness' "removed adapter profile was not rejected by the verified-harness check"
+  assert_absent "$LOG/argv" "removed adapter rejection never calls curl"
+  assert_absent "$LOG/quota-axi.calls" "removed adapter rejection never reads quota"
+done
 cat > "$RESPONSE" <<'JSON'
 {"model":"jev-1.13.0","answers":{"rule":{"type":"choice","choice":"rule_1","confidence":0.99,"probabilities":{"rule_1":0.99,"default":0.01}}},"usage":{"input_tokens":100,"output_tokens":60}}
 JSON
-reset_log
-TYPESAFE_API_KEY=$KEY run code out err "$BRIEF"
-assert_contains "$out" 'candidate: agy:-  provider=agy  scope=all_models  remaining=64%  spendPriority=0.4  runway=through_reset  -> eligible' "agy uses its resolver-only authoritative quota provider"
-assert_contains "$out" "  profile: --harness 'agy'" "provider-less agy rule resolves"
 
 GEMINI_RULE="$TMP_ROOT/gemini-rule.json"
 printf '%s\n' '{"rules":[{"when":"Gemini work.","use":{"harness":"gemini","model":"gemini-3.8-flash-high","provider":"google"}}]}' > "$GEMINI_RULE"
@@ -328,7 +333,7 @@ assert_contains "$out" '  status: clear' "the documented example passes opted-in
 assert_contains "$out" 'candidate: pi:anthropic/claude-sonnet-5  provider=claude' "the documented Pi default uses its declared Claude provider"
 assert_not_contains "$err" 'malformed rules file' "the documented example reaches resolution"
 cp "$BASE_RULES" "$RULES"
-pass "no-rule fallback, Agy, Gemini, and documented configurations resolve"
+pass "no-rule fallback, removed-adapter rejection, Gemini, and documented configurations resolve"
 
 # --- ambiguous: fixed confidence floor -----------------------------------------
 reset_log

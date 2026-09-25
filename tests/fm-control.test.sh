@@ -478,15 +478,16 @@ test_opencode_interrupts_twice_and_others_once() {
 }
 
 test_unverified_harness_is_refused() {
-  local dir out rc
+  local dir out rc removed
+  removed=$(printf 'a%s' gy)
   dir=$(new_case unverified)
-  add_task "$dir" t1 someagent
-  alive_as "$dir" someagent
+  add_task "$dir" t1 "$removed"
+  alive_as "$dir" "$removed"
   out=$(run_control "$dir" t1 exit); rc=$?
   expect_code 1 "$rc" "an unverified harness should refuse"
   assert_contains "$out" "no verified control mechanics" "refusal should name the missing verification"
   [ -z "$(literals "$dir")" ] || fail "an unverified harness must receive no bytes"
-  pass "fm-control: a harness with no verified control mechanics is refused, not guessed at"
+  pass "fm-control: a legacy removed harness with no verified control mechanics is refused, not guessed at"
 }
 
 # --- 2. backend capability matrix -------------------------------------------

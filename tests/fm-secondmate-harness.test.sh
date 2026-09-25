@@ -620,7 +620,7 @@ test_spawn_unverified_secondmate_harness_refused() {
     "$ROOT/bin/fm-spawn.sh" sm "$sm" --secondmate >/dev/null 2>"$err" || rc=$?
 
   [ "$rc" -ne 0 ] || fail "unverified: spawn should have failed"
-  assert_contains "$(cat "$err")" "no launch template for harness 'bogus'" \
+  assert_contains "$(cat "$err")" "unsupported harness 'bogus'" \
     "unverified: error names the rejected harness"
   assert_contains "$(cat "$err")" "config/secondmate-harness" \
     "unverified: error names the secondmate-harness source"
