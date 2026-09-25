@@ -778,15 +778,13 @@ import sys
 
 removed = 'a' + 'gy'
 source = sys.argv[1]
-if '`' in source or '<(' in source or '>(' in source:
+if '`' in source or '<(' in source or '>(' in source or '$(' in source:
     sys.exit('cannot inspect dynamic launch command')
 ansi = re.compile(r"\$'((?:\\[\s\S]|[^'\\])*)'")
 try:
     source = ansi.sub(lambda m: shlex.quote(codecs.decode(m.group(1), 'unicode_escape')), source)
 except UnicodeError as error:
     sys.exit(f'cannot inspect ANSI-C quoting: {error}')
-if '$' in source:
-    sys.exit('cannot inspect dynamic launch command')
 lexer = shlex.shlex(source, posix=True, punctuation_chars=';&|(){}<>\n')
 lexer.whitespace = ' \t\r'
 lexer.whitespace_split = True
@@ -799,11 +797,13 @@ except ValueError as error:
 expect_command = True
 prefix = None
 skip_next = False
-redirects = ('<', '>', '>>', '<<<', '<>', '<&', '>&', '>|')
+compound = False
+redirects = ('<', '>', '>>', '<<<', '<>', '<&', '>&', '>|', '&>')
 for index, token in enumerate(tokens):
     if token in ('<<', '<<-'):
         sys.exit('cannot inspect here-document launch command')
     if token and all(c in ';&|(){}\n' for c in token):
+        compound = True
         expect_command = True
         prefix = None
         skip_next = False
@@ -811,19 +811,22 @@ for index, token in enumerate(tokens):
     if skip_next:
         skip_next = False
         continue
+    if token in redirects:
+        compound = True
+        if expect_command:
+            skip_next = True
+        continue
     if not expect_command:
         continue
     if token.isdecimal() and index + 1 < len(tokens) and tokens[index + 1] in redirects:
         continue
-    if token in redirects:
-        skip_next = True
-        continue
     if token in ('!', 'if', 'then', 'elif', 'else', 'fi', 'while', 'until', 'do', 'done'):
+        compound = True
         continue
     if token in ('case', 'select', 'for', 'function', 'eval', 'source', '.'):
         sys.exit('cannot inspect indirect launch command')
-    if token in ('env', 'command', 'exec'):
-        prefix = token
+    if os.path.basename(token) in ('env', 'command', 'exec'):
+        prefix = os.path.basename(token)
         continue
     if prefix == 'command' and token in ('-v', '-V'):
         expect_command = False
@@ -844,12 +847,16 @@ for index, token in enumerate(tokens):
         sys.exit('cannot inspect launch wrapper option')
     if re.match(r'^[A-Za-z_][A-Za-z_0-9]*=', token):
         continue
+    if '$' in token:
+        sys.exit('cannot inspect dynamic executable')
     if os.path.basename(token) == removed:
         print(token)
-        break
-    if token in ('bash', 'sh', 'zsh') and '-c' in tokens[index + 1:]:
+        sys.exit(0)
+    if os.path.basename(token) in ('bash', 'sh', 'zsh') and '-c' in tokens[index + 1:]:
         sys.exit('cannot inspect nested shell launch command')
     expect_command = False
+if compound:
+    sys.exit('cannot inspect compound launch command')
 PY
   ) || {
     echo "error: unable to inspect launch command for a removed harness; refusing before task mutation" >&2
@@ -864,8 +871,19 @@ PY
 spawn_refuse_removed_harness "$HARNESS_ARG" || exit 1
 if [ "$RELAUNCH" -eq 0 ]; then
   if [ "$KIND" = secondmate ]; then
-    spawn_refuse_removed_harness "${POS[1]:-}" || exit 1
-    spawn_refuse_removed_harness "${POS[2]:-}" || exit 1
+    case "${POS[1]:-}" in
+    *' '*)
+      if [ "${#POS[@]}" -gt 2 ] || [ -d "${POS[1]}" ]; then
+        spawn_refuse_removed_harness "${POS[2]:-}" || exit 1
+      else
+        spawn_refuse_removed_harness "${POS[1]}" || exit 1
+      fi
+      ;;
+    *)
+      spawn_refuse_removed_harness "${POS[1]:-}" || exit 1
+      spawn_refuse_removed_harness "${POS[2]:-}" || exit 1
+      ;;
+    esac
   else
     spawn_refuse_removed_harness "${POS[2]:-}" || exit 1
   fi
