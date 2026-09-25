@@ -212,46 +212,48 @@ test_devin_adapter_selections_refuse_and_raw_command_survives() {
 }
 
 test_rovo_selections_refuse_but_raw_commands_and_home_paths_survive() {
-  local rec id=rovo-selection out rc form before after raw i=0 sm
-  rec=$(make_spawn_case rovo-selection pi "$id")
+  local rec id out rc form before after raw i sm removed
+  for removed in rovo muse; do
+  id="$removed-selection"; i=0
+  rec=$(make_spawn_case "$id" pi "$id")
   read_case_record "$rec"
   before=$(find "$HOME_DIR/state" "$HOME_DIR/data" -type f -exec cksum {} \; | LC_ALL=C sort)
   for form in flag equals positional scout secondmate crew-pin secondmate-pin; do
     case "$form" in
-      flag) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness rovo); rc=$? ;;
-      equals) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness=rovo); rc=$? ;;
-      positional) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" rovo); rc=$? ;;
-      scout) out=$(run_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --scout --harness rovo); rc=$? ;;
-      secondmate) out=$(cd "$CASE_DIR" && run_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" rovo --secondmate); rc=$? ;;
+      flag) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "$removed"); rc=$? ;;
+      equals) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness="$removed"); rc=$? ;;
+      positional) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" "$removed"); rc=$? ;;
+      scout) out=$(run_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --scout --harness "$removed"); rc=$? ;;
+      secondmate) out=$(cd "$CASE_DIR" && run_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$removed" --secondmate); rc=$? ;;
       crew-pin)
-        printf 'rovo\n' > "$HOME_DIR/config/crew-harness"
+        printf '%s\n' "$removed" > "$HOME_DIR/config/crew-harness"
         out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness pi); rc=$?
         printf 'pi\n' > "$HOME_DIR/config/crew-harness"
         ;;
       secondmate-pin)
-        printf 'rovo model high\n' > "$HOME_DIR/config/secondmate-harness"
+        printf '%s model high\n' "$removed" > "$HOME_DIR/config/secondmate-harness"
         out=$(run_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" --secondmate --harness pi); rc=$?
         rm "$HOME_DIR/config/secondmate-harness"
         ;;
     esac
-    expect_code 1 "$rc" "$form Rovo adapter selection must refuse"
-    assert_contains "$out" "unsupported removed harness 'rovo'" "$form did not identify the retired selection"
+    expect_code 1 "$rc" "$form $removed adapter selection must refuse"
+    assert_contains "$out" "unsupported removed harness '$removed'" "$form did not identify the retired selection"
     after=$(find "$HOME_DIR/state" "$HOME_DIR/data" -type f -exec cksum {} \; | LC_ALL=C sort)
     [ "$before" = "$after" ] || fail "$form mutated task records or instructions"
     [ ! -s "$LAUNCH_LOG" ] || fail "$form reached endpoint or worktree provisioning"
     [ -z "$(git -C "$WT_DIR" status --short)" ] || fail "$form changed the isolated copy"
   done
 
-  sm="$CASE_DIR/rovo"
-  make_seeded_secondmate_home "$sm" rovo-home
-  fm_test_spawn_brief "$HOME_DIR" rovo-home
-  out=$(cd "$CASE_DIR" && run_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" rovo-home rovo --secondmate --harness pi); rc=$?
-  expect_code 0 "$rc" "an existing relative rovo home must remain a path: $out"
-  assert_grep "home=$sm" "$HOME_DIR/state/rovo-home.meta" "same-named home was not selected"
-  assert_meta_profile "$HOME_DIR/state/rovo-home.meta" pi default default
+  sm="$CASE_DIR/$removed"
+  make_seeded_secondmate_home "$sm" "$removed-home"
+  fm_test_spawn_brief "$HOME_DIR" "$removed-home"
+  out=$(cd "$CASE_DIR" && run_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$removed-home" "$removed" --secondmate --harness pi); rc=$?
+  expect_code 0 "$rc" "an existing relative $removed home must remain a path: $out"
+  assert_grep "home=$sm" "$HOME_DIR/state/$removed-home.meta" "same-named home was not selected"
+  assert_meta_profile "$HOME_DIR/state/$removed-home.meta" pi default default
 
-  for raw in 'rovo run --yolo' '/opt/bin/rovo run --yolo' 'env CUSTOM=1 rovo run' 'printf rovo'; do
-    i=$((i + 1)); id="rovo-raw-$i"
+  for raw in "$removed run --custom" "/opt/bin/$removed run --custom" "env CUSTOM=1 $removed run" "printf $removed"; do
+    i=$((i + 1)); id="$removed-raw-$i"
     rec=$(make_spawn_case "$id" pi "$id")
     read_case_record "$rec"
     out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "$raw"); rc=$?
@@ -260,9 +262,13 @@ test_rovo_selections_refuse_but_raw_commands_and_home_paths_survive() {
     assert_not_contains "$(cat "$LAUNCH_LOG")" 'allowedExternalPaths' "raw command received the retired permission grant"
     assert_not_contains "$(cat "$LAUNCH_LOG")" 'Read the brief at' "raw command received the retired pointer gate"
     assert_present "$HOME_DIR/state/$id.meta" "raw command did not publish its task"
-    [ "$i" -gt 2 ] || assert_grep 'harness=rovo' "$HOME_DIR/state/$id.meta" "raw basename provenance changed"
+    assert_absent "$HOME_DIR/state/$id.muse-session" "raw command received a retired session binding"
+    assert_absent "$HOME_DIR/state/$id.muse-session-current" "raw command received a retired session cache"
+    assert_not_contains "$(cat "$LAUNCH_LOG")" '--yolo' "raw command received an adapter-added permission flag"
+    [ "$i" -gt 2 ] || assert_grep "harness=$removed" "$HOME_DIR/state/$id.meta" "raw basename provenance changed"
   done
-  pass "Rovo selections refuse before mutation while raw commands and home paths remain caller-owned"
+  done
+  pass "removed selections refuse before mutation while raw commands and home paths remain caller-owned"
 }
 
 test_removed_adapter_inputs_preserve_task() {

@@ -607,6 +607,35 @@ test_removed_rovo_tail_is_not_a_busy_source() {
   pass "removed Rovo rendered tails stay unknown without changing Pi sources"
 }
 
+test_removed_muse_log_is_never_a_busy_source() {
+  local state root log harness terminal out before
+  state=$(new_state_dir retired-muse)
+  root="$state/vendor"
+  log="$root/2026/09/25/session/session.jsonl"
+  mkdir -p "$(dirname "$log")"
+  printf 'sessions_root=%s\nworkspace_root=/workspace\nbinding_id=legacy\n' "$root" > "$state/t1.muse-session"
+  printf '%s\n' "$log" > "$state/t1.muse-session-current"
+  before=$(cksum "$state/t1.muse-session" "$state/t1.muse-session-current")
+  for terminal in started completed cancelled; do
+    printf '%s\n' \
+      '{"schema_version":1,"payload_type":"runtime.session.metadata","payload":{"kind":"metadata","record":{"workspace_root":"/workspace"}}}' \
+      '{"schema_version":1,"payload_type":"runtime.session","payload":{"kind":"run","run_id":"r1","event":{"kind":"started","prompt":"work"}}}' > "$log"
+    if [ "$terminal" != started ]; then
+      printf '{"schema_version":1,"payload_type":"runtime.session","payload":{"kind":"run","run_id":"r1","event":{"kind":"terminal","terminal":"%s"}}}\n' "$terminal" >> "$log"
+    fi
+    for harness in muse muse-bin-0.1.0 muse-wrapper; do
+      out=$(fm_busy_classify tmux w1 "$harness" t1 "$state")
+      [ "$out" = 'unknown missing' ] || fail "retired $harness log ($terminal) classified: $out"
+      [ -z "$(fm_busy_sources_for_harness "$harness")" ] || fail "retired adapter trusts semantic sources"
+    done
+  done
+  [ "$(cksum "$state/t1.muse-session" "$state/t1.muse-session-current")" = "$before" ] \
+    || fail "classification mutated legacy bindings"
+  assert_present "$log" "classification removed vendor history"
+  pass "retired Muse logs never classify busy or idle and remain untouched"
+}
+
+test_removed_muse_log_is_never_a_busy_source
 test_progress_is_generation_bound_and_not_semantic_state
 
 test_arm_seeds_busy_spawn

@@ -35,7 +35,7 @@ mkdir -p "$TMP_ROOT"
 TMP_ROOT=$(cd "$TMP_ROOT" && pwd)
 trap 'rm -rf "$TMP_ROOT"' EXIT
 
-VERIFIED_HARNESSES="claude codex opencode pi pi-signed grok kimi cursor muse omp"
+VERIFIED_HARNESSES="claude codex opencode pi pi-signed grok kimi cursor omp"
 
 # The expectation table, written out independently of the implementation so a
 # silent change to either side shows up here. The fourth field is the composer
@@ -52,7 +52,6 @@ verified_adapter_contract() {  # <harness> -> exit command, interrupt key, repea
     grok) printf '/exit\tC-c\t1\t\n' ;;
     kimi) printf '/exit\tEscape\t1\t\n' ;;
     cursor) printf '/exit\tEscape\t1\t\n' ;;
-    muse) printf '/exit\tEscape\t1\tC-u\n' ;;
     *) return 1 ;;
   esac
 }
@@ -109,13 +108,6 @@ case "${1:-}" in
          && { [ "$payload" = Escape ] || [ "$payload" = C-c ]; }; then
         printf 'zsh' > "$D/command"
       fi
-      if [ "$payload" = Escape ] && [ -n "${FM_FAKE_MUSE_LOG:-}" ]; then
-        if [ -n "${FM_FAKE_MUSE_DISAPPEAR_BEFORE_ACK:-}" ]; then
-          : > "$D/muse-ack-pending"
-        else
-          printf '%s\n' '{"schema_version":1,"payload_type":"runtime.session","payload":{"kind":"run","run_id":"run-1","event":{"kind":"terminal","terminal":"cancelled","reason":null}}}' >> "$FM_FAKE_MUSE_LOG"
-        fi
-      fi
     fi
     exit 0 ;;
   display-message)
@@ -139,12 +131,6 @@ SH
   chmod +x "$fb/tmux"
   cat > "$fb/sleep" <<'SH'
 #!/usr/bin/env bash
-if [ -n "${FM_FAKE_MUSE_DISAPPEAR_BEFORE_ACK:-}" ] \
-   && [ -e "$FM_FAKE_DIR/muse-ack-pending" ]; then
-  rm -f "$FM_FAKE_DIR/muse-ack-pending"
-  printf 'zsh' > "$FM_FAKE_DIR/command"
-  printf '%s\n' '{"schema_version":1,"payload_type":"runtime.session","payload":{"kind":"run","run_id":"run-1","event":{"kind":"terminal","terminal":"cancelled","reason":null}}}' >> "$FM_FAKE_MUSE_LOG"
-fi
 exit 0
 SH
   chmod +x "$fb/sleep"
@@ -197,8 +183,6 @@ run_control() {
   env PATH="$dir/fakebin:$PATH" FM_HOME="$dir/home" FM_FAKE_DIR="$dir/fake" \
     FM_CONTROL_POLL=0.01 FM_CONTROL_SETTLE_WAIT=0.05 \
     FM_CONTROL_EXIT_WAIT=0.05 FM_CONTROL_LAUNCH_WAIT=0.05 \
-    FM_FAKE_MUSE_LOG="${FM_FAKE_MUSE_LOG:-}" \
-    FM_FAKE_MUSE_DISAPPEAR_BEFORE_ACK="${FM_FAKE_MUSE_DISAPPEAR_BEFORE_ACK:-}" \
     FM_FAKE_INTERRUPT_STOPS_AGENT="${FM_FAKE_INTERRUPT_STOPS_AGENT:-}" \
     "$CONTROL" "$@" 2>&1
 }
@@ -269,7 +253,7 @@ test_harness_family_resolution() {
   local pair recorded want got
   for pair in claude:claude claude-latest:claude codex:codex codex-cli:codex \
       opencode:opencode grok:grok grok-2:grok kimi:kimi cursor:cursor \
-      cursor-agent:cursor muse:muse muse-bin-0.1.0:muse pi:pi \
+      cursor-agent:cursor pi:pi \
       pi-signed:pi-signed omp:omp; do
     recorded=${pair%%:*}
     want=${pair#*:}
@@ -337,7 +321,7 @@ test_opencode_interrupts_twice_and_others_once() {
 
 test_unverified_harness_is_refused() {
   local dir out rc removed before verb
-  for removed in "$(printf 'a%s' gy)" devin rovo rovo-wrapper; do
+  for removed in "$(printf 'a%s' gy)" devin rovo rovo-wrapper muse muse-bin-0.1.0 muse-wrapper; do
     dir=$(new_case "unverified-$removed")
     add_task "$dir" t1 "$removed"
     alive_as "$dir" "$removed"
@@ -362,8 +346,8 @@ test_unverified_harness_is_refused() {
 
 test_backend_key_capability_matrix() {
   local backend key
-  for backend in tmux herdr; do    # C-u is the composer clear muse's interrupt needs; every retained session
-    # provider normalizes it (bin/backends/*.sh).
+  for backend in tmux herdr; do
+    # C-u remains a generic key on every retained session provider.
     for key in Escape Enter C-c C-u; do
       fm_control_backend_supports_key "$backend" "$key" \
         || fail "$backend should be able to deliver $key"
@@ -373,20 +357,20 @@ test_backend_key_capability_matrix() {
 }
 
 # A verified adapter is not automatically verified for every task kind, and the
-# check has to sit on the pre-stop side of a relaunch: muse has no primary
+# check has to sit on the pre-stop side of a relaunch: gemini has no primary
 # supervision protocol, so bin/fm-spawn.sh refuses it for a secondmate, and
 # discovering that only after the running agent was stopped would strand the
 # secondmate with no agent at all.
 test_harness_kind_capability() {
   local harness
-  for harness in $VERIFIED_HARNESSES; do
+  for harness in $VERIFIED_HARNESSES gemini; do
     fm_control_harness_supports_kind "$harness" ship \
       || fail "$harness should be able to run a ship task"
     fm_control_harness_supports_kind "$harness" scout \
       || fail "$harness should be able to run a scout task"
   done
-  fm_control_harness_supports_kind muse secondmate \
-    && fail "muse has no primary supervision protocol and must not claim a secondmate"
+  fm_control_harness_supports_kind gemini secondmate \
+    && fail "gemini has no primary supervision protocol and must not claim a secondmate"
   for harness in claude codex opencode pi pi-signed grok kimi omp; do
     fm_control_harness_supports_kind "$harness" secondmate \
       || fail "$harness should be able to run a secondmate"
@@ -704,47 +688,18 @@ test_interrupt_without_acknowledgement_preserves_busy_state() {
   pass "fm-control interrupt: unconfirmed delivery preserves observed busy state"
 }
 
-test_muse_interrupt_confirms_adapter_acknowledgement() {
-  local dir root log out rc
-  dir=$(new_case confirmed)
-  add_task "$dir" t1 muse
-  alive_as "$dir" muse
-  root="$dir/muse-sessions"
-  log="$root/2026/08/08/session-1/session.jsonl"
-  mkdir -p "$(dirname "$log")"
-  printf '%s\n' \
-    "{\"schema_version\":1,\"payload_type\":\"runtime.session.metadata\",\"payload\":{\"kind\":\"metadata\",\"record\":{\"workspace_root\":\"$dir/wt-t1\"}}}" \
-    '{"schema_version":1,"payload_type":"runtime.session","payload":{"kind":"run","run_id":"run-1","event":{"kind":"started","prompt":"work"}}}' > "$log"
-  printf 'sessions_root=%s\nworkspace_root=%s\nbinding_id=test\n' \
-    "$root" "$dir/wt-t1" > "$dir/home/state/t1.muse-session"
-  out=$(FM_FAKE_MUSE_LOG="$log" run_control "$dir" t1 interrupt); rc=$?
-  expect_code 0 "$rc" "muse interrupt should observe its adapter acknowledgement"$'\n'"$out"
-  assert_contains "$out" "verified=agent-alive cancel=confirmed" \
-    "the result should report muse's cancelled terminal acknowledgement"
-  pass "fm-control interrupt: muse confirms cancellation from its session log"
-}
-
-test_interrupt_revalidates_agent_after_acknowledgement_wait() {
-  local dir root log out rc
-  dir=$(new_case ack-race)
-  add_task "$dir" t1 muse
-  alive_as "$dir" muse
-  root="$dir/muse-sessions"
-  log="$root/2026/08/08/session-1/session.jsonl"
-  mkdir -p "$(dirname "$log")"
-  printf '%s\n' \
-    "{\"schema_version\":1,\"payload_type\":\"runtime.session.metadata\",\"payload\":{\"kind\":\"metadata\",\"record\":{\"workspace_root\":\"$dir/wt-t1\"}}}" \
-    '{"schema_version":1,"payload_type":"runtime.session","payload":{"kind":"run","run_id":"run-1","event":{"kind":"started","prompt":"work"}}}' > "$log"
-  printf 'sessions_root=%s\nworkspace_root=%s\nbinding_id=test\n' \
-    "$root" "$dir/wt-t1" > "$dir/home/state/t1.muse-session"
-  out=$(FM_FAKE_MUSE_LOG="$log" FM_FAKE_MUSE_DISAPPEAR_BEFORE_ACK=1 \
-    run_control "$dir" t1 interrupt); rc=$?
-  expect_code 1 "$rc" "interrupt should fail when the agent stops during acknowledgement polling"
+test_interrupt_revalidates_agent_after_delivery() {
+  local dir out rc
+  dir=$(new_case interrupt-race)
+  add_task "$dir" t1 pi
+  alive_as "$dir" pi
+  out=$(FM_FAKE_INTERRUPT_STOPS_AGENT=1 run_control "$dir" t1 interrupt); rc=$?
+  expect_code 1 "$rc" "interrupt should fail when the agent stops during key delivery"
   assert_contains "$out" "agent is 'dead' after its interrupt key" \
-    "the final postcondition should observe the agent after acknowledgement polling"
+    "the final postcondition should observe the agent after delivery"
   assert_not_contains "$out" "interrupt-delivered" \
-    "a stale pre-wait liveness proof must not be published"
-  pass "fm-control interrupt: postconditions are revalidated after acknowledgement polling"
+    "a stale pre-delivery liveness proof must not be published"
+  pass "fm-control interrupt: postconditions are revalidated after delivery"
 }
 
 test_exit_accepts_agent_stopped_by_busy_interrupt() {
@@ -889,8 +844,7 @@ test_ambiguous_endpoint_refuses
 test_busy_agent_is_interrupted_before_the_exit_command
 test_idle_agent_is_not_interrupted
 test_interrupt_without_acknowledgement_preserves_busy_state
-test_muse_interrupt_confirms_adapter_acknowledgement
-test_interrupt_revalidates_agent_after_acknowledgement_wait
+test_interrupt_revalidates_agent_after_delivery
 test_exit_accepts_agent_stopped_by_busy_interrupt
 test_agent_that_does_not_stop_fails_closed
 test_grok_interrupt_without_acknowledgement_reports_unconfirmed

@@ -1105,8 +1105,7 @@ empty native model ultra is refused^{"default":{"harness":"pi","model":"codex-na
 codex harness ultra is refused^{"default":{"harness":"codex","model":"codex-native/gpt-6-astra","effort":"ultra"}}^exact^CREW_DISPATCH: invalid config/crew-dispatch.json - invalid effort: codex:ultra
 pi max effort is accepted^{"rules":[{"when":"deep coding","use":{"harness":"pi","model":"openai-codex/gpt-5.6-sol","effort":"max","provider":"codex"}}]}^empty^
 pi-signed max effort is accepted^{"rules":[{"when":"signed coding","use":{"harness":"pi-signed","model":"openai-codex/gpt-5.6-sol","effort":"max","provider":"codex"}}]}^empty^
-muse shared efforts are accepted^{"rules":[{"when":"muse low","use":{"harness":"muse","effort":"low"}},{"when":"muse medium","use":{"harness":"muse","effort":"medium"}},{"when":"muse high","use":{"harness":"muse","effort":"high"}},{"when":"muse xhigh","use":{"harness":"muse","effort":"xhigh"}},{"when":"muse max","use":{"harness":"muse","effort":"max"}}]}^empty^
-unsupported muse ultra effort is flagged^{"rules":[{"when":"muse ultra","use":{"harness":"muse","effort":"ultra"}}]}^exact^CREW_DISPATCH: invalid config/crew-dispatch.json - invalid effort: muse:ultra
+removed muse is refused^{"rules":[{"when":"retired","use":{"harness":"muse","effort":"high"}}]}^exact^CREW_DISPATCH: invalid config/crew-dispatch.json - unverified harness: muse
 gemini profile with explicit provider is accepted^{"rules":[{"when":"gemini work","use":{"harness":"gemini","model":"gemini-3.8-flash-high","provider":"google"}}]}^empty^
 unsupported opencode effort is flagged^{"rules":[{"when":"opencode work","use":{"harness":"opencode","model":"anthropic/claude-sonnet-4-5","effort":"high","provider":"claude"}}]}^exact^CREW_DISPATCH: invalid config/crew-dispatch.json - invalid effort: opencode:high
 kimi model profile is accepted^{"rules":[{"when":"kimi work","use":{"harness":"kimi","model":"kimi-code/k3"}}]}^empty^
@@ -1178,21 +1177,24 @@ ROWS
     FM_FAKE_TREEHOUSE_LEASE_HELP=1 "$ROOT/bin/fm-bootstrap.sh")
   [ "$out" = 'CREW_DISPATCH: invalid config/crew-dispatch.json - unverified harness: devin' ] \
     || fail "no-key bootstrap must reject the removed devin worker adapter, got: $out"
-  local rovo_profile typed
-  for typed in off on; do
-    if [ "$typed" = on ]; then
-      printf '%s\n' 'TYPESAFE_API_KEY=test-key' > "$case_dir/home/.env"
-    fi
-    for rovo_profile in \
-      '{"rules":[{"when":"retired","use":{"harness":"rovo"}}]}' \
-      '{"rules":[{"when":"retired","use":[{"harness":"pi"},{"harness":"rovo"}]}]}' \
-      '{"default":{"harness":"rovo"}}' \
-      '{"default":[{"harness":"pi"},{"harness":"rovo"}]}'; do
-      printf '%s\n' "$rovo_profile" > "$case_dir/home/config/crew-dispatch.json"
-      out=$(PATH="$fakebin:$BASE_PATH" FM_HOME="$case_dir/home" FM_ROOT_OVERRIDE="$case_dir/home" \
-        FM_FAKE_TREEHOUSE_LEASE_HELP=1 "$ROOT/bin/fm-bootstrap.sh")
-      [ "$out" = 'CREW_DISPATCH: invalid config/crew-dispatch.json - unverified harness: rovo' ] \
-        || fail "typed=$typed must reject every Rovo profile shape, got: $out"
+  local profile typed removed
+  for removed in rovo muse; do
+    for typed in off on; do
+      rm -f "$case_dir/home/.env"
+      if [ "$typed" = on ]; then
+        printf '%s\n' 'TYPESAFE_API_KEY=test-key' > "$case_dir/home/.env"
+      fi
+      for profile in \
+        '{"rules":[{"when":"retired","use":{"harness":"rovo"}}]}' \
+        '{"rules":[{"when":"retired","use":[{"harness":"pi"},{"harness":"rovo"}]}]}' \
+        '{"default":{"harness":"rovo"}}' \
+        '{"default":[{"harness":"pi"},{"harness":"rovo"}]}'; do
+        printf '%s\n' "${profile//rovo/$removed}" > "$case_dir/home/config/crew-dispatch.json"
+        out=$(PATH="$fakebin:$BASE_PATH" FM_HOME="$case_dir/home" FM_ROOT_OVERRIDE="$case_dir/home" \
+          FM_FAKE_TREEHOUSE_LEASE_HELP=1 "$ROOT/bin/fm-bootstrap.sh")
+        [ "$out" = "CREW_DISPATCH: invalid config/crew-dispatch.json - unverified harness: $removed" ] \
+          || fail "typed=$typed must reject every $removed profile shape, got: $out"
+      done
     done
   done
   rm -f "$case_dir/home/.env"

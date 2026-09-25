@@ -39,11 +39,7 @@ A recorded `harness=` is not always an exact adapter name: a task launched from 
 An exit that delivers lifecycle input but cannot prove the agent stopped fails with `exit=unconfirmed`, reports the observed agent state and any interrupt cancellation claim, and never claims that nothing changed.
 Interrupt never rewrites busy state as proof of its own success.
 Claude exposes no lifecycle acknowledgement for a manual interrupt, so delivery succeeds with `cancel=unconfirmed` and its adapter-owned busy state remains as observed.
-muse's session log records `terminal=cancelled` for the interrupted run, so the control plane reports `cancel=confirmed` only after observing that exact acknowledgement.
-
-An interrupt is not complete until the composer is empty.
-muse is the one verified adapter that restores the cancelled prompt back into its composer as real text, so its interrupt key is followed by a Ctrl+U clear; without it the next submitted line - including this plane's own exit command - would concatenate onto the restored prompt and submit both as one line.
-The clear is refused before anything is sent when the recorded backend cannot deliver it.
+No supported adapter provides a reliable cancellation acknowledgement, so the control plane does not infer `cancel=confirmed` from successful key delivery.
 
 `exit` reads the composer's state before typing the exit command and requires the exact `empty` verdict; a `pending` verdict refuses by naming the pending text, and any other verdict (`unknown`, `pending-unproven`, or an unreadable read) refuses as not proven empty, matching the fail-safe contract every other consumer that can overwrite composer input follows.
 
@@ -151,7 +147,7 @@ The worktree and the task's records are unaffected either way.
   Legacy `harness=devin` and `harness=rovo` records have no verified lifecycle mechanics, so `fm-control.sh` refuses even with an explicit replacement; [harness configuration](configuration.md#harness-support) owns the legacy steering, explicit agent-free replacement through `fm-spawn.sh --relaunch --harness <verified-adapter>`, and cleanup boundary.
 - An implicit relaunch from a prefixed raw-command basename is refused before the agent or durable state is touched because its original launch command cannot be reconstructed.
 - An adapter that is not verified for this task's kind is refused **before** the running agent is stopped, not after.
-  Muse is a crewmate and scout adapter only, so relaunching a secondmate onto it refuses while its agent is still up rather than leaving that secondmate with no agent when the launch owner refuses.
+  Gemini is a crewmate and scout adapter only, so relaunching a secondmate onto it refuses while its agent is still up rather than leaving that secondmate with no agent when the launch owner refuses.
 - A backend that cannot deliver the harness's interrupt key, or the composer clear that key needs, is refused rather than sent a different key.
 - `exit` and `relaunch` require a backend with a recovery-grade agent-state classifier - tmux and herdr - because without one the "the agent stopped" postcondition cannot be proven.
 - An ambiguous or unreadable endpoint state refuses.

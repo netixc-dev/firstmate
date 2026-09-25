@@ -126,7 +126,7 @@ test_removed_record_refuses_all_delivery_planes() {
 
 test_legacy_raw_record_accepts_local_steering() {
   local dir fb home err log rc target mode harness before
-  for harness in devin rovo; do
+  for harness in devin rovo muse pi; do
     dir="$TMP_ROOT/legacy-$harness"; mkdir -p "$dir"
     fb=$(make_stubs "$dir"); home=$(setup_home "legacy$harness"); err="$dir/send.err"; log="$dir/tmux.log"; : > "$log"
     fm_write_meta "$home/state/lane-raw.meta" "window=sess:fm-lane-raw" "kind=ship" "harness=$harness"
@@ -143,6 +143,7 @@ test_legacy_raw_record_accepts_local_steering() {
     done
     assert_contains "$(cat "$home/state/lane-raw.inbox/001.msg")" "raw worker steer" "raw worker inbox was not written"
     assert_contains "$(cat "$log")" "target=sess:fm-lane-raw literal=0 arg=Escape" "raw worker key was not delivered"
+    assert_not_contains "$(cat "$log")" 'arg=C-u' "steering sent an unrequested composer clear"
     [ "$(cat "$home/state/lane-raw.meta")" = "$before" ] || fail "steering reinterpreted $harness metadata"
   done
   pass "fm-send accepts ambiguous legacy raw-command records on local steering planes"

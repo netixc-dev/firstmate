@@ -972,7 +972,7 @@ test_secondmate_relaunch_ignores_invalid_configured_effort_before_stop() {
   pass "fm-control relaunch: invalid configured effort is ignored before stop"
 }
 
-# muse is a verified adapter, but only for crewmates and scouts: it has no
+# gemini is a verified adapter, but only for crewmates and scouts: it has no
 # primary supervision protocol, so bin/fm-spawn.sh refuses it for a secondmate.
 # That refusal alone is not enough here, because the launch owner is reached
 # only AFTER the running agent has been stopped - a secondmate would be left
@@ -1003,7 +1003,7 @@ test_secondmate_relaunch_onto_a_crewmate_only_adapter_refuses_before_stop() {
   } > "$home/state/sm7.meta"
   printf '%s\n' "fm-sm7" > "$dir/fake/windows"
   printf '%s' "$dir/smhome" > "$dir/fake/cwd"
-  out=$(run_control "$dir" sm7 relaunch --harness muse); rc=$?
+  out=$(run_control "$dir" sm7 relaunch --harness gemini); rc=$?
   expect_code 1 "$rc" "a crewmate-only adapter should refuse a secondmate relaunch"
   assert_contains "$out" "not verified to run a secondmate task" \
     "the refusal should name the kind the adapter cannot run"
@@ -1188,24 +1188,32 @@ test_prefixed_prior_harness_wiring_is_still_retired() {
   pass "fm-spawn --relaunch: wiring armed under a prefixed harness name is still retired"
 }
 
-# muse installs no hook; its busy source is its own session event log, bound to
-# the pane by two firstmate-owned sidecars. Relaunching AWAY from muse must
-# retire that binding, or a retired incarnation's session pin outlives the agent
-# that produced it.
+# Cleanup-only legacy bindings must retire without following vendor paths.
 test_muse_session_binding_is_retired_on_a_harness_switch() {
-  local dir
-  dir=$(new_case musewiring rl31)
-  add_ship_task "$dir" rl31 muse
-  printf 'sessions_root=/nonexistent\nworkspace_root=%s\nbinding_id=1.2.3\n' "$dir/wt" \
-    > "$dir/home/state/rl31.muse-session"
-  printf '/nonexistent/session.jsonl\n' > "$dir/home/state/rl31.muse-session-current"
-  printf 'zsh' > "$dir/fake/command"
-  run_spawn "$dir" rl31 --relaunch --harness claude >/dev/null
-  [ ! -e "$dir/home/state/rl31.muse-session" ] \
-    || fail "the retired muse incarnation's session binding must not outlive it"
-  [ ! -e "$dir/home/state/rl31.muse-session-current" ] \
-    || fail "the retired muse incarnation's resolved session pin must not outlive it"
-  pass "fm-spawn --relaunch: switching away from muse retires its session binding"
+  local dir harness out rc suffix
+  for harness in muse muse-bin-0.1.0 muse-wrapper; do
+    dir=$(new_case "musewiring-$harness" rl31)
+    add_ship_task "$dir" rl31 "$harness"
+    mkdir -p "$dir/vendor"
+    printf 'vendor session\n' > "$dir/vendor/session.jsonl"
+    printf 'credential sentinel\n' > "$dir/vendor/auth.json"
+    printf 'sessions_root=%s\nworkspace_root=%s\nbinding_id=1.2.3\n' "$dir/vendor" "$dir/wt" \
+      > "$dir/home/state/rl31.muse-session"
+    printf '%s\n' "$dir/vendor/session.jsonl" > "$dir/home/state/rl31.muse-session-current"
+    for suffix in muse-session muse-session-current; do
+      printf 'other task\n' > "$dir/home/state/other.$suffix"
+    done
+    printf 'zsh' > "$dir/fake/command"
+    out=$(run_spawn "$dir" rl31 --relaunch --harness claude); rc=$?
+    expect_code 0 "$rc" "explicit stopped legacy replacement failed: $out"
+    for suffix in muse-session muse-session-current; do
+      assert_absent "$dir/home/state/rl31.$suffix" "legacy binding outlived its replacement"
+      assert_grep 'other task' "$dir/home/state/other.$suffix" "another task's binding was removed"
+    done
+    assert_grep 'vendor session' "$dir/vendor/session.jsonl" "cleanup followed the vendor log path"
+    assert_grep 'credential sentinel' "$dir/vendor/auth.json" "cleanup touched credentials"
+  done
+  pass "fm-spawn --relaunch: exact and prefixed legacy Muse records retire only their owned bindings"
 }
 
 test_legacy_devin_sidecar_is_retired_on_a_harness_switch() {
@@ -1225,9 +1233,11 @@ test_legacy_devin_sidecar_is_retired_on_a_harness_switch() {
 }
 
 test_legacy_rovo_replacement_requires_explicit_agent_free_choice() {
-  local dir out rc before brief head state id=rl-rovo
-  dir=$(new_case rovo-replace "$id")
-  add_ship_task "$dir" "$id" rovo
+  local dir out rc before brief head state id removed verb
+  for removed in rovo muse; do
+  id="rl-$removed"
+  dir=$(new_case "$removed-replace" "$id")
+  add_ship_task "$dir" "$id" "$removed"
   printf 'unlanded work\n' > "$dir/wt/keep.txt"
   git -C "$dir/wt" add keep.txt
   git -C "$dir/wt" commit -qm 'work not yet landed'
@@ -1239,22 +1249,29 @@ test_legacy_rovo_replacement_requires_explicit_agent_free_choice() {
   chmod +x "$dir/fakebin/pi"
   printf pi > "$dir/fake/becomes"
 
+  for verb in interrupt exit relaunch; do
+    out=$(run_control "$dir" "$id" "$verb"); rc=$?
+    expect_code 1 "$rc" "retired adapter $verb must refuse: $out"
+    [ "$(cat "$dir/home/state/$id.meta")" = "$before" ] || fail "control changed retired metadata"
+    [ ! -s "$dir/fake/literal" ] && [ ! -s "$dir/fake/keys" ] || fail "control sent lifecycle input"
+  done
+
   for state in alive ambiguous unreadable missing implicit; do
     printf zsh > "$dir/fake/command"
     case "$state" in
       alive) printf claude > "$dir/fake/command" ;;
-      ambiguous) printf rovo > "$dir/fake/command" ;;
+      ambiguous) printf '%s' "$removed" > "$dir/fake/command" ;;
       unreadable) : > "$dir/fake/inventory-broken" ;;
       missing) : > "$dir/fake/server-dead" ;;
     esac
     if [ "$state" = implicit ]; then
       out=$(run_spawn "$dir" "$id" --relaunch); rc=$?
-      assert_contains "$out" "unsupported harness 'rovo'" "implicit relaunch did not refuse the removed selection"
+      assert_contains "$out" "unsupported harness '$removed'" "implicit relaunch did not refuse the removed selection"
     else
       out=$(run_spawn "$dir" "$id" --relaunch --harness pi); rc=$?
       assert_contains "$out" 'endpoint' "$state replacement did not reach the endpoint safety check"
     fi
-    expect_code 1 "$rc" "$state legacy Rovo relaunch must refuse: $out"
+    expect_code 1 "$rc" "$state legacy $removed relaunch must refuse: $out"
     [ "$(cat "$dir/home/state/$id.meta")" = "$before" ] || fail "$state rewrote the legacy record"
     [ "$(cat "$dir/home/data/$id/brief.md")" = "$brief" ] || fail "$state rewrote instructions"
     [ ! -s "$dir/fake/literal" ] && [ ! -s "$dir/fake/keys" ] || fail "$state delivered lifecycle input"
@@ -1268,7 +1285,8 @@ test_legacy_rovo_replacement_requires_explicit_agent_free_choice() {
   [ "$(git -C "$dir/wt" rev-parse HEAD)" = "$head" ] || fail "replacement lost unlanded commits"
   assert_grep 'uncommitted work' "$dir/wt/keep.txt" "replacement lost dirty work"
   [ -n "$(git -C "$dir/wt" status --porcelain)" ] || fail "replacement discarded dirty work"
-  pass "legacy Rovo records require deliberate agent-free replacement and preserve all work"
+  done
+  pass "legacy Rovo and Muse records require deliberate agent-free replacement and preserve all work"
 }
 
 test_cursor_session_binding_is_retired_on_a_harness_switch() {

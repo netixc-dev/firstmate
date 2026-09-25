@@ -299,7 +299,7 @@ done
 
 REMOVED_RULE="$TMP_ROOT/removed-harness-rule.json"
 REMOVED_DEFAULT="$TMP_ROOT/removed-harness-default.json"
-for removed_harness in "$(printf 'a%s' gy)" devin rovo; do
+for removed_harness in "$(printf 'a%s' gy)" devin rovo muse; do
   printf '{"rules":[{"when":"removed adapter work","use":{"harness":"%s"}}]}\n' "$removed_harness" > "$REMOVED_RULE"
   printf '{"default":{"harness":"%s"}}\n' "$removed_harness" > "$REMOVED_DEFAULT"
   printf '{"rules":[{"when":"removed adapter work","use":[{"harness":"claude"},{"harness":"%s"}]}]}\n' "$removed_harness" > "$REMOVED_RULE.array"

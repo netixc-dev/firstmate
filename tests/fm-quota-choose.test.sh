@@ -25,8 +25,6 @@ SEMANTICS_MISMATCH="$LAB/semantics-mismatch.json"
 PARTIAL="$LAB/partial.json"
 NO_APPLICABLE="$LAB/no-applicable.json"
 APPLICABLE_VETO="$LAB/applicable-veto.json"
-MUSE_EXHAUSTED="$LAB/muse-exhausted.json"
-MUSE_POSITIVE="$LAB/muse-positive.json"
 REMOVED_ADAPTER=$(printf 'a%s' gy)
 TOON="$LAB/quota.toon"
 RENDERER_TOON="$LAB/renderer-quota.toon"
@@ -543,21 +541,15 @@ fi
 [ "$out" = "none" ] || fail "provider-level unknown quota returned: $out"
 ok "provider-level unknown quota is not positive"
 
-jq '.providers += [{"provider":"meta","windows":[],"quotaSemantics":{"status":"known","effectiveAvailability":[{"scope":"all_models","status":"known","effectivePercentRemaining":25,"runway":{"status":"through_reset"}}]}}]' \
-  "$LAB/captured.json" > "$MUSE_POSITIVE"
-out=$(call_choose --snapshot "$MUSE_POSITIVE" --candidate muse:default)
-[ "$out" = "muse default" ] || fail "supported Muse candidate returned: $out"
-ok "Muse candidate is accepted"
-
-jq '.providers += [{"provider":"meta","windows":[],"quotaSemantics":{"status":"known","effectiveAvailability":[{"scope":"all_models","status":"known","effectivePercentRemaining":0,"runway":{"status":"exhausted_now"}}]}}]' \
-  "$LAB/captured.json" > "$MUSE_EXHAUSTED"
-if out=$(call_choose --snapshot "$MUSE_EXHAUSTED" --candidate muse:default 2>/dev/null); then
-  fail "Muse candidate dispatched with exhausted Meta quota"
+out=$(call_choose --snapshot "$LAB/captured.json" --candidate pi:default)
+[ "$out" = 'pi default' ] || fail "plain Pi quota candidate changed: $out"
+if err=$(call_choose --snapshot "$LAB/captured.json" --candidate pi:default --candidate muse:default 2>&1); then
+  fail "trailing retired candidate was hidden by eligible Pi"
 fi
-[ "$out" = "none" ] || fail "exhausted Meta quota returned: $out"
-ok "Muse uses Meta quota"
+[ "$err" = 'error: unknown harness: muse' ] || fail "retired Muse candidate returned: $err"
+ok "eligible Pi survives and never hides an unsupported trailing candidate"
 
-for removed_harness in "$REMOVED_ADAPTER" devin; do
+for removed_harness in "$REMOVED_ADAPTER" devin muse; do
   if err=$(call_choose --snapshot "$LAB/captured.json" --candidate "$removed_harness:default" 2>&1); then
     fail "removed adapter quota candidate unexpectedly accepted: $removed_harness"
   fi
