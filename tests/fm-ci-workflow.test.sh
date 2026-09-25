@@ -223,6 +223,18 @@ test_ci_matrices_match_executable_partitions() {
   ruby -ryaml -ropen3 - "$CI_WORKFLOW" "$ROOT" <<'RUBY' || fail "CI partition contract"
 jobs = YAML.load_file(ARGV[0]).fetch("jobs")
 root = ARGV[1]
+expanded_jobs = jobs.values.sum do |job|
+  matrix = job.fetch("strategy", {}).fetch("matrix", {})
+  matrix.empty? ? 1 : matrix.values.map(&:length).inject(:*)
+end
+raise "CI job/check count changed: #{expanded_jobs}" unless expanded_jobs == 19
+raise "independent compliance workflow missing" unless File.file?(File.join(root, ".github/workflows/no-mistakes-required.yml"))
+runner = File.join(root, "bin/fm-test-run.sh")
+serial_paths, result = Open3.capture2(runner, "--list", "--lane", "portable-serial")
+raise "cannot list serial inventory" unless result.success?
+%w[tests/fm-watch-triage.test.sh tests/fm-watch-triage-waits.test.sh].each do |path|
+  raise "serial inventory missing #{path}" unless serial_paths.lines.map(&:strip).count(path) == 1
+end
 serial = jobs.fetch("tests-portable-serial").fetch("strategy")
 raise "serial failures must not cancel other shards" unless serial.fetch("fail-fast") == false
 matrix = serial.fetch("matrix")

@@ -115,6 +115,8 @@ init_changed_fixture_repo() {
     fm-quota-choose.test.sh \
     fm-pi-watch-extension.test.sh \
     fm-pi-shell-invocation.test.sh \
+    fm-watch-triage.test.sh \
+    fm-watch-triage-waits.test.sh \
     fm-afk-return.test.sh \
     fm-bearings-snapshot.test.sh \
     fm-control-herdr-smoke.test.sh \
@@ -134,6 +136,7 @@ init_changed_fixture_repo() {
   # A shared top-level test fixture read by two suites in different families,
   # beside a tests/ file nothing reads at all.
   : >"$repo/tests/shared-probe-fixture.sh"
+  : >"$repo/tests/fm-watch-triage-helpers.sh"
   : >"$repo/tests/unread-thing.sh"
   printf '# shared-probe-fixture.sh\n' >>"$repo/tests/fm-pr-merge.test.sh"
   printf '# shared-probe-fixture.sh\n' >>"$repo/tests/fm-secondmate-safety.test.sh"
@@ -1023,11 +1026,11 @@ test_list_scheduled_non_lane_selections_use_serial_weights() {
     printf '\n' >>"$repo/$script"
   done
   printf '%s\n' \
+    tests/fm-kimi-harness.test.sh \
     tests/fm-muse-harness.test.sh \
     tests/fm-brief.test.sh \
     tests/fm-captain-hold-lifecycle.test.sh \
     tests/fm-lint.test.sh \
-    tests/fm-kimi-harness.test.sh \
     tests/fm-operational-input.test.sh >"$tmp/expected"
   for selection in family all changed scripts; do
     case "$selection" in
@@ -1330,6 +1333,36 @@ test_unmapped_new_test_never_inherits_family_concurrency() {
     || fail "the unmapped fixture did not land in the catch-all family: $(cat "$tmp/serial.out")"
   rm -rf "$tmp"
   pass "an unclassified new test stays serial while the proven residual family runs concurrently"
+}
+
+test_watcher_wait_split_routing() {
+  local tmp repo listed rc
+  tmp=$(mktemp -d "${TMPDIR:-/tmp}/fm-test-run-wait-routing.XXXXXX")
+  repo="$tmp/repo"
+  init_changed_fixture_repo "$repo"
+
+  listed=$(cd "$repo" && bin/fm-test-run.sh --list --family watcher-declared-waits)
+  [ "$listed" = tests/fm-watch-triage-waits.test.sh ] \
+    || fail "the declared-wait suite must have a separate local family: $listed"
+  set +e
+  (cd "$repo" && bin/fm-test-run.sh --jobs 2 tests/fm-watch-triage-waits.test.sh) \
+    >"$tmp/out" 2>"$tmp/err"
+  rc=$?
+  set -e
+  [ "$rc" -eq 2 ] || fail "unproved wait-suite concurrency must be refused, got $rc"
+
+  printf '\n' >>"$repo/bin/fm-watch-probe.sh"
+  listed=$(cd "$repo" && bin/fm-test-run.sh --list --changed --base HEAD)
+  assert_contains "$listed" tests/fm-watch-triage.test.sh "watcher changes select original triage"
+  assert_contains "$listed" tests/fm-watch-triage-waits.test.sh "watcher changes select wait triage"
+  git -C "$repo" checkout -q -- bin/fm-watch-probe.sh
+
+  printf '\n' >>"$repo/tests/fm-watch-triage-helpers.sh"
+  listed=$(cd "$repo" && bin/fm-test-run.sh --list --changed --base HEAD)
+  assert_contains "$listed" tests/fm-watch-triage.test.sh "shared helper selects original triage"
+  assert_contains "$listed" tests/fm-watch-triage-waits.test.sh "shared helper selects wait triage"
+  rm -rf "$tmp"
+  pass "watcher and shared-helper changes reach both suites without admitting unproved concurrency"
 }
 
 test_changed_shared_fixture_selects_its_readers() {
@@ -1763,6 +1796,7 @@ test_portable_serial_shard_lane_refusals
 test_jobs_requires_proven_isolated
 test_jobs_admits_a_concurrent_safe_family
 test_unmapped_new_test_never_inherits_family_concurrency
+test_watcher_wait_split_routing
 test_changed_shared_fixture_selects_its_readers
 test_concurrent_runs_are_ordered_longest_first
 test_per_script_timeout_bounds_a_hang
