@@ -159,7 +159,12 @@
 #   /updatefirstmate, restart). A bare adapter name (claude|codex|opencode|pi|pi-signed|grok|kimi|cursor|gemini|muse|rovo|omp|devin)
 #   overrides it for this spawn (either kind). A non-flag string containing
 #   whitespace is treated as a RAW launch command - the escape hatch for verifying
-#   new adapters. For pi and pi-signed, fm-spawn resolves the selected executable
+#   new adapters. The removed agy adapter is refused for explicit selections,
+#   static pins, and recorded relaunches before task mutation. Only a direct
+#   literal raw executable with basename agy is rejected (leading whitespace
+#   and absolute paths included); wrapped or dynamic shell commands remain
+#   caller-owned, as do unrelated raw arguments and existing secondmate home
+#   paths named agy. For pi and pi-signed, fm-spawn resolves the selected executable
 #   name from PATH once, probes that concrete path with --help, and launches the
 #   same path. It adds --tui-mode regular only when that help advertises the flag;
 #   a failed or inconclusive probe omits it so older Pi versions remain launchable.

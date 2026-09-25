@@ -25,8 +25,9 @@ Operational paths keep the context named by their owner: `config/` and active-ho
 ## Non-negotiable safety
 
 Never dispatch a crewmate or secondmate on an unverified adapter.
-If `config/crew-harness` or `config/secondmate-harness` names one, tell the captain under `../../../AGENTS.md` section 9 that the requested worker runtime is not verified, use firstmate's own verified runtime for current work, and ask only whether to verify the requested runtime for future work.
-Do not pause current work for that choice.
+If `config/crew-harness` or `config/secondmate-harness` names an unverified adapter other than the retired CLI worker adapter, tell the captain under `../../../AGENTS.md` section 9 that the requested runtime is not verified, use firstmate's own verified runtime for current work, and ask only whether to verify the requested runtime for future work.
+The retired `agy` CLI worker adapter is the exception to that fallback; follow the refusal boundary in [`docs/configuration.md`](../../../docs/configuration.md#harness-support).
+Do not pause current work for that choice when fallback is allowed.
 
 On `unknown`, ask the captain instead of guessing.
 A current captain override beats detection, while a per-task override governs only that dispatch.
