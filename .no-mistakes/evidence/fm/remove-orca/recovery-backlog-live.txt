@@ -1,0 +1,8 @@
+--- before ---
+  state: queued
+bootstrap rc=0
+--- after bootstrap ---
+  state: queued
+teardown rc=1
+REFUSED: task live-cleanup-recovery carries cleanup recovery 'legacy', not a launched worker; preserving its record.
+queued backlog and recovery record retained

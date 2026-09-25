@@ -1,0 +1,12 @@
+explicit: rc=1
+error: unknown backend 'orca' (known: tmux herdr zellij cmux)
+env: rc=1
+error: unknown backend 'orca' (known: tmux herdr zellij cmux)
+config: rc=1
+error: unknown backend 'orca' (known: tmux herdr zellij cmux)
+no task metadata created for rejected selections
+bootstrap: rc=0
+BACKEND_INVALID: orca (known: tmux herdr zellij cmux)
+legacy teardown --force: rc=1
+REFUSED: task legacy-task has a missing, ambiguous, or unknown backend identity; preserving task state.
+legacy durable metadata retained after forced refusal

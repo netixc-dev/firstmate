@@ -1,0 +1,8 @@
+lab session=fm-lab-orca-removal-71004-11767
+{"server":true,"protocol":22}
+product home container=fm-lab-orca-removal-71004-11767:w1
+product task tab=w1:t2 pane=w1:p2
+capture contains executed retained-herdr output
+product exact-pane close confirmed absent
+teardown fm-lab-orca-removal-71004-11767
+lab tripwire/teardown result=0
