@@ -13,7 +13,7 @@
 # parent waiting on a reply to nothing.
 # Special keys instead of text: fm-send.sh <target> --key Enter
 # Key support is backend-specific: tmux/herdr support Escape, Enter, and C-c;
-# Orca currently supports Enter and C-c only, and rejects Escape.
+# Retained backend adapters own their supported named-key matrix.
 #
 # Two data planes:
 #

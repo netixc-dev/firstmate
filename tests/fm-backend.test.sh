@@ -488,17 +488,17 @@ test_backend_name_explicit_beats_detection() {
 
 test_backend_validate_refuses_unknown() {
   fm_backend_validate tmux 2>/dev/null || fail "fm_backend_validate should accept tmux"
-  fm_backend_validate orca 2>/dev/null || fail "fm_backend_validate should accept orca"
   local out
-  # bogus names a backend with no adapter at all; tmux, herdr, zellij, orca,
-  # and cmux are all known adapters and spawn-supported.
+  # tmux, herdr, zellij, and cmux are the retained known adapters.
   out=$(fm_backend_validate bogus 2>&1) && fail "fm_backend_validate should refuse bogus (no such adapter)"
   assert_contains "$out" "unknown backend 'bogus'" "fm_backend_validate did not name the rejected backend"
   out=$(fm_backend_validate codex-app 2>&1) && fail "fm_backend_validate should refuse codex-app"
   assert_contains "$out" "unknown backend 'codex-app'" "fm_backend_validate accepted codex-app"
   out=$(fm_backend_validate "tmux herdr" 2>&1) && fail "fm_backend_validate should refuse a multi-token backend name"
   assert_contains "$out" "unknown backend 'tmux herdr'" "fm_backend_validate accepted a multi-token backend name"
-  pass "fm_backend_validate: implemented adapters accepted, unknown and blocked codex-app backends refused loudly"
+  out=$(fm_backend_required_tools orca 2>&1) && fail "removed orca should not have a dependency set"
+  [ -z "$out" ] || fail "removed orca emitted a dependency list: $out"
+  pass "fm_backend_validate: retained adapters accepted and removed orca, unknown, and blocked backends refused loudly"
 }
 
 test_backend_source_shell_portable() {
@@ -562,13 +562,14 @@ test_backend_source_requires_adapter_file() {
   done
 }
 
-test_backend_validate_spawn_accepts_orca() {
+test_backend_validate_spawn_accepts_retained_backends() {
   local out
   fm_backend_validate_spawn tmux 2>/dev/null || fail "fm_backend_validate_spawn should accept tmux"
   fm_backend_validate_spawn herdr 2>/dev/null || fail "fm_backend_validate_spawn should accept herdr"
   fm_backend_validate_spawn zellij 2>/dev/null || fail "fm_backend_validate_spawn should accept zellij"
-  fm_backend_validate_spawn orca 2>/dev/null || fail "fm_backend_validate_spawn should accept orca"
   fm_backend_validate_spawn cmux 2>/dev/null || fail "fm_backend_validate_spawn should accept cmux"
+  out=$(fm_backend_validate_spawn orca 2>&1) && fail "fm_backend_validate_spawn should refuse removed orca"
+  assert_contains "$out" "unknown backend 'orca'" "fm_backend_validate_spawn accepted removed orca"
   out=$(fm_backend_validate_spawn bogus 2>&1) && fail "fm_backend_validate_spawn should still refuse unknown backends"
   assert_contains "$out" "unknown backend 'bogus'" "fm_backend_validate_spawn did not preserve unknown-backend validation"
   out=$(fm_backend_validate_spawn codex-app 2>&1) && fail "fm_backend_validate_spawn should refuse codex-app"
@@ -657,7 +658,7 @@ test_backend_of_selector_matches_explicit_target_meta() {
   fm_write_meta "$state/fm-turnend-all-harnesses-v9.meta" "window=default:wB:p3" "backend=herdr"
   fm_write_meta "$state/tmux-task.meta" "window=firstmate:fm-tmux-task"
   fm_write_meta "$state/custom-window-task.meta" "window=custom-window"
-  fm_write_meta "$state/orca-task.meta" "window=fm-orca-task" "terminal=term-orca-task" "backend=orca"
+  fm_write_meta "$state/legacy-task.meta" "window=fm-legacy-task" "terminal=term-legacy-task" "backend=orca"
 
   [ "$(fm_backend_of_selector 'dotfiles-d6' 'default:wA:p2' "$state")" = herdr ] \
     || fail "bare non-fm task id selector should use its recorded backend"
@@ -665,14 +666,14 @@ test_backend_of_selector_matches_explicit_target_meta() {
     || fail "exact fm-* task id selector should use exact metadata before legacy stripping"
   [ "$(fm_backend_of_selector 'fm-herdr-task' 'default:w1:p2' "$state")" = herdr ] \
     || fail "legacy fm-<id> selector should use its recorded backend"
-  [ "$(fm_backend_resolve_selector 'fm-orca-task' "$state")" = term-orca-task ] \
-    || fail "Orca fm-<id> selector should resolve to terminal=, not window="
-  [ "$(fm_backend_resolve_selector 'term-orca-task' "$state")" = term-orca-task ] \
-    || fail "raw Orca terminal selector should resolve through metadata"
+  out=$(fm_backend_resolve_selector 'legacy-task' "$state" 2>&1) && fail "exact selector for an old unknown backend should refuse"
+  assert_contains "$out" "unknown backend 'orca'" "exact old-backend selector did not refuse as unknown"
+  out=$(fm_backend_resolve_selector 'term-legacy-task' "$state" 2>&1) && fail "raw selector for an old unknown backend should refuse"
+  assert_contains "$out" "unknown backend 'orca'" "raw old-backend selector did not refuse as unknown"
+  out=$(fm_backend_of_selector 'term-legacy-task' 'term-legacy-task' "$state" 2>&1) && fail "backend lookup for an old unknown endpoint should refuse"
+  assert_contains "$out" "unknown backend 'orca'" "old unknown endpoint backend lookup did not refuse"
   [ "$(fm_backend_resolve_selector 'custom-window' "$state")" = custom-window ] \
     || fail "raw window selector matching metadata should not require tmux fallback"
-  [ "$(fm_backend_of_selector 'term-orca-task' 'term-orca-task' "$state")" = orca ] \
-    || fail "matching an explicit Orca terminal handle should inherit metadata backend"
   [ "$(fm_backend_of_selector 'default:w1:p2' 'default:w1:p2' "$state")" = herdr ] \
     || fail "explicit backend target matching metadata should use that task's backend"
   [ "$(fm_backend_of_selector 'firstmate:fm-tmux-task' 'firstmate:fm-tmux-task' "$state")" = tmux ] \
@@ -680,7 +681,7 @@ test_backend_of_selector_matches_explicit_target_meta() {
   [ "$(fm_backend_of_selector 'manual:outside' 'manual:outside' "$state")" = tmux ] \
     || fail "explicit target with no matching metadata should keep the tmux compatibility default"
 
-  pass "fm_backend_of_selector: exact task ids, legacy fm-<id> labels, and matching explicit targets inherit metadata backend"
+  pass "fm_backend_of_selector: retained task ids inherit metadata while old unknown records refuse exact and raw selectors"
 }
 
 # --- old vs new: fm-send.sh --------------------------------------------------
@@ -1079,7 +1080,7 @@ test_teardown_conformance_old_vs_new() {
 
 test_spawn_refuses_unknown_backend_flag() {
   local out status
-  # bogus names a backend with no adapter at all; zellij and orca both
+  # bogus names a backend with no adapter at all; zellij remains known while
   # graduated to real adapters and have their own spawn tests.
   out=$(FM_ROOT_OVERRIDE='' FM_HOME='' FM_STATE_OVERRIDE='' FM_DATA_OVERRIDE='' \
     FM_PROJECTS_OVERRIDE='' FM_CONFIG_OVERRIDE='' FM_SPAWN_NO_GUARD=1 \
@@ -1099,6 +1100,41 @@ test_spawn_refuses_codex_app_backend_flag() {
   [ "$status" -ne 0 ] || fail "fm-spawn --backend codex-app should refuse"
   assert_contains "$out" "unknown backend 'codex-app'" "fm-spawn did not preserve the blocked codex-app contract"
   pass "fm-spawn.sh --backend codex-app is refused"
+}
+
+test_spawn_refuses_orca_selection_before_mutation() {
+  local out status state data config projects id
+  state="$TMP_ROOT/orca-selection-state"
+  data="$TMP_ROOT/orca-selection-data"
+  config="$TMP_ROOT/orca-selection-config"
+  projects="$TMP_ROOT/orca-selection-projects"
+  mkdir -p "$state" "$data" "$config" "$projects"
+  for id in orca-explicit-z1 orca-env-z2 orca-config-z3; do
+    case "$id" in
+      orca-explicit-z1)
+        out=$(FM_ROOT_OVERRIDE="$ROOT" FM_HOME="$TMP_ROOT/orca-explicit-home" FM_STATE_OVERRIDE="$state" FM_DATA_OVERRIDE="$data" FM_CONFIG_OVERRIDE="$config" FM_PROJECTS_OVERRIDE="$projects" FM_SPAWN_NO_GUARD=1 \
+          "$ROOT/bin/fm-spawn.sh" "$id" projects/none claude --mode no-mistakes --yolo off --backend orca 2>&1)
+        status=$?
+        ;;
+      orca-env-z2)
+        out=$(FM_ROOT_OVERRIDE="$ROOT" FM_HOME="$TMP_ROOT/orca-env-home" FM_STATE_OVERRIDE="$state" FM_DATA_OVERRIDE="$data" FM_CONFIG_OVERRIDE="$config" FM_PROJECTS_OVERRIDE="$projects" FM_SPAWN_NO_GUARD=1 FM_BACKEND=orca \
+          "$ROOT/bin/fm-spawn.sh" "$id" projects/none claude --mode no-mistakes --yolo off 2>&1)
+        status=$?
+        ;;
+      orca-config-z3)
+        printf '%s\n' orca > "$config/backend"
+        out=$(FM_ROOT_OVERRIDE="$ROOT" FM_HOME="$TMP_ROOT/orca-config-home" FM_STATE_OVERRIDE="$state" FM_DATA_OVERRIDE="$data" FM_CONFIG_OVERRIDE="$config" FM_PROJECTS_OVERRIDE="$projects" FM_SPAWN_NO_GUARD=1 FM_BACKEND= \
+          "$ROOT/bin/fm-spawn.sh" "$id" projects/none claude --mode no-mistakes --yolo off 2>&1)
+        status=$?
+        rm -f "$config/backend"
+        ;;
+    esac
+    [ "$status" -ne 0 ] || fail "$id should refuse removed orca"
+    assert_contains "$out" "unknown backend 'orca'" "$id did not report removed orca as unknown"
+  done
+  [ -z "$(find "$state" -type f -maxdepth 1 -name '*.meta' -print -quit)" ] || fail "orca selection created task metadata"
+  [ -z "$(find "$state" -type f -maxdepth 1 -name '.spawn-*' -print -quit)" ] || fail "orca selection left a spawn lock"
+  pass "fm-spawn.sh refuses explicit, environment, and config orca selection before task mutation"
 }
 
 test_spawn_refuses_unknown_fm_backend_env() {
@@ -1210,7 +1246,7 @@ test_backend_name_explicit_beats_detection
 test_backend_validate_refuses_unknown
 test_backend_source_shell_portable
 test_backend_source_requires_adapter_file
-test_backend_validate_spawn_accepts_orca
+test_backend_validate_spawn_accepts_retained_backends
 test_meta_get_and_backend_of_meta
 test_resolve_selector_three_forms
 test_backend_of_selector_matches_explicit_target_meta
@@ -1220,6 +1256,7 @@ test_spawn_symlinked_project_prefix_avoids_false_refusal
 test_teardown_conformance_old_vs_new
 test_spawn_refuses_unknown_backend_flag
 test_spawn_refuses_codex_app_backend_flag
+test_spawn_refuses_orca_selection_before_mutation
 test_spawn_refuses_unknown_fm_backend_env
 test_spawn_default_backend_writes_no_meta_field
 test_spawn_explicit_backend_flag_beats_autodetect_herdr_env

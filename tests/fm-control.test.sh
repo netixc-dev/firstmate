@@ -494,19 +494,13 @@ test_unverified_harness_is_refused() {
 test_backend_key_capability_matrix() {
   local backend key
   for backend in tmux herdr zellij cmux; do
-    # C-u is the composer clear muse's interrupt needs; every session provider
-    # but Orca normalizes it (bin/backends/*.sh).
+    # C-u is the composer clear muse's interrupt needs; every retained session
+    # provider normalizes it (bin/backends/*.sh).
     for key in Escape Enter C-c C-u; do
       fm_control_backend_supports_key "$backend" "$key" \
         || fail "$backend should be able to deliver $key"
     done
   done
-  fm_control_backend_supports_key orca Escape \
-    && fail "orca's terminal API has no Escape and must not claim it"
-  fm_control_backend_supports_key orca C-u \
-    && fail "orca's terminal API has no composer clear and must not claim one"
-  fm_control_backend_supports_key orca C-c || fail "orca should deliver C-c"
-  fm_control_backend_supports_key orca Enter || fail "orca should deliver Enter"
   pass "fm-control-lib: the backend key matrix matches each adapter's real send-key surface"
 }
 
@@ -532,23 +526,6 @@ test_harness_kind_capability() {
   fm_control_harness_supports_kind someagent ship \
     && fail "an unverified harness must not claim any kind"
   pass "fm-control-lib: adapter capability is per task kind, not per adapter alone"
-}
-
-test_orca_refuses_an_escape_harness_interrupt() {
-  local dir out rc
-  dir=$(new_case orca-escape)
-  add_task "$dir" t1 claude ship orca "term-1"
-  # Orca records its endpoint as terminal=, which endpoint validation requires.
-  {
-    cat "$dir/home/state/t1.meta"
-    echo "terminal=term-1"
-    echo "orca_worktree_id=wt-1::/orca/wt-1"
-  } > "$dir/home/state/t1.meta.new"
-  sed 's|^window=.*|window=fm-t1|' "$dir/home/state/t1.meta.new" > "$dir/home/state/t1.meta"
-  out=$(run_control "$dir" t1 interrupt); rc=$?
-  expect_code 1 "$rc" "an Escape harness on orca should refuse"
-  assert_contains "$out" "cannot deliver" "refusal should name the undeliverable key"
-  pass "fm-control interrupt: a backend that cannot deliver the harness's key refuses instead of sending another"
 }
 
 test_unverified_state_backends_refuse_stop_verbs() {
@@ -586,7 +563,7 @@ test_state_verified_backends_are_exactly_tmux_and_herdr() {
   fm_control_backend_state_verified tmux || fail "tmux has a recovery-grade classifier"
   fm_control_backend_state_verified herdr || fail "herdr has a recovery-grade classifier"
   local backend
-  for backend in zellij orca cmux; do
+  for backend in zellij cmux; do
     fm_control_backend_state_verified "$backend" \
       && fail "$backend has no recovery-grade classifier and must not claim one"
   done
@@ -1044,7 +1021,6 @@ test_harness_family_resolution
 test_prefixed_recorded_harness_reaches_each_control_verb
 test_backend_key_capability_matrix
 test_harness_kind_capability
-test_orca_refuses_an_escape_harness_interrupt
 test_unverified_state_backends_refuse_stop_verbs
 test_state_verified_backends_are_exactly_tmux_and_herdr
 test_window_label_is_refused_with_the_exact_id

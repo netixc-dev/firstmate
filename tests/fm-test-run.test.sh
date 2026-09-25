@@ -120,7 +120,7 @@ init_changed_fixture_repo() {
     fm-backend-cmux.test.sh \
     fm-backend-zellij.test.sh \
     fm-control-herdr-smoke.test.sh \
-    fm-backend-orca.test.sh; do
+    fm-backend-unproven.test.sh; do
     printf '#!/usr/bin/env bash\n# tests/lib.sh\n' >"$repo/tests/$script"
     chmod +x "$repo/tests/$script"
   done
@@ -143,7 +143,7 @@ init_changed_fixture_repo() {
   # the shape the tests/fixtures/<dir>/ arm is keyed for.
   mkdir -p "$repo/tests/fixtures/demo"
   : >"$repo/tests/fixtures/demo/demo-fixture.sh"
-  printf '# tests/fixtures/demo\n' >>"$repo/tests/fm-backend-orca.test.sh"
+  printf '# tests/fixtures/demo\n' >>"$repo/tests/fm-backend-unproven.test.sh"
   # A shared helper with no curated family of its own, named by exactly ONE
   # script of the expensive real-Herdr family and consumed by one curated
   # watcher script. This is the shape that made a one-line helper change select
@@ -596,8 +596,8 @@ test_script_list_uses_bounded_automatic_concurrency() {
   init_changed_fixture_repo "$repo"
   rm -f "$repo/bin/fm-timeout-lib.sh"
   # fm-cd-pretool-check and fm-pr-merge are individually proven isolated;
-  # fm-backend-orca is not, so it must still land in the serial tail.
-  for script in fm-cd-pretool-check.test.sh fm-pr-merge.test.sh fm-backend-orca.test.sh; do
+  # fm-backend-unproven is not, so it must still land in the serial tail.
+  for script in fm-cd-pretool-check.test.sh fm-pr-merge.test.sh fm-backend-unproven.test.sh; do
     cat >"$repo/tests/$script" <<'SH'
 #!/usr/bin/env bash
 sleep 1
@@ -623,7 +623,7 @@ SH
   # An unproven script in the list is scheduled around, never refused and never
   # run beside another script.
   (cd "$repo" && bin/fm-test-run.sh tests/fm-cd-pretool-check.test.sh tests/fm-pr-merge.test.sh \
-      tests/fm-backend-orca.test.sh) >"$tmp/mixed.out" 2>"$tmp/mixed.err" \
+      tests/fm-backend-unproven.test.sh) >"$tmp/mixed.out" 2>"$tmp/mixed.err" \
     || fail "mixed proven/unproven script list failed: $(cat "$tmp/mixed.err")"
   mixed_shape=$(grep -E '^FM_TEST_(BEGIN|END)' "$tmp/mixed.out" | awk '{print $1}' | paste -sd, -)
   [ "$mixed_shape" = FM_TEST_BEGIN,FM_TEST_BEGIN,FM_TEST_END,FM_TEST_END,FM_TEST_BEGIN,FM_TEST_END ] \
@@ -645,10 +645,10 @@ assert automatic["selection"].split(";")[-1] == f"jobs={expected}"
 assert serial["selection"].split(";")[-1] == "jobs=1"
 PYJSON
 
-  (cd "$repo" && bin/fm-test-run.sh tests/fm-backend-orca.test.sh) \
+  (cd "$repo" && bin/fm-test-run.sh tests/fm-backend-unproven.test.sh) \
     >"$tmp/named.out" 2>"$tmp/named.err" \
     || fail "a named script unexpectedly required a timeout helper: $(cat "$tmp/named.err")"
-  grep -Eq '^FM_TEST_END .+ tests/fm-backend-orca\.test\.sh exit=0 ' "$tmp/named.out" \
+  grep -Eq '^FM_TEST_END .+ tests/fm-backend-unproven\.test\.sh exit=0 ' "$tmp/named.out" \
     || fail "a named script did not run without an automatic bound: $(cat "$tmp/named.out")"
 
   rm -rf "$tmp"
@@ -1347,7 +1347,7 @@ test_changed_shared_fixture_selects_its_readers() {
   assert_contains "$listed" "tests/fm-secondmate-safety.test.sh" \
     "shared test fixture selects its secondmate reader"
   case "$listed" in
-    *fm-backend-orca.test.sh*)
+    *fm-backend-unproven.test.sh*)
       fail "shared test fixture selection widened past its readers: $listed" ;;
   esac
   git -C "$repo" add tests/shared-probe-fixture.sh
@@ -1367,7 +1367,7 @@ test_changed_shared_fixture_selects_its_readers() {
   # directory-scan arm rather than the top-level fixture arm's basename scan.
   printf '\n' >>"$repo/tests/fixtures/demo/demo-fixture.sh"
   listed=$(cd "$repo" && bin/fm-test-run.sh --list --changed --base HEAD)
-  assert_contains "$listed" "tests/fm-backend-orca.test.sh" \
+  assert_contains "$listed" "tests/fm-backend-unproven.test.sh" \
     "a nested fixture selects the suite that reads its directory"
 
   rm -rf "$tmp"

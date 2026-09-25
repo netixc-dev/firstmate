@@ -603,12 +603,7 @@ signal_turnend_panes_churned() {  # <file> ...
     rec_task=${rec_task%.meta}
     kind=$(fm_meta_get "$meta" kind)
     backend=$(fm_backend_of_meta "$meta")
-    if [ "$backend" = orca ]; then
-      terminal=$(fm_meta_get "$meta" terminal)
-      w=${terminal:-$(fm_meta_get "$meta" window)}
-    else
-      w=$(fm_meta_get "$meta" window)
-    fi
+    w=$(fm_meta_get "$meta" window)
     key=
     [ -n "$w" ] && key=$(window_key "$w")
     label="fm-$rec_task"
