@@ -121,7 +121,7 @@ check_harness_idle_empty() {  # <name> <launch-cmd...>
 }
 
 # The same proven-idle pane read the way every cursorless backend reads it
-# (herdr, zellij, cmux): no #{cursor_y} to anchor the shape, so the
+# (herdr and zellij): no #{cursor_y} to anchor the shape, so the
 # bottom-most shape on the screen wins. A vendor footer drawn BELOW the
 # composer - a statusLine, a permission-mode hint - lives exactly where that
 # rule looks, and a footer row opening with an agent prompt glyph used to be

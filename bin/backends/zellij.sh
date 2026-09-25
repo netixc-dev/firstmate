@@ -25,10 +25,8 @@
 # session's tab bar with no per-home split, and zellij enforces no tab-name
 # uniqueness at all, two firstmate homes whose task ids happen to collide
 # could send/peek/close each other's tabs. This is the exact gap a
-# captain-directed no-mistakes review gate caught for the cmux backend
-# (docs/cmux-backend.md) and this same tag mechanism (bin/backends/cmux.sh's
-# fm_backend_cmux_scoped_title, now shared via bin/fm-backend-hometag-lib.sh)
-# is ported here for the identical reason. Every NEW tab is created with a
+# dedicated safety review identified in the shared home-tag contract
+# (bin/fm-backend-hometag-lib.sh). Every NEW tab is created with a
 # title tagged with this installation's home label (fm_backend_zellij_scoped_title,
 # "fm-<hometag>-<id>"); every list/find/recover/kill path is scoped to this
 # home's own tag. A tab created before this change carries the old untagged
@@ -153,8 +151,7 @@ fm_backend_zellij_home_label() {
 
 # fm_backend_zellij_scoped_title: the actual tab title a NEW task's tab is
 # created with - the caller-facing "fm-<id>" label, home-tagged as
-# "fm-<hometag>-<id>" (mirrors bin/backends/cmux.sh's identical
-# fm_backend_cmux_scoped_title). Every list/find/recover/kill path below
+# "fm-<hometag>-<id>". Every list/find/recover/kill path below
 # scopes its own-home matches through this.
 fm_backend_zellij_scoped_title() {  # <fm-task-label>
   local label=$1 rest home

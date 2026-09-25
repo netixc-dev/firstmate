@@ -104,7 +104,7 @@ zellij_multi_tab_response() {  # <dir> <n> <tab1> <name1> [<tab2> <name2> ...]
 
 # zellij_expected_home_label / zellij_expected_scoped_title: bash-only
 # reimplementations of fm_backend_zellij_home_label/scoped_title (mirroring
-# tests/fm-backend-cmux.test.sh's identical cmux_expected_* helpers), used to
+# the removed backend's former identical home-label helpers), used to
 # build canned fixtures for the home-scoped tab titles this adapter now
 # creates and matches.
 zellij_expected_root_hash() {  # <root>

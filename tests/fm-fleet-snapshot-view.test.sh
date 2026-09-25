@@ -122,10 +122,9 @@ EOF
     "home=$home/secondmate-home" \
     "projects=alpha, beta, gamma, "
   printf 'working: watching delegated scope\n' > "$home/state/secondmate-task.status"
-  fm_write_meta "$home/state/cmux-task.meta" \
-    "backend=cmux" \
-    "window=workspace:surface" \
-    "worktree=$home/projects/missing-cmux" \
+  fm_write_meta "$home/state/tmux-task.meta" \
+    "window=firstmate:fm-tmux-task" \
+    "worktree=$home/projects/missing-tmux" \
     "project=alpha" \
     "harness=codex" \
     "kind=ship" \
@@ -159,7 +158,7 @@ test_fixture_snapshot_json() {
   out=$(PATH="$fakebin:$PATH" FM_HOME="$home" "$SNAPSHOT" --json)
   printf '%s' "$out" | jq -e . >/dev/null || fail "snapshot must be valid JSON"
   ids=$(printf '%s' "$out" | jq -r '.tasks | map(.id) | join(",")')
-  [ "$ids" = "cmux-task,scout-task,secondmate-task,ship-task" ] \
+  [ "$ids" = "scout-task,secondmate-task,ship-task,tmux-task" ] \
     || fail "task ordering must be stable by id, got $ids"
   printf '%s' "$out" | jq -e '
     .tasks[] | select(.id == "ship-task")
@@ -187,11 +186,11 @@ test_fixture_snapshot_json() {
     | has("age_seconds") and .age_seconds == null
   ' >/dev/null || fail "legacy event must have an explicit unknown age"
   printf '%s' "$out" | jq -e '
-    .tasks[] | select(.id == "cmux-task")
-    | .backend == "cmux"
+    .tasks[] | select(.id == "tmux-task")
+    | .backend == "tmux"
       and .paths.worktree.present == false
       and .current_state.state == "unknown"
-  ' >/dev/null || fail "cmux missing-file row missing"
+  ' >/dev/null || fail "tmux missing-file row missing"
   printf '%s' "$out" | jq -e '
     [.backlog.records[] | select(.state == "queued")] | length == 2
   ' >/dev/null || fail "queued canonical and unstructured backlog records missing"

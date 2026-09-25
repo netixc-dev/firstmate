@@ -828,24 +828,6 @@ test_kimi_blank_viewport_frame_costs_only_its_poll() {
   pass "fm-spawn: a blank Kimi viewport frame costs its poll and nothing else"
 }
 
-test_kimi_refuses_a_backend_without_a_viewport_capture() {
-  local id rec out rc
-  id=kimi-no-viewport-y8
-  rec=$(make_spawn_case no-viewport "$id")
-  read_spawn_record "$rec"
-  fm_fake_exit0 "$FAKEBIN_DIR" cmux
-  rc=0
-  out=$(FM_BACKEND=cmux run_spawn \
-    "$CASE_DIR" "$HOME_DIR" "$PROJ_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$id") || rc=$?
-  [ "$rc" -ne 0 ] || fail "a Kimi spawn on a backend without a viewport capture should refuse"
-  assert_contains "$out" "backend 'cmux' has no verified viewport-bounded capture" \
-    "Kimi refusal did not name the backend and the missing viewport capability"
-  [ ! -s "$CASE_DIR/trust-enter.log" ] \
-    || fail "Kimi pressed Enter on a backend it cannot read the viewport of"
-  [ ! -s "$CASE_DIR/launch.log" ] \
-    || fail "Kimi was launched on a backend without a viewport capture"
-  pass "fm-spawn: Kimi refuses a backend that cannot read the viewport, before launching"
-}
 
 test_kimi_answers_a_trust_dialog_with_a_wrapped_hint() {
   local id rec out rc
@@ -1133,7 +1115,6 @@ test_kimi_swallowed_trust_enter_is_retried_until_the_dialog_clears
 test_kimi_banner_before_the_dialog_paints_does_not_pass_readiness
 test_kimi_answered_dialog_left_in_history_does_not_restart_the_answer
 test_kimi_blank_viewport_frame_costs_only_its_poll
-test_kimi_refuses_a_backend_without_a_viewport_capture
 test_kimi_answers_a_trust_dialog_with_a_wrapped_hint
 test_kimi_blank_frame_between_banners_restarts_the_ready_count
 test_kimi_failed_viewport_read_fails_readiness_at_once

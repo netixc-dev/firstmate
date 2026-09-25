@@ -3,7 +3,7 @@
 # every shape a verified harness draws, every glyph, every container proof, and
 # the empty|pending|pending-unproven|unknown verdict, shared by every
 # session-provider adapter (tmux via bin/fm-tmux-lib.sh, and
-# bin/backends/{herdr,cmux,zellij}.sh) and by fm-spawn.sh's kimi
+# bin/backends/{herdr,zellij}.sh) and by fm-spawn.sh's kimi
 # launch-readiness check.
 #
 # WHY THIS EXISTS (tasks fm-composer-shellglyph-safety and
@@ -23,10 +23,11 @@
 # judged; they never change what the shapes ARE:
 #   styled=1    the capture preserves ANSI styling, so ghost/placeholder text
 #               is detectable and can be stripped (tmux -e, herdr --format
-#               ansi, zellij dump-screen --ansi). With styled=0 (cmux)
-#               ghost text is unreadable, so a bare glyph row or left-bar row
-#               carrying trailing non-idle text degrades to `unknown` rather
-#               than `pending`: the text may be the harness's own idle
+#               ansi, zellij dump-screen --ansi). All retained adapters use it.
+#   styled=0    when styling is unavailable, ghost text is unreadable, so a
+#               bare glyph row or left-bar row carrying trailing non-idle text
+#               degrades to `unknown` rather than `pending`: the text may be
+#               the harness's own idle
 #               suggestion, and a false `pending` blocks every safe caller.
 #   cursor=1    a cursor row is supplied (tmux #{cursor_y} only). The cursor
 #               anchors shape selection: the shape containing the cursor is the
@@ -339,8 +340,8 @@ fm_composer_strip_ghost() {
 # These live here, in the ONE shared composer/delivery owner, rather than in any
 # single backend adapter, because every backend needs them for the SAME job:
 # proving a submitted Enter actually landed. Keeping them in bin/fm-tmux-lib.sh
-# made cursor's signature reachable only from tmux, even though herdr, zellij,
-# cmux runs the same harnesses and faces the same acknowledgement
+# made cursor's signature reachable only from tmux, even though herdr and
+# zellij run the same harnesses and face the same acknowledgement
 # problem.
 #
 # This is a DELIVERY guard, deliberately NOT a worker-state source. The semantic
@@ -1701,7 +1702,7 @@ EOF
 }
 
 # fm_composer_submit_retry_core: the ONE verify-and-retry-Enter submit loop
-# for the cursor-less backends (cmux, zellij), parameterised by the
+# for the cursor-less zellij backend, parameterised by the
 # adapter's send-key and composer-state functions. The caller has already
 # typed the text ONCE (send_literal) and settled; this loop submits with
 # Enter, re-reading the composer verdict, and retries Enter ONLY - never

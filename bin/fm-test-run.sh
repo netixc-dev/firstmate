@@ -343,7 +343,6 @@ family_for_basename() {
     fm-afk-pi-herdr-return-e2e.test.sh|\
     fm-bearings-board-lavish-live-e2e.test.sh|\
     fm-claude-stop-autoarm-live-e2e.test.sh|\
-    fm-cmux-claude-composer-live-e2e.test.sh|\
     fm-composer-matrix-live-e2e.test.sh|\
     fm-composer-codex-idle-live-e2e.test.sh|\
     fm-codex-continuity-live-e2e.test.sh|fm-codex-hook-layer-live-e2e.test.sh|\
@@ -394,9 +393,6 @@ family_for_basename() {
     fm-fleet-snapshot-view.test.sh|fm-home-summary-refresh.test.sh)
       printf '%s\n' snapshot-bearings
       ;;
-    fm-backend-cmux.test.sh|fm-backend-cmux-smoke.test.sh)
-      printf '%s\n' cmux
-      ;;
     fm-backend-zellij.test.sh|fm-backend-zellij-smoke.test.sh)
       printf '%s\n' zellij
       ;;
@@ -428,7 +424,7 @@ expected_gate_skip_for_family() {
   case "$1" in
     real-herdr-gated) printf '%s\n' herdr ;;
     live-harness-optin) printf '%s\n' live-capability ;;
-    cmux|zellij) printf '%s\n' optional-binary ;;
+    zellij) printf '%s\n' optional-binary ;;
     snapshot-bearings) printf '%s\n' optional-binary ;;
     *) printf '%s\n' none ;;
   esac
@@ -446,7 +442,6 @@ backend-dispatch
 pr-forge
 afk
 snapshot-bearings
-cmux
 zellij
 standalone
 unclassified
@@ -675,8 +670,6 @@ tests/fm-afk-return.test.sh 20385
 tests/fm-agy-harness.test.sh 47933
 tests/fm-agy-signals-live-e2e.test.sh 49
 tests/fm-ask-user-authority.test.sh 131
-tests/fm-backend-cmux-smoke.test.sh 33
-tests/fm-backend-cmux.test.sh 3498
 tests/fm-backend-tmux-smoke.test.sh 363
 tests/fm-backend-zellij-smoke.test.sh 21
 tests/fm-backend-zellij.test.sh 9064
@@ -704,7 +697,6 @@ tests/fm-classify-decision-key.test.sh 3336
 tests/fm-claude-stop-autoarm-live-e2e.test.sh 45
 tests/fm-claude-stop-autoarm.test.sh 60797
 tests/fm-claude-trust.test.sh 10410
-tests/fm-cmux-claude-composer-live-e2e.test.sh 47
 tests/fm-codex-continuity-live-e2e.test.sh 71
 tests/fm-codex-hook-layer-live-e2e.test.sh 47
 tests/fm-composer-codex-idle-live-e2e.test.sh 229
@@ -1389,10 +1381,6 @@ families_for_changed_path() {
       ;;
     bin/backends/zellij*|tests/zellij-test-safety.sh)
       printf '%s\n' zellij
-      printf '%s\n' backend-dispatch
-      ;;
-    bin/backends/cmux*|tests/cmux-test-safety.sh)
-      printf '%s\n' cmux
       printf '%s\n' backend-dispatch
       ;;
     bin/backends/tmux.sh)

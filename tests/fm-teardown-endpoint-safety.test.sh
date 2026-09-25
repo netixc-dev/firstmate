@@ -279,16 +279,20 @@ test_supported_backend_endpoint_records_validate() {
   fm_write_meta "$dir/home/state/$id.meta" \
     "window=workspace-1:surface-2" "endpoint_task_id=$id" "worktree=$dir/worktree" "project=$dir/project" \
     "backend=cmux" "cmux_workspace_id=workspace-1" "cmux_surface_id=surface-2"
-  fm_backend_validate_task_endpoint "$dir/home/state/$id.meta" "$id" || fail "valid cmux endpoint refused"
+  if fm_backend_validate_task_endpoint "$dir/home/state/$id.meta" "$id" 2>"$dir/cmux-refusal"; then
+    fail "stale cmux endpoint unexpectedly validated"
+  fi
+  assert_contains "$(cat "$dir/cmux-refusal")" "unknown backend identity" \
+    "stale cmux endpoint refusal did not preserve the task"
 
-  for backend in tmux herdr zellij cmux; do
+  for backend in tmux herdr zellij; do
     set +e
     fm_backend_kill "$backend" "" >/dev/null 2>&1
     target=$?
     set -e
     [ "$target" -ne 0 ] || fail "$backend generic kill accepted an empty target"
   done
-  pass "cleanup identity: valid tmux, Herdr, Zellij, and cmux records validate while every empty backend target refuses"
+  pass "cleanup identity: valid tmux, Herdr, and Zellij records validate; stale cmux records and empty targets refuse"
 }
 
 test_tmux_empty_target_refuses_without_invocation() {

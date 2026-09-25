@@ -1,16 +1,13 @@
 #!/usr/bin/env bash
 # bin/fm-backend-hometag-lib.sh - shared per-installation home-tag derivation
 # for session-provider backends whose container has ONE namespace shared by
-# every firstmate home on the machine, with no native per-home split (cmux's
-# one app-global workspace list, zellij's one shared "firstmate" session's
-# tab bar). Without a per-home discriminator embedded in the actual
-# title/name, two firstmate homes (two secondmates, a primary plus a
-# secondmate, or two independent primary installations) whose task ids
-# happen to collide can send/peek/close each other's tabs - the gap a
-# captain-directed no-mistakes review gate caught for cmux
-# (docs/cmux-backend.md) and this same tag mechanism was later ported to
-# zellij to close for the same reason (docs/zellij-backend.md "Home-scoped
-# tab titles").
+# every firstmate home on the machine, with no native per-home split (zellij's
+# one shared "firstmate" session's tab bar). Without a per-home discriminator
+# embedded in the actual title/name, two firstmate homes (two secondmates, a
+# primary plus a secondmate, or two independent primary installations) whose
+# task ids happen to collide can send/peek/close each other's tabs. This helper
+# provides the home tag used by zellij (docs/zellij-backend.md "Home-scoped tab
+# titles").
 #
 # fm_backend_hometag() derives a short, stable tag: a readable prefix
 # ("firstmate" for the primary home, "2ndmate-<id>" for a secondmate home

@@ -29,7 +29,6 @@
     "docs/tmux-backend.md",
     "docs/herdr-backend.md",
     "docs/zellij-backend.md",
-    "docs/cmux-backend.md",
     "docs/remote-secondmates.md"
   ],
   "requiredOwnerPointers": [
@@ -87,10 +86,6 @@
     },
     {
       "source": "docs/zellij-backend.md",
-      "target": "docs/verification/runtime-backends.md"
-    },
-    {
-      "source": "docs/cmux-backend.md",
       "target": "docs/verification/runtime-backends.md"
     },
     {
@@ -294,10 +289,6 @@
     {
       "path": "docs/cd-guard.md",
       "audience": "maintainer-architecture"
-    },
-    {
-      "path": "docs/cmux-backend.md",
-      "audience": "operator-current"
     },
     {
       "path": "docs/configuration.md",
