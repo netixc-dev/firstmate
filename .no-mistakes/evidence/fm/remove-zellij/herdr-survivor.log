@@ -1,0 +1,5 @@
+Herdr named lab session: fm-lab-zellij-removal-99039-21889; task target: fm-lab-zellij-removal-99039-21889:w1:p2
+error: unknown backend 'zellij' (known: tmux herdr)
+Herdr endpoint survives attempted Zellij kill
+{"type":"pane_info","pane_id":null,"error":null}
+Herdr endpoint absent after exact backend kill

@@ -1,0 +1,5 @@
+send: error: unknown backend 'zellij' in /Users/control/.no-mistakes/worktrees/874f0de57f61/01M3BN3SS8M23N8XGWGNMQE995/.fm-legacy-validation-18121/home/state/legacy.meta; preserving task state
+teardown: REFUSED: task legacy has a missing, ambiguous, or unknown backend identity; preserving task state.
+kill extra argument: error: backend kill requires exactly <backend> <target>
+protected pane still exists: %0
+Original task metadata and the live tmux pane are intact.

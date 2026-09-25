@@ -1,0 +1,3 @@
+ok - cleanup identity: valid tmux and Herdr records validate; stale Zellij/cmux records and empty targets refuse
+ok - generic backend kill rejects extra backend-specific arguments before dispatch
+ok - fm-teardown: legacy Orca records refuse before mutation and remain recoverable

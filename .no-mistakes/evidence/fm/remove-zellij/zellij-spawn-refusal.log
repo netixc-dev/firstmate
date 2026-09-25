@@ -1,0 +1,4 @@
+flag selection: error: unknown backend 'zellij' (known: tmux herdr)
+env selection: error: unknown backend 'zellij' (known: tmux herdr)
+config selection: error: unknown backend 'zellij' (known: tmux herdr)
+All three retired-backend selection paths refused before publishing a task or project file.

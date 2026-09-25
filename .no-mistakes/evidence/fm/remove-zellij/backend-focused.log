@@ -1,0 +1,24 @@
+ok - fm_backend_name: FM_BACKEND env > config/backend > default tmux
+ok - fm_backend_detect: removed backend markers are inert and supported tmux/Herdr precedence remains
+ok - fm_backend_name: an explicit FM_BACKEND or config/backend setting always wins over runtime auto-detection
+ok - fm_backend_validate: retained adapters accepted and removed backends refused loudly
+ok - zsh: fm_backend_source recognizes known backends and rejects unknown ones
+ok - bash: fm_backend_source recognizes known backends and rejects unknown ones
+ok - fm_backend_source: missing adapter fails before lifecycle continuation
+ok - fm_backend_source: unreadable adapter fails before lifecycle continuation
+ok - fm_backend_validate_spawn: all implemented lifecycle backends are spawn-supported
+ok - fm_meta_get / fm_backend_of_meta: read last key=value and default backend to tmux
+ok - fm_backend_resolve_selector: session:window literal, exact task id first, legacy fm-<id> label fallback, ad hoc bare name via tmux list-windows
+ok - fm_backend_of_selector: retained task ids inherit metadata while old unknown records refuse exact and raw selectors
+ok - fm-send.sh: explicit tmux targets are verified; text types once and submits with Enter
+ok - fm-peek.sh: capture-pane invocation and output are byte-identical old vs new
+ok - fm-spawn.sh: a project reached through a symlinked prefix (e.g. macOS /tmp -> /private/tmp) does not trip the isolation guard's false refusal
+ok - fm-teardown.sh: treehouse return remains compatible while tmux cleanup uses exact selectors
+ok - fm-spawn.sh --backend bogus is refused loudly
+ok - fm-spawn.sh --backend codex-app is refused
+ok - fm-spawn.sh refuses explicit, environment, and config cmux selection before task mutation
+ok - fm-spawn.sh refuses explicit, environment, and config zellij selection before task mutation
+ok - fm-spawn.sh honors FM_BACKEND and refuses an unimplemented value loudly
+ok - fm-spawn.sh: an explicit --backend tmux resolves silently and writes no backend= (missing means tmux)
+ok - fm-spawn.sh: explicit --backend tmux wins over an ambient HERDR_ENV=1 auto-detect marker
+ok - fm-spawn.sh: auto-detect resolves nested tmux-in-herdr to tmux and stays silent end to end

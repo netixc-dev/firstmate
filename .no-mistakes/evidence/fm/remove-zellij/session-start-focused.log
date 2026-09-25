@@ -1,0 +1,3 @@
+ok - tmux endpoint liveness is reported per task: alive for a live window, dead for a gone one
+ok - herdr endpoint liveness is reported per task: alive for a live pane, dead for a gone one
+ok - session start refuses unsupported endpoints without claiming they are dead
