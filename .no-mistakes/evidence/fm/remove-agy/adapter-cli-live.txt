@@ -1,0 +1,56 @@
+Isolated product CLI verification (FM_HOME=/Users/control/.no-mistakes/worktrees/874f0de57f61/01M3BTM52NQ9CHD5X4ZJMVZYJY/.test-tmp/live-removed/home; private tmux shim=/Users/control/.no-mistakes/worktrees/874f0de57f61/01M3BTM52NQ9CHD5X4ZJMVZYJY/.test-tmp/live-removed/bin/tmux)
+
+Live survivor result: raw-survivor
+Task metadata:
+window=firstmate:fm-live-survivor
+harness=bash
+kind=ship
+Private socket windows:
+zsh zsh
+fm-live-survivor zsh
+
+[explicit direct raw (leading whitespace)]
+error: unsupported removed harness '/opt/bin/agy'; refusing before task mutation
+exit=1
+verified: no task metadata or status
+
+[ship positional direct raw (leading whitespace)]
+error: unsupported removed harness 'agy'; refusing before task mutation
+exit=1
+verified: no task metadata or status
+
+[secondmate positional direct raw (leading whitespace)]
+error: unsupported removed harness 'agy'; refusing before task mutation
+exit=1
+verified: no task metadata or status
+
+[static crew pin with explicit survivor override]
+error: unsupported removed harness 'agy'; refusing before task mutation
+exit=1
+verified: no task metadata or status
+
+[static secondmate pin with explicit survivor override]
+error: unsupported removed harness 'agy'; refusing before task mutation
+exit=1
+verified: no task metadata or status
+
+[legacy relaunch with replacement]
+error: unsupported removed harness 'agy'; refusing before task mutation
+exit=1
+
+[legacy send --key Enter]
+●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+●  WATCHER DOWN - SUPERVISION IS OFF
+●  2 task(s) in flight, but no watcher has a fresh beacon (last beat: never, grace 300s).
+●  Trust the emitted supervision protocol for this harness; do not use shell & for watcher repair.
+●  This is a supervision warning only; the requested message WILL still be sent.
+●  repair a missing or failed watcher cycle with the Pi tool fm_watch_arm_pi, or restart Pi with -e /Users/control/.no-mistakes/worktrees/874f0de57f61/01M3BTM52NQ9CHD5X4ZJMVZYJY/.pi/extensions/fm-primary-turnend-guard.ts -e /Users/control/.no-mistakes/worktrees/874f0de57f61/01M3BTM52NQ9CHD5X4ZJMVZYJY/.pi/extensions/fm-primary-pi-watch.ts if the extensions are not loaded.
+●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+error: task record /Users/control/.no-mistakes/worktrees/874f0de57f61/01M3BTM52NQ9CHD5X4ZJMVZYJY/.test-tmp/live-removed/home/state/live-legacy.meta names unsupported removed harness 'agy'; refusing to send
+exit=1
+
+[legacy record persisted unchanged]
+window=firstmate:fm-live-legacy
+backend=tmux
+kind=ship
+harness=agy

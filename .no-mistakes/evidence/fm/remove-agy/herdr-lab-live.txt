@@ -1,0 +1,10 @@
+Named lab fm-lab-remove-agy-30364-8046: status
+{
+  "running": true,
+  "compatible": true,
+  "client_protocol": 22,
+  "server_protocol": 22
+}
+Named lab workspaces before task:
+0
+Named lab present after teardown: 0
