@@ -336,6 +336,9 @@ fm_send_accept_meta() { # <meta-file>
   harness=$(fm_meta_get "$1" harness)
   case "$harness" in
   agy|devin)
+    if [ "$harness" = devin ] && [ "$(fm_meta_get "$1" raw_launch)" = 1 ]; then
+      return 0
+    fi
     echo "error: task record $1 names unsupported removed harness '$harness'; refusing to send" >&2
     return 1
     ;;

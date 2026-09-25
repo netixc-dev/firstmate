@@ -139,7 +139,7 @@ test_removed_harness_pin_refuses_before_task_mutation() {
 }
 
 test_devin_adapter_selections_refuse_and_raw_command_survives() {
-  local rec id out rc meta_before
+  local rec id out rc meta_before sm
   id=devin-selection-z1
   rec=$(make_spawn_case devin-selection codex "$id")
   read_case_record "$rec"
@@ -170,21 +170,41 @@ test_devin_adapter_selections_refuse_and_raw_command_survives() {
   assert_absent "$HOME_DIR/state/$id.meta" "static Devin secondmate pin wrote task metadata"
   printf '%s\n' codex > "$HOME_DIR/config/secondmate-harness"
 
-  fm_write_meta "$HOME_DIR/state/$id.meta" "window=sess:fm-$id" "worktree=$WT_DIR" "harness=devin" "kind=ship"
+  fm_write_meta "$HOME_DIR/state/$id.meta" "window=sess:fm-$id" "worktree=$WT_DIR" "project=$PROJ_DIR" "harness=devin" "kind=ship"
   meta_before=$(cat "$HOME_DIR/state/$id.meta")
+  out=$(run_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" --relaunch); rc=$?
+  expect_code 1 "$rc" "an implicit legacy Devin relaunch must refuse"
+  assert_contains "$out" "unsupported removed harness 'devin'" "implicit legacy Devin relaunch did not name the refusal"
+  [ "$(cat "$HOME_DIR/state/$id.meta")" = "$meta_before" ] || fail "implicit legacy Devin relaunch rewrote its record"
+  [ ! -s "$LAUNCH_LOG" ] || fail "implicit legacy Devin relaunch launched a worker"
   out=$(run_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" --relaunch --harness pi); rc=$?
-  expect_code 1 "$rc" "a legacy Devin relaunch must refuse"
-  assert_contains "$out" "unsupported removed harness 'devin'" "legacy Devin relaunch did not name the refusal"
-  [ "$(cat "$HOME_DIR/state/$id.meta")" = "$meta_before" ] || fail "legacy Devin relaunch rewrote its record"
-  [ ! -s "$LAUNCH_LOG" ] || fail "legacy Devin relaunch launched a worker"
+  assert_not_contains "$out" "unsupported removed harness" "explicit replacement was refused as Devin"
+  if [ "$rc" -ne 0 ]; then
+    assert_contains "$out" "endpoint" "explicit replacement did not reach endpoint validation"
+  fi
 
   id=devin-raw-z2
   fm_test_spawn_brief "$HOME_DIR" "$id"
   out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "devin --prompt-interactive"); rc=$?
   expect_code 0 "$rc" "a caller-owned raw Devin command must remain available"
   assert_contains "$out" "spawned $id harness=devin" "raw Devin command did not publish its task"
+  assert_grep 'raw_launch=1' "$HOME_DIR/state/$id.meta" "raw command provenance was not persisted"
   assert_contains "$(cat "$LAUNCH_LOG")" "devin --prompt-interactive" "raw Devin command was changed"
-  pass "first-class Devin selections refuse before mutation while raw Devin commands remain caller-owned"
+  out=$(run_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" --relaunch); rc=$?
+  expect_code 1 "$rc" "implicit raw relaunch cannot reconstruct the original command"
+  assert_contains "$out" "needs an explicit --harness command" "raw relaunch was misclassified as an adapter"
+  out=$(run_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" --relaunch --harness codex); rc=$?
+  assert_not_contains "$out" "unsupported removed harness" "raw task could not select a replacement"
+  if [ "$rc" -ne 0 ]; then
+    assert_contains "$out" "endpoint" "raw replacement did not reach endpoint validation"
+  fi
+  sm="$CASE_DIR/devin"
+  make_seeded_secondmate_home "$sm" secondmate-devin-home-z3
+  fm_test_spawn_brief "$HOME_DIR" secondmate-devin-home-z3
+  out=$(cd "$CASE_DIR" && run_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" secondmate-devin-home-z3 devin --secondmate --harness pi); rc=$?
+  expect_code 0 "$rc" "a relative existing secondmate home named devin must remain a home"
+  assert_grep "home=$sm" "$HOME_DIR/state/secondmate-devin-home-z3.meta" "relative Devin-named home was not selected"
+  pass "Devin adapter selections refuse without blocking raw commands or home paths"
 }
 
 test_removed_adapter_inputs_preserve_task() {

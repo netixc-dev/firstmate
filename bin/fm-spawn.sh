@@ -777,10 +777,29 @@ spawn_refuse_removed_harness() { # <harness-or-command>
   esac
 }
 
+spawn_refuse_removed_record() { # <meta-file>
+  local meta=$1 recorded
+  recorded=$(fm_meta_get "$meta" harness)
+  if [ "$recorded" = devin ]; then
+    if [ -n "$HARNESS_ARG" ]; then
+      return 0
+    fi
+    if [ "$(fm_meta_get "$meta" raw_launch)" = 1 ]; then
+      echo "error: raw task $meta needs an explicit --harness command; its original command was not recorded" >&2
+      return 1
+    fi
+  fi
+  spawn_refuse_removed_harness "$recorded"
+}
+
 spawn_refuse_removed_harness "$HARNESS_ARG" || exit 1
 if [ "$RELAUNCH" -eq 0 ]; then
   if [ "$KIND" = secondmate ]; then
-    if [ "${POS[1]:-}" = agy ] || [ "${POS[1]:-}" = devin ]; then
+    if [ "${POS[1]:-}" = agy ]; then
+      spawn_refuse_removed_harness "${POS[1]}" || exit 1
+    fi
+    if [ "${POS[1]:-}" = devin ] && [ ! -d "${POS[1]}" ] &&
+      [ "${#POS[@]}" -eq 2 ] && [ -z "$HARNESS_ARG" ]; then
       spawn_refuse_removed_harness "${POS[1]}" || exit 1
     fi
     if [ -d "${POS[1]:-}" ] || [ "${#POS[@]}" -gt 2 ]; then
@@ -978,7 +997,7 @@ spawn_remote_secondmate() {
       echo "error: existing metadata for $id does not identify this remote secondmate route" >&2
       return 1
     fi
-    spawn_refuse_removed_harness "$(fm_meta_get "$meta" harness)" || return 1
+    spawn_refuse_removed_record "$meta" || return 1
   fi
   # Gate the host before anything is published or transferred, so a host that
   # cannot hold a durable Herdr endpoint refuses here rather than half-way
@@ -1428,7 +1447,7 @@ if { [ "$RELAUNCH" -eq 1 ] || [ "$KIND" = secondmate ]; } &&
     echo "error: spawn refused: $FM_BACKLOG_TRANSITION_ERROR" >&2
     exit 1
   }
-  spawn_refuse_removed_harness "$(fm_meta_get "$STATE/$ID.meta" harness)" || exit 1
+  spawn_refuse_removed_record "$STATE/$ID.meta" || exit 1
 fi
 # Role partition: spawning NEW work is MAIN-owned while attended. A relaunch of
 # an existing task is legitimate branch recovery (fm-control drives it through
@@ -1672,7 +1691,7 @@ if [ "$RELAUNCH" -eq 1 ]; then
       ;;
   esac
   RELAUNCH_PRIOR_HARNESS=$(fm_meta_get "$RELAUNCH_META" harness)
-  spawn_refuse_removed_harness "$RELAUNCH_PRIOR_HARNESS" || exit 1
+  spawn_refuse_removed_record "$RELAUNCH_META" || exit 1
   KIND=$(fm_meta_get "$RELAUNCH_META" kind)
   [ -n "$KIND" ] || KIND=ship
   # A secondmate whose endpoint is gone already has ONE owner for that
@@ -4352,7 +4371,7 @@ SPAWN_META_PATH=$SPAWN_META_TMP
 preserve_relaunch_meta() {
   awk -F= '
     BEGIN {
-      split("window endpoint_task_id worktree project harness kind mode yolo branch tasktmp model effort account account_provider busy_gen spawn_gen traceparent backend herdr_session herdr_workspace_id herdr_tab_id herdr_pane_id home projects control_relaunch_tx", keys, " ")
+      split("window endpoint_task_id worktree project harness raw_launch kind mode yolo branch tasktmp model effort account account_provider busy_gen spawn_gen traceparent backend herdr_session herdr_workspace_id herdr_tab_id herdr_pane_id home projects control_relaunch_tx", keys, " ")
       for (i in keys) owned[keys[i]] = 1
     }
     !($1 in owned)
@@ -4364,6 +4383,7 @@ preserve_relaunch_meta() {
   echo "worktree=$WT"
   echo "project=$PROJ_ABS"
   echo "harness=$HARNESS"
+  [ "$RAW_LAUNCH" = 0 ] || echo "raw_launch=1"
   echo "kind=$KIND"
   [ -z "$MODE" ] || echo "mode=$MODE"
   [ -z "$YOLO" ] || echo "yolo=$YOLO"
