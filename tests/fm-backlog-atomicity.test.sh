@@ -1943,10 +1943,8 @@ test_cleanup_recovery_never_transitions_or_deletes_the_backlog() {
     || fail "session start treated cleanup recovery as a launched worker: $out"
   assert_present "$meta" "session start removed the cleanup recovery record"
 
-  set +e
-  out=$(run_teardown "$case_dir" "$id")
-  status=$?
-  set -e
+  status=0
+  out=$(run_teardown "$case_dir" "$id") || status=$?
   [ "$status" -ne 0 ] || fail "cleanup recovery teardown completed work that never launched"
   [ "$(row_state "$case_dir" "$id")" = queued ] \
     || fail "cleanup recovery teardown changed the backlog state"

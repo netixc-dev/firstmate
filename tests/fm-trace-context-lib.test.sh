@@ -231,6 +231,7 @@ pass "off and on resolution succeed without sleep, timeout, or a configured comm
 
 POISON_TP='00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-01'
 printf '%s\n' "$POISON_TP" > "$WORK/task-prose"
+# shellcheck disable=SC2329 # fm_trace_context_hex calls this stub indirectly.
 od() {
   case "$*" in
     *'-N 16 '*) printf ' 12 34 56 78 9a bc de f0 12 34 56 78 9a bc de f0\n' ;;
