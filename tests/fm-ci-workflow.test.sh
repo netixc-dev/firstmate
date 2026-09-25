@@ -224,10 +224,17 @@ puts steps[index].fetch("timeout-minutes", "none")
 test_linux_runner_pilot_preserves_hosted_lanes() {
   ruby -ryaml - "$CI_WORKFLOW" "$ROOT/.github/workflows/no-mistakes-required.yml" <<'RUBY' || fail "Blacksmith pilot runner contract"
 ci = YAML.load_file(ARGV[0]).fetch("jobs")
-linux = %w[lint test-coverage tests-portable-parallel-1 tests-portable-parallel-2
+linux = %w[test-coverage tests-portable-parallel-1 tests-portable-parallel-2
            tests-portable-serial tests-herdr tests-timing-aggregate invariants]
 linux.each do |id|
   raise "#{id} is not on the x64 Blacksmith pilot" unless ci.fetch(id).fetch("runs-on") == "blacksmith-2vcpu-ubuntu-2404"
+end
+raise "lint lacks a full-size Blacksmith runner" unless ci.fetch("lint").fetch("runs-on") == "blacksmith-4vcpu-ubuntu-2404"
+%w[tests-portable-parallel-1 tests-portable-serial].each do |id|
+  steps = ci.fetch(id).fetch("steps")
+  node = steps.index { |step| step["uses"] == "actions/setup-node@v4" && step.fetch("with", {})["node-version"].to_s == "24" }
+  pi = steps.index { |step| step["name"] == "Install the Pi package for the Pi extension tests" }
+  raise "#{id} must set up Node 24 before installing Pi" unless node && pi && node < pi
 end
 raise "stock macOS compatibility left GitHub hosting" unless ci.fetch("macos-stock-bash").fetch("runs-on") == "macos-latest"
 compliance = YAML.load_file(ARGV[1]).fetch("jobs")
