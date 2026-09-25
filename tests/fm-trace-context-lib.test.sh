@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
 # tests/fm-trace-context-lib.test.sh - unit tests for the native, default-off
-# W3C trace-context library (bin/fm-trace-context-lib.sh) plus structural checks
-# that bin/fm-spawn.sh wires it in at the pre-launch injection seam and that the
-# capability is inherited into secondmate homes. Pure functions, no backend and
-# no live spawn required.
+# W3C trace-context library (bin/fm-trace-context-lib.sh), including inherited
+# secondmate configuration. Pure functions, no live spawn required.
 set -u
 
 # shellcheck source=tests/lib.sh
@@ -213,32 +211,53 @@ ef_res=$(FM_TRACE_CONTEXT=on fm_trace_context_resolve "$CFG_ON" "$NOMETA"); ef_r
 [ -z "$ef_res" ] && [ "$ef_res_rc" -eq 0 ] || fail "resolve must omit and STILL return 0 on entropy failure (rc=$ef_res_rc out='$ef_res')"
 pass "entropy failure omits telemetry safely: mint reports failure, resolve returns success with no carrier"
 
-# --- fail-independent timing: no hang source, always returns 0 ---------------
+# --- fail-independent resolution ---------------------------------------------
 
-assert_no_grep 'sleep' "$ROOT/bin/fm-trace-context-lib.sh" "trace-context lib must not sleep on the spawn path"
-assert_no_grep 'timeout' "$ROOT/bin/fm-trace-context-lib.sh" "trace-context lib must not depend on an external timeout"
-assert_no_grep 'command:' "$ROOT/bin/fm-trace-context-lib.sh" "trace-context lib must not run an arbitrary command provider"
+sleep() { printf 'sleep\n' >> "$WORK/unexpected-command"; return 1; }
+timeout() { printf 'timeout\n' >> "$WORK/unexpected-command"; return 1; }
+printf '#!/usr/bin/env bash\n: > "%s"\n' "\$FM_TRACE_PROVIDER_MARK" > "$WORK/provider"
+chmod +x "$WORK/provider"
 fm_trace_context_resolve "$CFG_OFF" "$NOMETA" >/dev/null || fail "resolve must return 0 when off"
-pass "the resolver has no sleep/timeout/command hang source and always returns success"
+out=$(FM_TRACE_CONTEXT=on FM_TRACE_CONTEXT_COMMAND="$WORK/provider" \
+  FM_TRACE_PROVIDER_MARK="$WORK/provider-ran" fm_trace_context_resolve "$CFG_OFF" "$NOMETA"); rc=$?
+if [ "$rc" -ne 0 ] || ! fm_trace_context_valid "$out"; then
+  fail "enabled resolution must return a valid carrier without an external command provider (rc=$rc out='$out')"
+fi
+[ ! -e "$WORK/unexpected-command" ] && [ ! -e "$WORK/provider-ran" ] \
+  || fail "resolving a carrier must not sleep, invoke a timeout, or execute a configured provider"
+pass "off and on resolution succeed without sleep, timeout, or a configured command provider"
 
-# --- harness/backend/kind independence (code only, comments stripped) ---------
+# --- context-independent roots without task prose ----------------------------
 
-LIB_CODE=$(sed 's/#.*$//' "$ROOT/bin/fm-trace-context-lib.sh")
-for tok in harness backend tmux herdr zellij orca cmux claude codex opencode grok kind ship scout secondmate ; do
-  case "$LIB_CODE" in
-    *"$tok"*) fail "trace-context lib code must be harness/backend/kind agnostic, but references '$tok'" ;;
+POISON_TP='00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-01'
+printf '%s\n' "$POISON_TP" > "$WORK/task-prose"
+# shellcheck disable=SC2329 # fm_trace_context_hex calls this stub indirectly.
+od() {
+  case "$*" in
+    *'-N 16 '*) printf ' 12 34 56 78 9a bc de f0 12 34 56 78 9a bc de f0\n' ;;
+    *'-N 8 '*) printf ' 12 34 56 78 9a bc de f0\n' ;;
+    *) return 1 ;;
   esac
+}
+EXPECTED_TP='00-123456789abcdef0123456789abcdef0-123456789abcdef0-01'
+for backend in tmux herdr zellij cmux; do
+  for harness in claude codex opencode grok pi; do
+    for kind in ship scout secondmate; do
+      meta="$WORK/$backend-$harness-$kind.meta"
+      {
+        printf 'harness=%s\nkind=%s\n' "$harness" "$kind"
+        [ "$backend" = tmux ] || printf 'backend=%s\n' "$backend"
+        printf 'brief=%s\nprompt=%s\nreport=%s\nstatus=%s\n' \
+          "$WORK/task-prose" "$POISON_TP" "$POISON_TP" "$POISON_TP"
+      } > "$meta"
+      out=$(FM_TRACE_CONTEXT=on fm_trace_context_resolve "$CFG_OFF" "$meta"); rc=$?
+      [ "$rc" -eq 0 ] && [ "$out" = "$EXPECTED_TP" ] \
+        || fail "$backend/$harness/$kind must mint the same fixed-shape root without reading task prose (rc=$rc out='$out')"
+    done
+  done
 done
-pass "the carrier is minted identically for every harness, backend, and spawn kind (no such branching in the lib code)"
-
-# --- no prompt / task-prose reads (code only, comments stripped) --------------
-
-for tok in brief prompt report status ; do
-  case "$LIB_CODE" in
-    *"$tok"*) fail "trace-context lib code must never read task prose, but references '$tok'" ;;
-  esac
-done
-pass "the lib code never reads a brief, prompt, report, or status - it cannot leak content"
+unset -f od
+pass "new tasks mint the same root shape across backends, harnesses, and kinds without incorporating task prose"
 
 # --- secondmate inheritance wires the nested chain ---------------------------
 

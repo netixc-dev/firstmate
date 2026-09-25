@@ -275,55 +275,20 @@ test_supported_backend_endpoint_records_validate() {
     "backend=zellij" "zellij_session=lab" "zellij_tab_id=3" "zellij_pane_id=7"
   fm_backend_validate_task_endpoint "$dir/home/state/$id.meta" "$id" || fail "valid Zellij endpoint refused"
 
-  id=orca-task
-  fm_write_meta "$dir/home/state/$id.meta" \
-    "window=fm-$id" "endpoint_task_id=$id" "terminal=term-7" \
-    "worktree=$dir/worktree" "project=$dir/project" "backend=orca" "orca_worktree_id=worktree-9::/orca/worktree-9"
-  fm_backend_validate_task_endpoint "$dir/home/state/$id.meta" "$id" || fail "valid Orca endpoint refused"
-  [ "$FM_BACKEND_VALIDATED_TARGET" = term-7 ] || fail "Orca validation did not select its terminal"
-
   id=cmux-task
   fm_write_meta "$dir/home/state/$id.meta" \
     "window=workspace-1:surface-2" "endpoint_task_id=$id" "worktree=$dir/worktree" "project=$dir/project" \
     "backend=cmux" "cmux_workspace_id=workspace-1" "cmux_surface_id=surface-2"
   fm_backend_validate_task_endpoint "$dir/home/state/$id.meta" "$id" || fail "valid cmux endpoint refused"
 
-  for backend in tmux herdr zellij orca cmux; do
+  for backend in tmux herdr zellij cmux; do
     set +e
     fm_backend_kill "$backend" "" >/dev/null 2>&1
     target=$?
     set -e
     [ "$target" -ne 0 ] || fail "$backend generic kill accepted an empty target"
   done
-  pass "cleanup identity: valid tmux, Herdr, Zellij, Orca, and cmux records validate while every empty backend target refuses"
-}
-
-test_orca_composite_worktree_id_validates() {
-  local dir id real
-  dir=$(make_case orca-composite-worktree-id)
-  # shellcheck source=/dev/null
-  . "$ROOT/bin/fm-backend.sh"
-
-  real="411226f7-dc91-4d37-975d-32d412bf97a2::/Users/fleet/orca/workspaces/proj/fm-task"
-  fm_backend_orca_worktree_id_valid "$real" \
-    || fail "the composite worktree id Orca really returns was rejected"
-  if fm_backend_orca_worktree_id_valid "$(printf 'wt-a::/orca/wt\na')"; then
-    fail "a worktree id carrying a newline was accepted"
-  fi
-  if fm_backend_orca_worktree_id_valid "wt-atom"; then
-    fail "a worktree id with no :: separator was accepted"
-  fi
-
-  id=orca-composite-task
-  fm_write_meta "$dir/home/state/$id.meta" \
-    "window=fm-$id" "endpoint_task_id=$id" "terminal=term-11" \
-    "worktree=$dir/worktree" "project=$dir/project" "backend=orca" \
-    "orca_worktree_id=411226f7-dc91-4d37-975d-32d412bf97a2::$dir/worktree"
-  fm_backend_validate_task_endpoint "$dir/home/state/$id.meta" "$id" \
-    || fail "an Orca record carrying its real composite worktree id was refused"
-  [ "$FM_BACKEND_VALIDATED_TARGET" = term-11 ] \
-    || fail "Orca validation did not select its terminal"
-  pass "cleanup identity: an Orca record's real composite worktree id validates while a separatorless or newline-carrying id refuses"
+  pass "cleanup identity: valid tmux, Herdr, Zellij, and cmux records validate while every empty backend target refuses"
 }
 
 test_tmux_empty_target_refuses_without_invocation() {
@@ -1273,55 +1238,26 @@ test_forced_secondmate_child_close_failure_still_refuses() {
   pass "fm-teardown: forced secondmate cleanup still refuses on a child endpoint close that failed"
 }
 
-test_orca_close_failure_refuses_even_under_force() {
-  local dir orca_free id=orca-strand rc
-  dir=$(make_case orca-close-failure)
-  orca_free=$(fm_test_base_path_sans "$PATH" orca)
-  ! PATH="$dir/fakebin:$orca_free" command -v orca >/dev/null 2>&1 \
-    || fail "the orca-free search path still resolved orca"
-  # The Orca arm reports a close its missing CLI never attempted, and the step
-  # right after this close removes the Orca worktree through that same CLI, so
-  # a forced continue could only die there having removed nothing. --force
-  # therefore changes nothing at this site.
+test_removed_backend_record_refuses_before_mutation() {
+  local dir id=removed-backend-strand rc out
+  dir=$(make_case removed-backend-record)
   fm_write_meta "$dir/home/state/$id.meta" \
-    "window=fm-$id" "endpoint_task_id=$id" "terminal=term-7" \
+    "window=fm-$id" "endpoint_task_id=$id" \
     "worktree=$dir/nonexistent-worktree" "project=$dir/nonexistent-project" \
-    "backend=orca" "orca_worktree_id=worktree-9::/orca/worktree-9" "kind=ship" "mode=no-mistakes"
+    "backend=orca" "kind=ship" "mode=no-mistakes"
 
   set +e
-  env -u TMUX -u TMUX_PANE \
+  out=$(env -u TMUX -u TMUX_PANE \
     FM_HOME="$dir/home" FM_ROOT_OVERRIDE="$ROOT" FM_RUNTIME_LOG="$dir/runtime.log" \
-    PATH="$dir/fakebin:$orca_free" "$TEARDOWN" "$id" --force \
-    > "$dir/orca-forced.out" 2> "$dir/orca-forced.err"
+    PATH="$dir/fakebin:$PATH" "$TEARDOWN" "$id" --force 2>&1)
   rc=$?
   set -e
-  [ "$rc" -ne 0 ] || fail "a forced Orca cleanup continued past a close that never happened: $(cat "$dir/orca-forced.err")"
-  assert_grep "could not be closed" "$dir/orca-forced.err" \
-    "the forced Orca run did not report the close it could not make"
-  assert_no_grep "--force authorizes continuing" "$dir/orca-forced.err" \
-    "the forced Orca run announced a continue it cannot carry out"
-  assert_no_grep "teardown $id complete" "$dir/orca-forced.out" \
-    "the forced Orca run reported a completed cleanup"
+  [ "$rc" -ne 0 ] || fail "a removed-backend record was cleaned up"
+  assert_contains "$out" "missing, ambiguous, or unknown backend identity" \
+    "the removed-backend refusal did not preserve the invalid endpoint identity"
   assert_present "$dir/home/state/$id.meta" \
-    "the forced Orca refusal removed the only durable record naming the terminal"
-  # Unforced is not the interesting direction here: an Orca record whose CLI is
-  # gone never reaches this close without --force, because the worktree
-  # preflight above already refuses. --force is the only way in, and it still
-  # stops - unlike the generic site, where
-  # test_forced_teardown_continues_past_a_close_it_could_not_make proves the
-  # same operator authority does get through.
-  set +e
-  env -u TMUX -u TMUX_PANE \
-    FM_HOME="$dir/home" FM_ROOT_OVERRIDE="$ROOT" FM_RUNTIME_LOG="$dir/runtime.log" \
-    PATH="$dir/fakebin:$orca_free" "$TEARDOWN" "$id" \
-    > "$dir/orca-unforced.out" 2> "$dir/orca-unforced.err"
-  rc=$?
-  set -e
-  [ "$rc" -ne 0 ] || fail "an unforced Orca cleanup completed with no CLI to close its terminal: $(cat "$dir/orca-unforced.err")"
-  assert_present "$dir/home/state/$id.meta" \
-    "the unforced Orca refusal removed the only durable record naming the terminal"
-
-  pass "fm-teardown: an Orca close its missing CLI never attempted refuses even under --force, keeping the record naming the terminal"
+    "the removed-backend refusal removed the only durable record"
+  pass "fm-teardown: legacy Orca records refuse before mutation and remain recoverable"
 }
 
 test_already_gone_endpoint_still_completes_without_a_refusal() {
@@ -1371,7 +1307,6 @@ test_control_lock_contention_refuses_before_mutation
 test_non_pool_teardown_ignores_task_set_lock
 test_metadata_lock_serializes_destructive_cleanup
 test_supported_backend_endpoint_records_validate
-test_orca_composite_worktree_id_validates
 test_tmux_empty_target_refuses_without_invocation
 test_recorded_process_identity_cleanup_is_exact
 test_isolated_tmux_invalid_and_valid_cleanup
@@ -1379,7 +1314,7 @@ test_failed_endpoint_close_refuses_before_removing_the_record
 test_forced_teardown_continues_past_a_close_it_could_not_make
 test_unreadable_close_read_refuses_while_a_definitive_absence_completes
 test_forced_secondmate_child_close_failure_still_refuses
-test_orca_close_failure_refuses_even_under_force
+test_removed_backend_record_refuses_before_mutation
 test_already_gone_endpoint_still_completes_without_a_refusal
 test_bare_relative_origin_shares_project_lock_with_clone
 test_reused_pool_slot_refuses_before_touching_the_other_task

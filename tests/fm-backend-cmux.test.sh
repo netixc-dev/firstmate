@@ -321,7 +321,7 @@ test_dispatch_busy_state_unknown_for_cmux() {
   . "$ROOT/bin/fm-backend.sh"
   [ "$(fm_backend_busy_state cmux '11111111-1111-1111-1111-111111111111:22222222-2222-2222-2222-222222222222')" = unknown ] \
     || fail "fm_backend_busy_state should report unknown for cmux (no native agent-state primitive)"
-  pass "fm_backend_busy_state: cmux (no native primitive) always reports unknown, same as tmux/zellij/orca"
+  pass "fm_backend_busy_state: cmux (no native primitive) always reports unknown, same as tmux/zellij"
 }
 
 test_dispatch_composer_state_routes_cmux() {
@@ -1097,7 +1097,7 @@ test_secondmate_spawn_refuses_cmux_backend() {
   status=$?
   [ "$status" -ne 0 ] || fail "fm-spawn.sh should refuse a --secondmate spawn with --backend cmux"
   assert_contains "$out" "does not support --secondmate" "fm-spawn.sh did not report the cmux secondmate refusal"
-  pass "fm-spawn.sh: refuses backend=cmux for --secondmate spawns (mirrors Orca's refusal; no secondmate launch design exists yet)"
+  pass "fm-spawn.sh: refuses backend=cmux for --secondmate spawns (no secondmate launch design exists yet)"
 }
 
 # shellcheck source=/dev/null

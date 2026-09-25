@@ -22,9 +22,8 @@
 # GUI-first, macOS-only (docs/cmux-backend.md "Setup"): explicit selection or
 # runtime auto-detection when firstmate itself is already running inside a
 # cmux-spawned terminal (primary CMUX_WORKSPACE_ID marker, with documented
-# macOS fallback signals for wrapper-stripped claude). Unlike Orca, cmux is a
-# pure session provider (treehouse still owns the worktree) and Escape IS
-# natively supported.
+# macOS fallback signals for wrapper-stripped claude). cmux is a pure session
+# provider (treehouse still owns the worktree) and Escape IS natively supported.
 #
 # Empirical findings from the live verification pass (docs/cmux-backend.md has
 # the full evidence log) that shaped this adapter, several of which diverge
@@ -496,7 +495,7 @@ fm_backend_cmux_normalize_key() {  # <key>
 }
 
 # fm_backend_cmux_send_key: one named special key. Escape IS natively
-# supported here (unlike Orca, docs/orca-backend.md), so it is wired directly.
+# supported here, so it is wired directly.
 fm_backend_cmux_send_key() {  # <target> <key> [expected-label]
   fm_backend_cmux_target_ready "$1" "${3:-}" || return 1
   local key

@@ -1339,12 +1339,6 @@ test_windowless_record_outside_the_leftover_class_still_refuses() {
   seed_backlog_in_flight "$case_dir"
   assert_windowless_record_refuses "$case_dir" windowless-spawn-gen "missing, empty, or ambiguous window endpoint"
 
-  case_dir=$(make_case windowless-orca)
-  write_windowless_legacy_meta "$case_dir" no-mistakes ship "$case_dir/missing-wt"
-  printf '%s\n' 'backend=orca' 'terminal=term-7' >> "$case_dir/state/task-x1.meta"
-  seed_backlog_in_flight "$case_dir"
-  assert_windowless_record_refuses "$case_dir" windowless-orca "no spawn_gen that identifies one exact incarnation"
-
   case_dir=$(make_case windowless-no-backlog)
   write_windowless_legacy_meta "$case_dir" no-mistakes ship "$case_dir/missing-wt"
   assert_windowless_record_refuses "$case_dir" windowless-no-backlog "missing, empty, or ambiguous window endpoint"
