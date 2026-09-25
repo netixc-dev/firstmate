@@ -766,7 +766,7 @@ case "$EFFORT" in
 esac
 
 spawn_refuse_removed_harness() { # <harness-or-command>
-  local input=$1 executable legacy='a'gy
+  local input=$1 executable legacy=agy
   executable=${input#"${input%%[![:space:]]*}"}
   executable=${executable%%[[:space:]]*}
   case "${executable##*/}" in
@@ -782,7 +782,7 @@ spawn_refuse_removed_harness() { # <harness-or-command>
 spawn_refuse_removed_harness "$HARNESS_ARG" || exit 1
 if [ "$RELAUNCH" -eq 0 ]; then
   if [ "$KIND" = secondmate ]; then
-    if [ "${POS[1]:-}" = 'a'gy ]; then
+    if [ "${POS[1]:-}" = agy ]; then
       spawn_refuse_removed_harness "${POS[1]}" || exit 1
     fi
     if [ -d "${POS[1]:-}" ] || [ "${#POS[@]}" -gt 2 ]; then

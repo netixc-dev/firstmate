@@ -142,7 +142,7 @@ test_removed_adapter_inputs_preserve_task() {
   local rec id out rc removed meta_before form tab
   removed=$(printf 'a%s' gy)
   tab=$'\t'
-  id=removed-input-z1
+  id='removed-input-z1'
   rec=$(make_spawn_case removed-input codex "$id")
   read_case_record "$rec"
   for form in flag raw leading_flag leading_tab_flag positional positional_raw leading_positional_raw secondmate_raw leading_secondmate_raw static secondmate; do
@@ -221,14 +221,14 @@ test_unrelated_raw_argument_keeps_survivor_launch() {
   local rec id quoted_id dollar_id substitution_id path_id shell_id nice_id other_id out rc removed other
   removed=$(printf 'a%s' gy)
   other=$(printf 'anti%s' gravity)
-  id=removed-argument-z1
-  quoted_id=removed-quoted-argument-z1
-  dollar_id=removed-dollar-argument-z1
-  substitution_id=removed-literal-substitution-z1
-  path_id=removed-path-argument-z1
-  shell_id=removed-safe-shell-z1
-  nice_id=removed-safe-nice-z1
-  other_id=removed-other-command-z1
+  id='removed-argument-z1'
+  quoted_id='removed-quoted-argument-z1'
+  dollar_id='removed-dollar-argument-z1'
+  substitution_id='removed-literal-substitution-z1'
+  path_id='removed-path-argument-z1'
+  shell_id='removed-safe-shell-z1'
+  nice_id='removed-safe-nice-z1'
+  other_id='removed-other-command-z1'
   rec=$(make_spawn_case removed-argument codex "$id" "$quoted_id" "$dollar_id" "$substitution_id" "$path_id" "$shell_id" "$nice_id" "$other_id")
   read_case_record "$rec"
   out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "other --prompt $removed"); rc=$?
