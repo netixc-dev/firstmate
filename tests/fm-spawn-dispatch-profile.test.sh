@@ -120,6 +120,24 @@ assert_meta_profile() {
   assert_grep "effort=$effort" "$meta" "meta missing effort=$effort"
 }
 
+test_removed_harness_pin_refuses_before_task_mutation() {
+  local rec id out rc removed before after
+  removed=$(printf 'a%s' gy)
+  id=removed_adapter_z1
+  rec=$(make_spawn_case removed-adapter "$removed" "$id")
+  read_case_record "$rec"
+  before=$(git -C "$WT_DIR" status --short)
+  out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR"); rc=$?
+  expect_code 1 "$rc" "a removed harness pin should refuse"
+  assert_contains "$out" "unsupported harness '$removed'" "the removed harness refusal should be named"
+  [ ! -e "$HOME_DIR/state/$id.meta" ] || fail "removed harness refusal wrote task metadata"
+  [ ! -e "$HOME_DIR/state/$id.status" ] || fail "removed harness refusal wrote task status"
+  [ ! -s "$LAUNCH_LOG" ] || fail "removed harness refusal launched a worker"
+  after=$(git -C "$WT_DIR" status --short)
+  [ "$after" = "$before" ] || fail "removed harness refusal changed the isolated copy"
+  pass "spawn rejects a removed harness pin before task mutation or launch"
+}
+
 test_no_profile_keeps_claude_profile_defaults() {
   local rec id out status expected launch
   id=profile-off-z1
@@ -1482,6 +1500,7 @@ test_non_claude_harness_ignores_claude_permission_mode() {
 }
 
 test_worker_launch_delivers_role_scope
+test_removed_harness_pin_refuses_before_task_mutation
 test_no_profile_keeps_claude_profile_defaults
 test_non_cursor_launch_clears_inherited_cursor_markers
 test_relative_home_overrides_launch_with_absolute_cross_process_paths

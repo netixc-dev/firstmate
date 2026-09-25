@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Detect the agent harness this process tree runs on.
-# Usage: fm-harness.sh                  print own harness: claude|codex|opencode|pi|pi-signed|grok|kimi|cursor|gemini|muse|rovo|omp|agy|devin|unknown
+# Usage: fm-harness.sh                  print own harness: claude|codex|opencode|pi|pi-signed|grok|kimi|cursor|gemini|muse|rovo|omp|devin|unknown
 #        fm-harness.sh crew             print the effective CREWMATE harness
 #                                        (config/crew-harness; "default" resolves to own)
 #        fm-harness.sh secondmate       print the harness the PRIMARY uses to launch
@@ -143,7 +143,7 @@ harness_marker() {
   # identified, and any rule that must be RELIABLE under grok has to test the hook
   # markers too (see .claude/settings.json Stop entries, docs/turnend-guard.md).
   [ "${GROK_AGENT:-}" = "1" ] && { echo grok; return; }
-  # codex, opencode, kimi, muse, agy, and devin publish no harness-identity marker at all, so
+  # codex, opencode, kimi, muse, and devin publish no harness-identity marker at all, so
   # they are never named here and are identified by ancestry alone. That is the
   # whole reason a foreign marker must not outrank ancestry: with markers winning
   # unconditionally, any retained CLAUDECODE would silently rename one of them.
@@ -229,15 +229,6 @@ harness_process_verdict() {  # <pid>
     # named `claude` with its own node child, and that fallback's *claude*
     # args glob would otherwise claim it if that subtree were ever walked.
     omp) echo "comm omp"; return ;;
-    # agy (Antigravity CLI) is a Go-compiled single binary whose process name
-    # is exactly `agy` (verified, agy 1.2.0: `ps -o comm=` reports agy and
-    # Herdr's process-info reports name agy with argv[0] agy). Anchored, never
-    # *agy*, so unrelated commands cannot be misread as this harness. agy
-    # publishes no harness-identity marker of its own (a live 1.2.0 TUI
-    # carries no AGY_* or ANTIGRAVITY_* variable; AGENT=1 seen there is an
-    # inherited launcher value, not an agy identity), so like muse it is
-    # detected by ancestry alone.
-    agy) echo "comm agy"; return ;;
     devin) echo "comm devin"; return ;;
     node*|python*)
       # Bare interpreter: match the harness name in its script path.
@@ -397,7 +388,7 @@ supervision_primary_pin() {
   local pin=${FM_SUPERVISION_PRIMARY_HARNESS:-}
   [ "${FM_SUPERVISION_ACTOR:-}" = branch ] && [ -n "$pin" ] || return 0
   case "$pin" in
-    claude|codex|opencode|pi|pi-signed|grok|kimi|cursor|gemini|muse|rovo|omp|agy|devin)
+    claude|codex|opencode|pi|pi-signed|grok|kimi|cursor|gemini|muse|rovo|omp|devin)
       printf '%s\n' "$pin"
       ;;
     *)
