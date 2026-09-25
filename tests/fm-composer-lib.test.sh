@@ -148,7 +148,7 @@ test_real_text_is_pending() {
 # inside zellij through `dump-screen --ansi` (`ESC[m` `❯` U+00A0).
 #
 # Capability profiles mirror the real adapters' descriptors: tmux
-# (styled+cursor+identity), herdr/zellij (styled), cmux (plain). Every
+# (styled+cursor+identity), herdr/zellij (styled), an unstyled capture. Every
 # emptiness verdict is asserted under the ambient UTF-8 locale AND LC_ALL=C,
 # pinning the locale-safe Unicode-space normalization (issue #1988).
 # =============================================================================
@@ -158,7 +158,7 @@ NBSP=$(printf '\302\240')
 CAPS_TMUX=$'styled=1\ncursor=1\nidentity=1\nrows=0'
 CAPS_STYLED=$'styled=1\ncursor=0\nidentity=1\nrows=20'      # herdr
 CAPS_STYLED_NOID=$'styled=1\ncursor=0\nidentity=0\nrows=20' # zellij
-CAPS_PLAIN=$'styled=0\ncursor=0\nidentity=0\nrows=20'       # cmux
+CAPS_UNSTYLED=$'styled=0\ncursor=0\nidentity=0\nrows=20'       # generic unstyled capture
 
 # assert_screen <label> <want> <caps> <screen> [cursor] [identity]: one
 # verdict, asserted under the ambient locale AND LC_ALL=C.
@@ -180,12 +180,11 @@ test_matrix_claude_bare_nbsp_row() {
   assert_screen "claude idle on tmux" empty "$CAPS_TMUX" "$screen" 2 probe-absent
   assert_screen "claude idle on herdr" empty "$CAPS_STYLED" "$screen" '' probe-absent
   assert_screen "claude idle on zellij" empty "$CAPS_STYLED_NOID" "$screen"
-  assert_screen "claude idle on cmux" empty "$CAPS_PLAIN" "$screen"
   typed=$'────────────────────────\n❯ fix the login bug\n────────────────────────'
   assert_screen "claude typed on tmux" pending "$CAPS_TMUX" "$typed" 1 probe-absent
   # Plain capture cannot tell typed text from claude's rotating suggestion:
   # the styled=0 degradation defers instead of fabricating pending.
-  assert_screen "claude typed on plain backends" unknown "$CAPS_PLAIN" "$typed"
+  assert_screen "claude typed on plain backends" unknown "$CAPS_UNSTYLED" "$typed"
   pass "matrix: claude's ❯+NBSP row reads empty on every profile in both locales (#1988)"
 }
 
@@ -207,7 +206,6 @@ test_matrix_claude_arrow_statusline_footer() {
   screen="$pair$footer"
   assert_screen "claude idle under an arrow statusline on herdr" empty "$CAPS_STYLED" "$screen" '' "$claude_idle"
   assert_screen "claude idle under an arrow statusline on zellij" empty "$CAPS_STYLED_NOID" "$screen"
-  assert_screen "claude idle under an arrow statusline on cmux" empty "$CAPS_PLAIN" "$screen"
   # The protection this must NOT remove: real unsubmitted text in that same
   # composer, under that same statusline, still refuses.
   typed=$'transcript line\n────────────────────────\n❯ fix the login bug\n────────────────────────'"$footer"
@@ -261,7 +259,6 @@ test_composer_footer_zone_is_shape_independent() {
   screen="$box$footer"
   assert_screen "boxed claude idle under an arrow statusline on herdr" empty "$CAPS_STYLED" "$screen" '' "$claude_idle"
   assert_screen "boxed claude idle under an arrow statusline on zellij" empty "$CAPS_STYLED_NOID" "$screen"
-  assert_screen "boxed claude idle under an arrow statusline on cmux" empty "$CAPS_PLAIN" "$screen"
   out=$(fm_composer_extract_selected_content "$CAPS_STYLED" "$screen")
   case "$out" in
     *'repo git:'*|*'bypass permissions'*)
@@ -275,7 +272,7 @@ test_composer_footer_zone_is_shape_independent() {
   # no glyph row inside it, so it proves no composer, opens no footer zone, and
   # the live bare row contiguously below it keeps winning.
   screen=$'╭────────────────────────╮\n│ permissions: YOLO mode │\n╰────────────────────────╯\n❯'"$NBSP"
-  assert_screen "unproven banner still yields to the bare row below it" empty "$CAPS_PLAIN" "$screen"
+  assert_screen "unproven banner still yields to the bare row below it" empty "$CAPS_UNSTYLED" "$screen"
   pass "fm_composer_classify_screen: the footer zone holds for boxes, not only separator pairs"
 }
 
@@ -333,7 +330,7 @@ test_matrix_codex_dim_hint_row() {
   assert_screen "codex idle on tmux" empty "$CAPS_TMUX" "$styled" 1
   assert_screen "codex idle on herdr" empty "$CAPS_STYLED" "$styled"
   assert_screen "codex idle on zellij" empty "$CAPS_STYLED_NOID" "$styled"
-  assert_screen "codex idle on plain backends" unknown "$CAPS_PLAIN" "$plain"
+  assert_screen "codex idle on plain backends" unknown "$CAPS_UNSTYLED" "$plain"
   pass "matrix: codex's dim hint is empty when styling proves it, unknown (never pending) when it cannot"
 }
 
@@ -350,7 +347,6 @@ test_matrix_muse_truecolor_glyph_survives_signal_loss() {
   assert_screen "muse idle on tmux" empty "$CAPS_TMUX" "$screen" 1
   assert_screen "muse idle on herdr" empty "$CAPS_STYLED" "$screen"
   assert_screen "muse idle on zellij" empty "$CAPS_STYLED_NOID" "$screen"
-  assert_screen "muse idle on cmux" empty "$CAPS_PLAIN" "$plain"
   out=$(FM_COMPOSER_GHOST_LUMA_MAX=200 fm_composer_classify_screen "$CAPS_STYLED" "$screen")
   [ "$out" = empty ] || fail "muse must stay empty when the ghost strip eats its glyph (plain-row signal), got '$out'"
   pass "matrix: muse's ⟩ reads empty everywhere and survives losing the styled-glyph signal"
@@ -382,7 +378,6 @@ test_matrix_cursor_reverse_video_placeholder_remnant() {
   # An UNSTYLED capture carries no ghost-strip proof, so a bare row matching a
   # placeholder is indistinguishable from typed text and must stay unknown -
   # the same degradation every other bare-row placeholder already takes.
-  assert_screen "cursor idle on cmux" unknown "$CAPS_PLAIN" "$plain"
 
   # The dangerous direction: text a user actually TYPED is uniformly bright, so
   # stripping leaves it EQUAL to the plain row. Even when that text is exactly
@@ -393,7 +388,7 @@ test_matrix_cursor_reverse_video_placeholder_remnant() {
   assert_screen "cursor typed placeholder text stays pending" pending \
     "$CAPS_STYLED" $'transcript\n\n'"$typed"
   # Without styling there is no proof either way, so it must not read empty.
-  out=$(fm_composer_classify_screen "$CAPS_PLAIN" "$typed_plain")
+  out=$(fm_composer_classify_screen "$CAPS_UNSTYLED" "$typed_plain")
   [ "$out" != empty ] \
     || fail "an unstyled cursor row matching the placeholder must not read empty, got '$out'"
   pass "matrix: cursor's reverse-video placeholder remnant reads empty; real typed text stays pending"
@@ -475,7 +470,7 @@ test_matrix_omp_status_row_bounds_bare_composer() {
   assert_screen "idle omp (nerd preset)" empty "$CAPS_STYLED" "$idle_nerd"
   assert_screen "busy omp keeps an empty composer" empty "$CAPS_STYLED" "$busy"
   assert_screen "typed omp text is pending" pending "$CAPS_STYLED" "$typed"
-  assert_screen "idle omp on a plain capture" empty "$CAPS_PLAIN" "$idle_unicode"
+  assert_screen "idle omp on a plain capture" empty "$CAPS_UNSTYLED" "$idle_unicode"
   # The boundary must not cut a bare composer's own wrapped input: with the
   # cursor on a continuation row that opens `fix · tests`, the composer is a
   # proven wrap region and reads pending, exactly as it did before the rule.
@@ -544,10 +539,8 @@ test_matrix_codex_idle_starfield_furniture() {
   assert_screen "codex 0.154 idle on herdr" empty "$CAPS_STYLED" "$screen"
   assert_screen "codex 0.154 idle on zellij" empty "$CAPS_STYLED_NOID" "$screen"
   assert_screen "codex 0.154 idle on tmux (cursor on the glyph row)" empty "$CAPS_TMUX" "$screen" 3
-  assert_screen "codex 0.154 idle on cmux" unknown "$CAPS_PLAIN" "$plain"
   assert_screen "codex 0.154 idle (second sample) on herdr" empty "$CAPS_STYLED" "$screen2"
   assert_screen "codex 0.154 idle (second sample) on tmux" empty "$CAPS_TMUX" "$screen2" 3
-  assert_screen "codex 0.154 idle (second sample) on cmux" unknown "$CAPS_PLAIN" "$plain2"
   # A cursor parked on the starfield row below the glyph is not inside a wrap
   # region, so the strict blank-row posture keeps it unknown.
   assert_screen "codex 0.154 cursor on the starfield row" unknown "$CAPS_TMUX" "$screen" 4
@@ -595,8 +588,7 @@ test_matrix_pi_separated_needs_identity() {
   # Identity-capable but unfetched: the adapter is asked to probe lazily.
   [ "$(fm_composer_classify_screen "$CAPS_STYLED" "$screen")" = need-identity ] \
     || fail "an identity-capable profile should request the lazy identity probe"
-  # No identity capability (cmux/zellij): the shape is unprovable.
-  assert_screen "pi pair without identity capability" unknown "$CAPS_PLAIN" "$screen"
+  assert_screen "pi pair without identity capability" unknown "$CAPS_UNSTYLED" "$screen"
   # A working pi cannot authorize injection into the blank region.
   assert_screen "working pi defers" unknown "$CAPS_STYLED" "$screen" '' "$pi_working"
   # A pi parked on an interactive prompt reports `blocked`: it is waiting on a
@@ -614,7 +606,7 @@ test_matrix_pi_separated_needs_identity() {
   assert_screen "pi lone-glyph draft with identity" pending "$CAPS_STYLED" "$typed" '' "$pi_idle"
   assert_screen "pi lone-glyph draft on tmux" pending "$CAPS_TMUX" "$typed" 1 "$pi_idle"
   assert_screen "lone glyph without identity capability" empty "$CAPS_STYLED_NOID" "$typed"
-  assert_screen "lone glyph on plain backend" empty "$CAPS_PLAIN" "$typed"
+  assert_screen "lone glyph on plain backend" empty "$CAPS_UNSTYLED" "$typed"
   assert_screen "lone glyph with non-pi identity" empty "$CAPS_STYLED" "$typed" '' "$none"
   pass "matrix: pi's separated composer needs identity + structure; the blank row alone never proves it"
 }
@@ -630,7 +622,6 @@ test_matrix_opencode_leftbar_signals() {
   assert_screen "opencode idle on tmux (cursor on hint)" empty "$CAPS_TMUX" "$dim_screen" 1
   assert_screen "opencode idle on herdr" empty "$CAPS_STYLED" "$dim_screen"
   assert_screen "opencode idle on zellij" empty "$CAPS_STYLED_NOID" "$dim_screen"
-  assert_screen "opencode idle on cmux" empty "$CAPS_PLAIN" "$screen"
   # This sanitized live OpenCode 1.18.30 capture preserves its U+2026 hint and
   # RGB 128 styling. RGB 128 is deliberately outside the ghost threshold, so
   # the placeholder spelling is the independent empty signal. The completed-
@@ -645,10 +636,10 @@ test_matrix_opencode_leftbar_signals() {
   [ "$out" = empty ] || fail "a dim opencode hint must stay empty via the ghost strip alone, got '$out'"
   typed=$'┃\n┃  refactor the parser please\n┃\n┃  Build · GPT-5.5 Fast OpenAI · high\n╹▀▀▀▀'
   assert_screen "opencode typed on tmux" pending "$CAPS_TMUX" "$typed" 1
-  assert_screen "opencode typed on plain backends" unknown "$CAPS_PLAIN" "$typed"
+  assert_screen "opencode typed on plain backends" unknown "$CAPS_UNSTYLED" "$typed"
   typed=$'┃  Ask anything... please investigate\n┃\n┃  Build · GPT-5.5 Fast OpenAI · high\n╹▀▀▀▀'
   assert_screen "opencode placeholder-like input on tmux" pending "$CAPS_TMUX" "$typed" 0
-  assert_screen "opencode placeholder-like input on plain backends" unknown "$CAPS_PLAIN" "$typed"
+  assert_screen "opencode placeholder-like input on plain backends" unknown "$CAPS_UNSTYLED" "$typed"
   typed=$'┃  refactor the parser please\n┃\n┃  Build · GPT-5.5 Fast OpenAI · high'
   assert_screen "opencode multiline draft above blank cursor row" pending "$CAPS_TMUX" "$typed" 1
   pass "matrix: opencode's left-bar composer reads empty everywhere and scans the full active run"
@@ -667,8 +658,7 @@ test_matrix_grok_titled_bottom_border() {
   assert_screen "issue #3436 idle grok 1.0.5 on herdr" empty "$CAPS_STYLED" "$titled"
   placeholder_draft=$'  ╭──────────────────────────────────────────────────────────────────────────╮\n  │ ❯ Type a message...                                                      │\n  ╰────────────────────────────────────────────────────────── Grok 4.6 (xhigh) ─╯'
   assert_screen "grok bright placeholder-like draft on tmux" pending "$CAPS_TMUX" "$placeholder_draft" 1
-  assert_screen "grok placeholder on plain backends" empty "$CAPS_PLAIN" "$placeholder_draft"
-  assert_screen "grok titled on cmux" empty "$CAPS_PLAIN" "$titled"
+  assert_screen "grok placeholder on plain backends" empty "$CAPS_UNSTYLED" "$placeholder_draft"
   assert_screen "grok titled on zellij" empty "$CAPS_STYLED_NOID" "$titled"
   # The tolerance is additive: an untitled border still proves the same box.
   assert_screen "grok untitled border" empty "$CAPS_TMUX" "$plain_border" 1
@@ -687,7 +677,6 @@ test_matrix_kimi_bordered_shell_glyph_box() {
   local screen
   screen=$'╭────────────────────────╮\n│ >                      │\n╰────────────────────────╯'
   assert_screen "kimi idle on tmux" empty "$CAPS_TMUX" "$screen" 1
-  assert_screen "kimi idle on cmux" empty "$CAPS_PLAIN" "$screen"
   assert_screen "kimi idle on herdr" empty "$CAPS_STYLED" "$screen"
   assert_screen "kimi idle on zellij" empty "$CAPS_STYLED_NOID" "$screen"
   pass "matrix: kimi's bordered shell-glyph box reads empty through the shared owner (spawn's fourth copy retired)"
@@ -702,7 +691,7 @@ test_matrix_claude_inside_zellij_ansi_dump() {
   assert_screen "claude-in-zellij on tmux" empty "$CAPS_TMUX" "$screen" 1
   assert_screen "claude-in-zellij on herdr" empty "$CAPS_STYLED" "$screen"
   assert_screen "claude-in-zellij on zellij" empty "$CAPS_STYLED_NOID" "$screen"
-  assert_screen "claude-in-zellij on plain backends" empty "$CAPS_PLAIN" "$plain"
+  assert_screen "claude-in-zellij on plain backends" empty "$CAPS_UNSTYLED" "$plain"
   pass "matrix: the real claude-in-zellij --ansi dump reads empty in both locales"
 }
 
@@ -727,7 +716,7 @@ test_strict_blank_row_divergence() {
   out=$(fm_composer_classify_screen "$CAPS_TMUX" $'output\nhuman draft text' 1)
   [ "$out" = unknown ] || fail "an unidentified text row must be unknown under strict, got '$out'"
   # A blank screen with no cursor capability.
-  out=$(fm_composer_classify_screen "$CAPS_PLAIN" $'\n\n')
+  out=$(fm_composer_classify_screen "$CAPS_UNSTYLED" $'\n\n')
   [ "$out" = unknown ] || fail "a blank screen must be unknown, got '$out'"
   pass "strict posture: blank and unidentified rows are unknown, never injectable empty"
 }
@@ -757,7 +746,7 @@ test_contiguous_transcript_reanchors_on_live_prompt() {
   local screen
   screen=$'❯ hi\nHello!\n❯'
   assert_screen "contiguous transcript live prompt on cursorless styled backend" empty "$CAPS_STYLED_NOID" "$screen"
-  assert_screen "contiguous transcript live prompt on cursorless plain backend" empty "$CAPS_PLAIN" "$screen"
+  assert_screen "contiguous transcript live prompt on cursorless plain backend" empty "$CAPS_UNSTYLED" "$screen"
   assert_screen "contiguous transcript live prompt with cursor" empty "$CAPS_TMUX" "$screen" 2
   pass "fm_composer_classify_screen: a row-leading agent glyph reanchors the live composer"
 }
@@ -767,7 +756,6 @@ test_lower_dead_shell_invalidates_cursorless_candidate() {
   stale=$'old transcript\n❯\nprocess exited\n$'
   assert_screen "stale composer above dead shell on herdr" unknown "$CAPS_STYLED" "$stale"
   assert_screen "stale composer above dead shell on zellij" unknown "$CAPS_STYLED_NOID" "$stale"
-  assert_screen "stale composer above dead shell on cmux" unknown "$CAPS_PLAIN" "$stale"
   out=$(fm_composer_classify_screen "$CAPS_TMUX" "$stale" 1)
   [ "$out" = empty ] \
     || fail "cursor mode must keep the cursor-anchored composer verdict, got '$out'"
@@ -775,7 +763,6 @@ test_lower_dead_shell_invalidates_cursorless_candidate() {
   live=$'transcript shell snippet\n$ echo old output\nmore transcript\n❯'
   assert_screen "shell transcript above live composer on herdr" empty "$CAPS_STYLED" "$live"
   assert_screen "shell transcript above live composer on zellij" empty "$CAPS_STYLED_NOID" "$live"
-  assert_screen "shell transcript above live composer on cmux" empty "$CAPS_PLAIN" "$live"
   pass "fm_composer_classify_screen: a lower dead shell invalidates only cursorless stale composers"
 }
 
@@ -784,17 +771,14 @@ test_cursorless_bare_wrap_region_classifies() {
   activity=$'❯\nWorking on request...'
   assert_screen "cursorless activity below bare row on herdr" pending "$CAPS_STYLED" "$activity"
   assert_screen "cursorless activity below bare row on zellij" pending "$CAPS_STYLED_NOID" "$activity"
-  assert_screen "cursorless activity below bare row on cmux" unknown "$CAPS_PLAIN" "$activity"
 
   status=$'›\n\ncodex status line'
   assert_screen "blank-separated codex status on herdr" empty "$CAPS_STYLED" "$status"
   assert_screen "blank-separated codex status on zellij" empty "$CAPS_STYLED_NOID" "$status"
-  assert_screen "blank-separated codex status on cmux" empty "$CAPS_PLAIN" "$status"
 
   bounded=$'────────────────────────\n❯\n────────────────────────\nClaude 4.1'
   assert_screen "rule-bounded claude footer on herdr" empty "$CAPS_STYLED" "$bounded" '' probe-absent
   assert_screen "rule-bounded claude footer on zellij" empty "$CAPS_STYLED_NOID" "$bounded"
-  assert_screen "rule-bounded claude footer on cmux" empty "$CAPS_PLAIN" "$bounded"
 
   ghost=$'❯ '"${ESC}[2ma long rotating suggestion that${ESC}[0m"$'\n'"${ESC}[2mwraps onto the next line${ESC}[0m"
   out=$(fm_composer_classify_screen "$CAPS_STYLED" "$ghost")
@@ -809,18 +793,16 @@ test_cursorless_container_rejects_contiguous_lower_activity() {
   box=$'╭────────────────────────╮\n│ ❯                      │\n╰────────────────────────╯\nWorking on request...'
   assert_screen "stale box above activity on herdr" unknown "$CAPS_STYLED" "$box"
   assert_screen "stale box above activity on zellij" unknown "$CAPS_STYLED_NOID" "$box"
-  assert_screen "stale box above activity on cmux" unknown "$CAPS_PLAIN" "$box"
 
   leftbar=$'┃\n┃  Ask anything...\n┃\n┃  Build · GPT-5.5 Fast OpenAI · high\n╹▀▀▀▀▀▀▀▀\nWorking on request...'
   assert_screen "stale left-bar above activity on herdr" unknown "$CAPS_STYLED" "$leftbar"
   assert_screen "stale left-bar above activity on zellij" unknown "$CAPS_STYLED_NOID" "$leftbar"
-  assert_screen "stale left-bar above activity on cmux" unknown "$CAPS_PLAIN" "$leftbar"
 
   grok=$'╭────────────────────────╮\n│ ❯                      │\n╰──────── Grok 4.5 ──────╯\n\nGrok status'
   kimi=$'╭────────────────────────╮\n│ >                      │\n╰────────────────────────╯\n\nKimi status'
   opencode=$'┃\n┃  Ask anything...\n┃\n┃  Build · GPT-5.5 Fast OpenAI · high\n╹▀▀▀▀▀▀▀▀\n\nOpenCode status'
   assert_screen "blank-separated grok footer" empty "$CAPS_STYLED_NOID" "$grok"
-  assert_screen "blank-separated kimi footer" empty "$CAPS_PLAIN" "$kimi"
+  assert_screen "blank-separated kimi footer" empty "$CAPS_UNSTYLED" "$kimi"
   assert_screen "left-bar floor and blank-separated footer" empty "$CAPS_STYLED_NOID" "$opencode"
   pass "fm_composer_classify_screen: cursorless containers reject only contiguous unclaimed activity"
 }
@@ -831,8 +813,8 @@ test_bottom_most_candidate_wins() {
   # below it - the confidently-wrong cursorless case from the audit.
   local screen out
   screen=$'╭────────────────────────╮\n│ permissions: YOLO mode │\n╰────────────────────────╯\n❯'"$NBSP"
-  assert_screen "banner above live claude row" empty "$CAPS_PLAIN" "$screen"
-  out=$(fm_composer_classify_screen "$CAPS_PLAIN" $'╭────────────────────────╮\n│ permissions: YOLO mode │\n╰────────────────────────╯\n› Use /skills to list available skills')
+  assert_screen "banner above live claude row" empty "$CAPS_UNSTYLED" "$screen"
+  out=$(fm_composer_classify_screen "$CAPS_UNSTYLED" $'╭────────────────────────╮\n│ permissions: YOLO mode │\n╰────────────────────────╯\n› Use /skills to list available skills')
   [ "$out" != pending ] || fail "a stale banner must never classify as pending composer text"
   screen=$'❯ old draft\n\n❯'
   assert_screen "blank-separated newer bare composer" empty "$CAPS_STYLED_NOID" "$screen"
@@ -842,7 +824,7 @@ test_bottom_most_candidate_wins() {
 test_incomplete_lower_box_invalidates_stale_candidate() {
   local screen out
   screen=$'╭────────────────────────╮\n│ ❯                      │\n╰────────────────────────╯\nstartup complete\n╭────────────────────────╮\n│ ❯ clipped live draft  '
-  out=$(fm_composer_classify_screen "$CAPS_PLAIN" "$screen")
+  out=$(fm_composer_classify_screen "$CAPS_UNSTYLED" "$screen")
   [ "$out" = unknown ] \
     || fail "an incomplete lower box must invalidate an earlier empty box, got '$out'"
   pass "fm_composer_classify_screen: incomplete lower structure invalidates stale boxes"

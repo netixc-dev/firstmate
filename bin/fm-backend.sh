@@ -18,18 +18,13 @@
 # auto-detection (report.md's Open Question #2: start with a dedicated
 # background session for predictability, unlike tmux's/herdr's ambient-session
 # reuse); see report.md's "Zellij Backend" section and docs/zellij-backend.md
-# for its empirical basis. P5 adds bin/backends/cmux.sh, also EXPERIMENTAL and
-# spawn-capable, behind `--backend cmux`/`FM_BACKEND=cmux`/`config/backend`,
-# and behind runtime auto-detection when firstmate itself is running inside a
-# cmux-spawned terminal (primary CMUX_WORKSPACE_ID marker, or the documented
-# macOS fallback signals when cmux's claude wrapper strips that marker) with no
-# explicit backend setting; see docs/cmux-backend.md for its empirical basis.
+# for its empirical basis.
 #
 # Compatibility contract: a task's meta may omit `backend=`; every reader here
 # treats that as `tmux` (fm_backend_of_meta), and fm-spawn.sh does not write
 # `backend=tmux` for a default-backend task, so existing and newly spawned
 # default-path metas stay byte-identical. Only a task spawned on a non-tmux
-# spawn-capable backend, currently herdr, zellij, or cmux, carries an explicit
+# spawn-capable backend, currently herdr or zellij, carries an explicit
 # `backend=` line.
 #
 # Event-source framing (herdr-addendum "Events as the core abstraction"): a
@@ -57,11 +52,9 @@ FM_BACKEND_CONFIG_DIR="${FM_CONFIG_OVERRIDE:-$FM_HOME/config}"
 # with current coverage in docs/herdr-backend.md and
 # docs/verification/runtime-backends.md. zellij is EXPERIMENTAL (P3;
 # data/fm-backend-design-d7/report.md "Zellij Backend") - verified against the
-# real 0.44.0 binary (docs/zellij-backend.md). cmux is EXPERIMENTAL and
-# spawn-capable, session-provider-only like herdr/zellij - verified against the
-# real 0.64.17 binary (docs/cmux-backend.md).
-FM_BACKEND_KNOWN="tmux herdr zellij cmux"
-FM_BACKEND_SPAWN="tmux herdr zellij cmux"
+# real 0.44.0 binary (docs/zellij-backend.md).
+FM_BACKEND_KNOWN="tmux herdr zellij"
+FM_BACKEND_SPAWN="tmux herdr zellij"
 
 # fm_backend_list_contains: whitespace-delimited membership without relying on
 # shell word splitting. fm-backend.sh is normally sourced by bash scripts, but
@@ -89,47 +82,8 @@ fm_backend_is_known() {  # <name>
 # tmux started inside a herdr pane, so $TMUX is checked first and wins over
 # HERDR_ENV=1 in that nested case. herdr injects HERDR_ENV=1 (plus
 # HERDR_SOCKET_PATH/HERDR_PANE_ID) into every process it manages a pane for;
-# HERDR_ENV=1 alone (no $TMUX) selects herdr. cmux injects CMUX_WORKSPACE_ID
-# (plus CMUX_SURFACE_ID/CMUX_SOCKET_PATH and the legacy CMUX_TAB_ID/
-# CMUX_PANEL_ID aliases) into every terminal surface it spawns - verified from
-# the shipped source (`TerminalSurface+StartupEnvironment.swift`'s
-# `applyManagedCmuxContextEnvironment`, which marks all five keys
-# `protectedKeys`, i.e. non-overridable) and corroborated by cmux's own CLI
-# (`cmux_open.swift`) reading `CMUX_WORKSPACE_ID`/`CMUX_SURFACE_ID` as its own
-# ambient-target fallback, exactly how `$TMUX` and `HERDR_ENV` work for their
-# backends. CMUX_WORKSPACE_ID, not CMUX_SOCKET_PATH, is the chosen marker:
-# CMUX_SOCKET_PATH is independently documented as a user-settable override for
-# pointing the CLI at a non-default socket, so its mere presence would not
-# reliably mean "running inside a cmux-spawned terminal" the way
-# CMUX_WORKSPACE_ID does. cmux is checked LAST because it is a terminal
-# application (the outermost layer, like iTerm2/Terminal.app), not a session
-# multiplexer - both tmux and herdr can run nested inside a cmux-provided
-# shell, but cmux cannot run nested inside either of them, so a tmux or herdr
-# marker set alongside CMUX_WORKSPACE_ID always means that multiplexer is the
-# innermost, currently-executing layer and must win.
-#
-# cmux FALLBACK signals (docs/cmux-backend.md "Runtime auto-detection" owns
-# the empirical record): cmux's bundled `claude` PATH shim routes through
-# cmux-claude-wrapper, whose passthrough path unsets every CMUX_* variable
-# before exec'ing the real binary - so a claude-harness firstmate launched in
-# a cmux tab can have NO CMUX_WORKSPACE_ID at all. When that primary marker is
-# absent (and only then), two macOS-only fallback signals are consulted:
-#   1. __CFBundleIdentifier == com.cmuxterm.app - LaunchServices' app-identity
-#      env var, inherited by every process a cmux tab spawns and NOT stripped
-#      by the wrapper (it only unsets CMUX_*, TERMINFO, and CLAUDECODE).
-#      Authoritative in the common wrapper-strip case, but also inherited into
-#      every pane of a tmux server started from a cmux tab - the $TMUX check
-#      winning FIRST is what keeps that false positive absorbed.
-#   2. Process ancestry reaching the running cmux app (resolved by bundle id
-#      via lsappinfo, plus a bundle-shaped `ps` comm match so the install
-#      location is never hardcoded). Authoritative when the environment was
-#      scrubbed entirely (no bundle id to inherit); NOT usable from inside
-#      tmux, where the tmux server reparents to launchd and the chain never
-#      reaches cmux - which is fine, because $TMUX already won there.
-# Callers needing the winning signal read FM_BACKEND_DETECT_SIGNAL (set to
-# TMUX, HERDR_ENV, CMUX_WORKSPACE_ID, bundle-id, or ancestry) and
-# FM_BACKEND_DETECTED after a direct (non-command-substitution) call.
-FM_BACKEND_CMUX_BUNDLE_ID="com.cmuxterm.app"
+# HERDR_ENV=1 alone (no $TMUX) selects herdr. Other terminal markers are not
+# runtime backend selectors.
 
 fm_backend_detect() {
   FM_BACKEND_DETECTED=""
@@ -146,78 +100,6 @@ fm_backend_detect() {
     printf 'herdr'
     return 0
   fi
-  if [ -n "${CMUX_WORKSPACE_ID:-}" ]; then
-    FM_BACKEND_DETECTED=cmux
-    FM_BACKEND_DETECT_SIGNAL=CMUX_WORKSPACE_ID
-    printf 'cmux'
-    return 0
-  fi
-  if fm_backend_detect_cmux_fallback; then
-    FM_BACKEND_DETECTED=cmux
-    printf 'cmux'
-    return 0
-  fi
-  return 1
-}
-
-# fm_backend_detect_cmux_fallback: the two macOS-only cmux fallback signals
-# (see fm_backend_detect's header comment). Sets FM_BACKEND_DETECT_SIGNAL to
-# bundle-id or ancestry on success. Cheap-first: the bundle-id check is a pure
-# env read; the ancestry walk (subprocess-per-hop) runs only when it misses.
-fm_backend_detect_cmux_fallback() {
-  [ "$(uname 2>/dev/null)" = Darwin ] || return 1
-  if [ "${__CFBundleIdentifier:-}" = "$FM_BACKEND_CMUX_BUNDLE_ID" ]; then
-    FM_BACKEND_DETECT_SIGNAL=bundle-id
-    return 0
-  fi
-  if fm_backend_detect_cmux_app_is_ancestor; then
-    FM_BACKEND_DETECT_SIGNAL=ancestry
-    return 0
-  fi
-  return 1
-}
-
-# fm_backend_detect_cmux_app_pid: the running cmux app's pid, resolved by
-# bundle id via lsappinfo (`"pid"=<n>`), or failure when lsappinfo is missing,
-# errors, or the app is not running (lsappinfo prints nothing, exit 0).
-fm_backend_detect_cmux_app_pid() {
-  command -v lsappinfo >/dev/null 2>&1 || return 1
-  local out pid
-  out=$(lsappinfo info -only pid -app "$FM_BACKEND_CMUX_BUNDLE_ID" 2>/dev/null) || return 1
-  pid=${out##*=}
-  pid=$(printf '%s' "$pid" | tr -d '[:space:]"')
-  case "$pid" in ''|*[!0-9]*) return 1 ;; esac
-  printf '%s' "$pid"
-}
-
-# fm_backend_detect_cmux_app_is_ancestor: walk this process's parent chain and
-# report whether it reaches the cmux app - matching either the lsappinfo-
-# resolved pid (bundle id, no path assumption) or a bundle-shaped comm path
-# (`*/cmux.app/Contents/MacOS/cmux`, any install location) when lsappinfo
-# could not resolve one. Stops at launchd (ppid 1), where a tmux server that
-# was started from a cmux tab has already reparented - ancestry can never
-# false-positive from inside tmux.
-fm_backend_detect_cmux_app_is_ancestor() {
-  local cmux_pid pid ppid comm hops=0
-  cmux_pid=$(fm_backend_detect_cmux_app_pid) || cmux_pid=""
-  pid=$$
-  while [ "$hops" -lt 32 ]; do
-    if [ -n "$cmux_pid" ] && [ "$pid" = "$cmux_pid" ]; then
-      return 0
-    fi
-    comm=$(ps -o comm= -p "$pid" 2>/dev/null) || comm=""
-    comm="${comm#"${comm%%[![:space:]]*}"}"
-    comm="${comm%"${comm##*[![:space:]]}"}"
-    [ -n "$comm" ] || return 1
-    case "$comm" in
-      */cmux.app/Contents/MacOS/cmux) return 0 ;;
-    esac
-    ppid=$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d '[:space:]')
-    case "$ppid" in ''|*[!0-9]*) return 1 ;; esac
-    [ "$ppid" -gt 1 ] || return 1
-    pid=$ppid
-    hops=$((hops + 1))
-  done
   return 1
 }
 
@@ -228,13 +110,9 @@ fm_backend_detect_cmux_app_is_ancestor() {
 # per-task `--backend` flag is parsed by the caller (fm-spawn.sh) and takes
 # precedence over this resolution entirely; it is not read here. Auto-detect
 # fires only when nothing was explicitly configured, so an explicit setting
-# always wins. Auto-detected herdr stays silent like tmux. Selecting cmux via
-# auto-detect prints one loud stderr notice because cmux remains experimental;
-# the notice names the winning signal, so a fallback-detected cmux (bundle id or
-# ancestry, after the claude wrapper stripped CMUX_WORKSPACE_ID) is visibly
-# distinct from the primary-marker case.
+# always wins. Auto-detected herdr stays silent like tmux.
 fm_backend_name() {
-  local line v detected marker
+  local line v
   if [ -n "${FM_BACKEND:-}" ]; then
     printf '%s' "$FM_BACKEND"
     return 0
@@ -248,19 +126,8 @@ fm_backend_name() {
       fi
     done < "$FM_BACKEND_CONFIG_DIR/backend"
   fi
-  # Called directly (not in a command substitution) so the detect signal
-  # globals survive into the notice below.
   if fm_backend_detect >/dev/null; then
-    detected=$FM_BACKEND_DETECTED
-    if [ "$detected" = cmux ]; then
-      case "$FM_BACKEND_DETECT_SIGNAL" in
-        bundle-id) marker="FALLBACK signal __CFBundleIdentifier=$FM_BACKEND_CMUX_BUNDLE_ID; CMUX_WORKSPACE_ID absent, stripped by cmux's bundled claude wrapper" ;;
-        ancestry) marker="FALLBACK signal process-ancestry reaching the running cmux app; CMUX_WORKSPACE_ID absent, stripped by cmux's bundled claude wrapper" ;;
-        *) marker="CMUX_WORKSPACE_ID" ;;
-      esac
-      echo "NOTICE: auto-detected cmux runtime ($marker) - spawning into the EXPERIMENTAL cmux backend. Set config/backend or pass --backend tmux to opt out." >&2
-    fi
-    printf '%s' "$detected"
+    printf '%s' "$FM_BACKEND_DETECTED"
     return 0
   fi
   printf 'tmux'
@@ -289,12 +156,12 @@ fm_backend_validate_spawn() {  # <name>
 # docs/configuration.md "Toolchain" and bootstrap's COMMON list). This is the
 # single owner of the per-backend dependency delta, so bootstrap follows the
 # RESOLVED backend instead of demanding an inactive backend's tools. Each set is:
-#   - the session-provider CLI itself (tmux/herdr/zellij/cmux);
-#   - jq, for the JSON-emitting adapters (herdr, zellij, cmux) whose spawn/liveness
+#   - the session-provider CLI itself (tmux/herdr/zellij);
+#   - jq, for the JSON-emitting adapters (herdr and zellij) whose spawn/liveness
 #     paths parse the backend's JSON output (see each adapter's
 #     tool check, e.g. fm_backend_herdr_tool_check);
 #   - the treehouse worktree provider for every session-provider backend
-#     (tmux, herdr, zellij, cmux).
+#     (tmux, herdr, zellij).
 # Prints a single space-separated line and returns 0 for a known backend; returns
 # 1 and prints nothing for an unknown backend.
 fm_backend_required_tools() {  # <backend>
@@ -302,7 +169,6 @@ fm_backend_required_tools() {  # <backend>
     tmux)   printf '%s' 'tmux treehouse' ;;
     herdr)  printf '%s' 'herdr jq treehouse' ;;
     zellij) printf '%s' 'zellij jq treehouse' ;;
-    cmux)   printf '%s' 'cmux jq treehouse' ;;
     *) return 1 ;;
   esac
 }
@@ -311,13 +177,7 @@ fm_backend_required_tool_available() {  # <backend> <tool>
   local backend=$1 tool=$2 required
   required=$(fm_backend_required_tools "$backend") || return 1
   fm_backend_list_contains "$required" "$tool" || return 1
-  case "$backend:$tool" in
-    cmux:cmux)
-      fm_backend_source cmux >/dev/null 2>&1 || return 1
-      fm_backend_cmux_bin >/dev/null 2>&1
-      ;;
-    *) command -v "$tool" >/dev/null 2>&1 ;;
-  esac
+  command -v "$tool" >/dev/null 2>&1
 }
 
 # fm_meta_get: the LAST value of `key=` in <meta-file>, or empty (never
@@ -378,7 +238,7 @@ fm_backend_endpoint_atom_valid() {  # <value>
 
 fm_backend_validate_task_endpoint() {  # <meta-file> <task-id>
   local meta=$1 id=$2 backend_count backend window worktree project binding_count binding
-  local session pane recorded_session workspace tab surface
+  local session pane recorded_session workspace tab
   FM_BACKEND_VALIDATED_BACKEND=
   FM_BACKEND_VALIDATED_TARGET=
   [ -f "$meta" ] && [ ! -L "$meta" ] || {
@@ -479,20 +339,6 @@ fm_backend_validate_task_endpoint() {  # <meta-file> <task-id>
         return 1
       fi
       ;;
-    cmux)
-      [ "$binding" = "$id" ] || {
-        echo "REFUSED: legacy cmux endpoint metadata for task $id lacks an exact task binding; preserving task state." >&2
-        return 1
-      }
-      workspace=$(fm_backend_meta_exact_value "$meta" cmux_workspace_id) || workspace=
-      surface=$(fm_backend_meta_exact_value "$meta" cmux_surface_id) || surface=
-      if [ -z "$workspace" ] || [ -z "$surface" ] || [ "$window" != "$workspace:$surface" ] \
-        || ! fm_backend_endpoint_atom_valid "$workspace" \
-        || ! fm_backend_endpoint_atom_valid "$surface"; then
-        echo "REFUSED: cmux endpoint metadata for task $id is malformed or inconsistent; preserving task state." >&2
-        return 1
-      fi
-      ;;
   esac
   # shellcheck disable=SC2034 # Output globals are consumed by sourcing callers.
   FM_BACKEND_VALIDATED_BACKEND=$backend
@@ -570,7 +416,7 @@ fm_backend_expected_label_of_selector() {  # <raw-target> <state-dir>
 
 # fm_backend_source: source the named backend's adapter file, once per shell.
 # Each adapter is an independently linted canonical root. The /dev/null source
-# boundaries keep runtime dispatch from importing all five adapter ASTs into
+# boundaries keep runtime dispatch from importing all three adapter ASTs into
 # every dispatcher consumer while preserving the runtime source operations.
 fm_backend_source() {  # <name>
   local name=$1 adapter
@@ -601,13 +447,6 @@ fm_backend_source() {  # <name>
         # shellcheck source=/dev/null
         . "$adapter" || return 1
         _FM_BACKEND_ZELLIJ_SOURCED=1
-      fi
-      ;;
-    cmux)
-      if [ -z "${_FM_BACKEND_CMUX_SOURCED:-}" ]; then
-        # shellcheck source=/dev/null
-        . "$adapter" || return 1
-        _FM_BACKEND_CMUX_SOURCED=1
       fi
       ;;
   esac
@@ -678,17 +517,13 @@ fm_backend_capture() {  # <backend> <target> <lines> [expected-label]
     tmux) fm_backend_tmux_capture "$@" ;;
     herdr) fm_backend_herdr_capture "$@" ;;
     zellij) fm_backend_zellij_capture "$@" ;;
-    cmux) fm_backend_cmux_capture "$@" ;;
     *) echo "error: no capture implementation for backend '$backend'" >&2; return 1 ;;
   esac
 }
 
 # FM_BACKEND_VISIBLE_CAPTURE: backends with a verified viewport-only read, each
 # implementing fm_backend_<name>_visible_capture. This one list answers both the
-# capability question and the dispatch, so they cannot disagree. cmux is absent
-# pending live verification: its `read-screen` without `--scrollback` plausibly
-# reads only the viewport, but that has not been observed on a real cmux, so
-# cmux remains excluded until live verification establishes that guarantee.
+# capability question and the dispatch, so they cannot disagree.
 FM_BACKEND_VISIBLE_CAPTURE="tmux herdr zellij"
 
 # fm_backend_visible_capture_supported: whether <backend> can read the visible
@@ -721,7 +556,6 @@ fm_backend_send_key() {  # <backend> <target> <key> [expected-label]
     tmux) fm_backend_tmux_send_key "$@" ;;
     herdr) fm_backend_herdr_send_key "$@" ;;
     zellij) fm_backend_zellij_send_key "$@" ;;
-    cmux) fm_backend_cmux_send_key "$@" ;;
     *) echo "error: no send-key implementation for backend '$backend'" >&2; return 1 ;;
   esac
 }
@@ -737,7 +571,6 @@ fm_backend_send_text_submit() {  # <backend> <target> <text> <retries> <enter-sl
     tmux) fm_backend_tmux_send_text_submit "$@" ;;
     herdr) fm_backend_herdr_send_text_submit "$@" ;;
     zellij) fm_backend_zellij_send_text_submit "$@" ;;
-    cmux) fm_backend_cmux_send_text_submit "$@" ;;
     *) echo "error: no send-text implementation for backend '$backend'" >&2; return 1 ;;
   esac
 }
@@ -763,7 +596,6 @@ fm_backend_kill() {  # <backend> <target>
     tmux) fm_backend_tmux_kill "$@" ;;
     herdr) fm_backend_herdr_kill "$@" ;;
     zellij) fm_backend_zellij_kill "$@" ;;
-    cmux) fm_backend_cmux_kill "$@" ;;
     *) echo "error: no kill implementation for backend '$backend'" >&2; return 1 ;;
   esac
 }
@@ -804,7 +636,6 @@ fm_backend_composer_state() {  # <backend> <target> [expected-label] -> empty|pe
   case "$backend" in
     tmux) fm_tmux_composer_state "$@" ;;
     herdr) fm_backend_herdr_composer_state "$@" ;;
-    cmux) fm_backend_cmux_composer_state "$@" ;;
     zellij) fm_backend_zellij_composer_state "$@" ;;
     *) printf 'unknown' ;;
   esac
@@ -817,7 +648,7 @@ fm_backend_composer_state() {  # <backend> <target> [expected-label] -> empty|pe
 # server as a side effect via fm_backend_herdr_server_ensure - fine for an
 # operation that is about to use the pane, wrong for a passive liveness
 # probe). A gone tmux window or an unqueryable herdr pane (server down, pane
-# closed), or missing zellij/cmux pane simply fails, which IS "does not exist"
+# closed), or missing zellij pane simply fails, which IS "does not exist"
 # for this purpose.
 # Mirrors fm-crew-state.sh's pane_readable check; exists here as one shared
 # primitive so callers that only need a fast alive/dead read (recovery
@@ -847,10 +678,6 @@ fm_backend_target_exists() {  # <backend> <target> [expected-label]
       fm_backend_source zellij || return 1
       fm_backend_zellij_target_ready "$target" "$expected_label"
       ;;
-    cmux)
-      fm_backend_source cmux || return 1
-      fm_backend_cmux_target_ready "$target" "$expected_label"
-      ;;
     *)
       return 1
       ;;
@@ -876,7 +703,7 @@ fm_backend_target_exists() {  # <backend> <target> [expected-label]
 # `dead` here (issue #4115) - then maps a positively stopped session server to
 # `missing` only in this recovery-grade view. Zellij remains unverified because
 # its secondmate ghost-tab and agent-process recovery path has not been
-# empirically validated. cmux does not support secondmate spawns.
+# empirically validated.
 fm_backend_agent_state() {  # <backend> <target>
   local backend=$1 target=$2
   fm_backend_source "$backend" || { printf 'unverified'; return 0; }

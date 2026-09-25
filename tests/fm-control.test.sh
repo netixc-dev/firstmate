@@ -493,8 +493,7 @@ test_unverified_harness_is_refused() {
 
 test_backend_key_capability_matrix() {
   local backend key
-  for backend in tmux herdr zellij cmux; do
-    # C-u is the composer clear muse's interrupt needs; every retained session
+  for backend in tmux herdr zellij; do    # C-u is the composer clear muse's interrupt needs; every retained session
     # provider normalizes it (bin/backends/*.sh).
     for key in Escape Enter C-c C-u; do
       fm_control_backend_supports_key "$backend" "$key" \
@@ -529,44 +528,31 @@ test_harness_kind_capability() {
 }
 
 test_unverified_state_backends_refuse_stop_verbs() {
-  local dir out rc backend
-  for backend in zellij cmux; do
-    dir=$(new_case "nostate-$backend")
-    if [ "$backend" = zellij ]; then
-      add_task "$dir" t1 claude ship zellij "sess:7"
-      {
-        echo "zellij_session=sess"
-        echo "zellij_tab_id=1"
-        echo "zellij_pane_id=7"
-      } >> "$dir/home/state/t1.meta"
-    else
-      add_task "$dir" t1 claude ship cmux "ws1:surface1"
-      {
-        echo "cmux_workspace_id=ws1"
-        echo "cmux_surface_id=surface1"
-      } >> "$dir/home/state/t1.meta"
-    fi
-    out=$(run_control "$dir" t1 exit); rc=$?
-    expect_code 1 "$rc" "exit on $backend should refuse"$'\n'"$out"
-    assert_contains "$out" "no recovery-grade agent-state classifier" \
-      "the $backend refusal should name the missing stop proof"
-    [ -z "$(literals "$dir")" ] || fail "$backend must receive no exit command"
-    out=$(run_control "$dir" t1 relaunch --note x); rc=$?
-    expect_code 1 "$rc" "relaunch on $backend should refuse"$'\n'"$out"
-    assert_contains "$out" "no recovery-grade agent-state classifier" \
-      "the $backend relaunch refusal should name the missing stop proof"
-  done
+  local dir out rc backend=zellij
+  dir=$(new_case "nostate-$backend")
+  add_task "$dir" t1 claude ship zellij "sess:7"
+  {
+    echo "zellij_session=sess"
+    echo "zellij_tab_id=1"
+    echo "zellij_pane_id=7"
+  } >> "$dir/home/state/t1.meta"
+  out=$(run_control "$dir" t1 exit); rc=$?
+  expect_code 1 "$rc" "exit on $backend should refuse"$'\n'"$out"
+  assert_contains "$out" "no recovery-grade agent-state classifier" \
+    "the $backend refusal should name the missing stop proof"
+  [ -z "$(literals "$dir")" ] || fail "$backend must receive no exit command"
+  out=$(run_control "$dir" t1 relaunch --note x); rc=$?
+  expect_code 1 "$rc" "relaunch on $backend should refuse"$'\n'"$out"
+  assert_contains "$out" "no recovery-grade agent-state classifier" \
+    "the $backend relaunch refusal should name the missing stop proof"
   pass "fm-control: a backend that cannot prove an agent stopped refuses exit and relaunch"
 }
 
 test_state_verified_backends_are_exactly_tmux_and_herdr() {
   fm_control_backend_state_verified tmux || fail "tmux has a recovery-grade classifier"
   fm_control_backend_state_verified herdr || fail "herdr has a recovery-grade classifier"
-  local backend
-  for backend in zellij cmux; do
-    fm_control_backend_state_verified "$backend" \
-      && fail "$backend has no recovery-grade classifier and must not claim one"
-  done
+  fm_control_backend_state_verified zellij \
+    && fail "zellij has no recovery-grade classifier and must not claim one"
   pass "fm-control-lib: stop-proving verbs are gated on the backends that really classify agent state"
 }
 

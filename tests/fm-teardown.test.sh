@@ -1366,12 +1366,6 @@ test_windowless_record_outside_the_leftover_class_still_refuses() {
   seed_backlog_in_flight "$case_dir"
   assert_windowless_record_refuses "$case_dir" windowless-herdr-identity "no spawn_gen that identifies one exact incarnation"
 
-  case_dir=$(make_case windowless-cmux-identity)
-  write_windowless_legacy_meta "$case_dir" no-mistakes ship "$case_dir/missing-wt"
-  printf '%s\n' 'cmux_surface_id=surface-1' >> "$case_dir/state/task-x1.meta"
-  seed_backlog_in_flight "$case_dir"
-  assert_windowless_record_refuses "$case_dir" windowless-cmux-identity "no spawn_gen that identifies one exact incarnation"
-
   case_dir=$(make_case windowless-control-char)
   write_windowless_legacy_meta "$case_dir" no-mistakes ship "$case_dir/missing"$'\t'"wt"
   seed_backlog_in_flight "$case_dir"
