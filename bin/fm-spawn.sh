@@ -2141,13 +2141,6 @@ case "$ARG3" in
   ;;
 esac
 
-# Reject a retired standalone adapter before account, endpoint, worktree,
-# task record, or hook mutation. Keep unrelated raw commands available.
-if [ "$HARNESS" = kimi ]; then
-  echo "error: standalone Kimi worker support was removed; use plain Pi with an explicit provider instead" >&2
-  exit 1
-fi
-
 # gemini is verified for CREWMATE/SCOUT work only: no primary supervision
 # protocol exists for a secondmate running it.
 if [ "$KIND" = secondmate ] && [ "$HARNESS" = gemini ]; then
