@@ -866,8 +866,14 @@ spawn_raw_executable() { # <command>
     while [ "$i" -lt "${#words[@]}" ]; do
       word=${words[$i]}
       case "$word" in
-      [A-Za-z_]*=*) i=$((i + 1)) ;;
-      --) i=$((i + 1)); break ;;
+      [!-]*=*) i=$((i + 1)) ;;
+      --)
+        i=$((i + 1))
+        while [ "$i" -lt "${#words[@]}" ]; do
+          case "${words[$i]}" in ?*=*) i=$((i + 1)) ;; *) break ;; esac
+        done
+        break
+        ;;
       -i|--ignore-environment|-0|--null|-v|--debug|--list-signal-handling) i=$((i + 1)) ;;
       -u|--unset|-C|--chdir|-P|-a|--argv0)
         i=$((i + 2))

@@ -165,7 +165,7 @@ SH
     /usr/bin/env -S 'FOO=hello\"world custom-agent --flag' || fail "real env -S escaped-quote probe failed"
   [ "$(cat "$probe_value")" = 'hello"world' ] || fail "real env -S treated an escaped quote as grouping"
   [ "$(cat "$probe_args")" = --flag ] || fail "real env -S did not execute the unrelated probe"
-  for form in flag positional config raw env_raw env_unset_raw env_chdir_raw env_unset_equals_raw env_ignore_raw env_separator_raw env_cluster_raw env_unknown_raw env_split_raw env_split_equals_raw env_split_option_raw env_split_cluster_raw env_split_escape_raw env_split_control_raw secondmate; do
+  for form in flag positional config raw env_raw env_numeric_assignment_raw env_unset_raw env_chdir_raw env_unset_equals_raw env_ignore_raw env_separator_raw env_cluster_raw env_unknown_raw env_split_raw env_split_numeric_assignment_raw env_split_equals_raw env_split_option_raw env_split_cluster_raw env_split_escape_raw env_split_control_raw secondmate; do
     case "$form" in
       flag) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness kimi); rc=$? ;;
       positional) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" kimi); rc=$? ;;
@@ -176,6 +176,7 @@ SH
         ;;
       raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness 'kimi --auto'); rc=$? ;;
       env_raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness 'env FOO=bar kimi --auto'); rc=$? ;;
+      env_numeric_assignment_raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness 'env 1=x kimi --auto'); rc=$? ;;
       env_unset_raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness '/usr/bin/env -u FOO /opt/bin/kimi --auto'); rc=$? ;;
       env_chdir_raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness 'env --chdir=/tmp kimi --auto'); rc=$? ;;
       env_unset_equals_raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness 'env --unset=FOO kimi --auto'); rc=$? ;;
@@ -184,6 +185,7 @@ SH
       env_cluster_raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness 'env -iv kimi --auto'); rc=$? ;;
       env_unknown_raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness 'env --future-option kimi --auto'); rc=$? ;;
       env_split_raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "env -S 'kimi --auto'"); rc=$? ;;
+      env_split_numeric_assignment_raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "env -S '1=x kimi --auto'"); rc=$? ;;
       env_split_equals_raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "env --split-string='FOO=bar /opt/bin/kimi --auto'"); rc=$? ;;
       env_split_option_raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "env -S '-u FOO kimi --auto'"); rc=$? ;;
       env_split_cluster_raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "env -S '-iv kimi --auto'"); rc=$? ;;
