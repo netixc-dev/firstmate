@@ -57,12 +57,12 @@ test_gemini_does_not_claim_inherited_ai_agent() {
   # tool process, so it proves nothing about which harness is running. A session
   # with AI_AGENT but no GEMINI_CLI must not be read as gemini.
   out=$(env -u GEMINI_CLI -u CLAUDECODE -u CURSOR_AGENT -u CURSOR_INVOKED_AS \
-        -u PI_CODING_AGENT -u GROK_AGENT AI_AGENT=gemini-cli_0-58-0_agent "$HARNESS")
+        -u PI_CODING_AGENT AI_AGENT=gemini-cli_0-58-0_agent "$HARNESS")
   [ "$out" != gemini ] \
     || fail "AI_AGENT must never claim the gemini identity, got '$out'"
   # A non-1 GEMINI_CLI is not the verified marker value either.
   out=$(env -u CLAUDECODE -u CURSOR_AGENT -u CURSOR_INVOKED_AS -u GEMINI_CLI \
-        -u PI_CODING_AGENT -u GROK_AGENT GEMINI_CLI=0 "$HARNESS")
+        -u PI_CODING_AGENT GEMINI_CLI=0 "$HARNESS")
   [ "$out" != gemini ] \
     || fail "GEMINI_CLI=0 must not claim the gemini identity, got '$out'"
   pass "fm-harness.sh: an inherited AI_AGENT never claims the gemini identity"
@@ -84,7 +84,7 @@ exit 1
 SH
   chmod +x "$fakebin/ps"
   out=$(env -u GEMINI_CLI -u CLAUDECODE -u CURSOR_AGENT -u CURSOR_INVOKED_AS \
-        -u PI_CODING_AGENT -u GROK_AGENT PATH="$fakebin:$PATH" "$HARNESS")
+        -u PI_CODING_AGENT PATH="$fakebin:$PATH" "$HARNESS")
   [ "$out" = gemini ] \
     || fail "a natively-named gemini command must be detected by ancestry, got '$out'"
   pass "fm-harness.sh: ancestry detects a natively-named gemini command"
@@ -104,13 +104,13 @@ SH
   chmod +x "$fakebin/ps"
 
   out=$(env -u GEMINI_CLI -u CLAUDECODE -u CURSOR_AGENT -u CURSOR_INVOKED_AS \
-        -u PI_CODING_AGENT -u GROK_AGENT FAKE_PS_COMM=gemini-helper \
+        -u PI_CODING_AGENT FAKE_PS_COMM=gemini-helper \
         FAKE_PS_ARGS='gemini-helper --serve' PATH="$fakebin:$PATH" "$HARNESS")
   [ "$out" != gemini ] \
     || fail "an unrelated gemini-helper command must not detect gemini, got '$out'"
 
   out=$(env -u GEMINI_CLI -u CLAUDECODE -u CURSOR_AGENT -u CURSOR_INVOKED_AS \
-        -u PI_CODING_AGENT -u GROK_AGENT FAKE_PS_COMM=node \
+        -u PI_CODING_AGENT FAKE_PS_COMM=node \
         FAKE_PS_ARGS='node server.js --model gemini' PATH="$fakebin:$PATH" "$HARNESS")
   [ "$out" != gemini ] \
     || fail "a later node argument naming gemini must not detect gemini, got '$out'"
@@ -136,7 +136,7 @@ test_gemini_node_bundle_is_not_ancestry_detectable() {
 const { spawnSync } = require('child_process');
 const env = { ...process.env };
 for (const k of ['GEMINI_CLI', 'CLAUDECODE', 'CURSOR_AGENT', 'CURSOR_INVOKED_AS',
-                 'PI_CODING_AGENT', 'GROK_AGENT']) delete env[k];
+                 'PI_CODING_AGENT']) delete env[k];
 const r = spawnSync(process.env.FM_HARNESS_BIN, { env, encoding: 'utf8' });
 process.stdout.write(r.stdout || '');
 JS
@@ -153,7 +153,7 @@ JS
 const { spawnSync } = require('child_process');
 const env = { ...process.env };
 for (const k of ['GEMINI_CLI', 'CLAUDECODE', 'CURSOR_AGENT', 'CURSOR_INVOKED_AS',
-                 'PI_CODING_AGENT', 'GROK_AGENT']) delete env[k];
+                 'PI_CODING_AGENT']) delete env[k];
 const r = spawnSync(process.env.FM_HARNESS_BIN, { env, encoding: 'utf8' });
 process.stdout.write(r.stdout || '');
 JS

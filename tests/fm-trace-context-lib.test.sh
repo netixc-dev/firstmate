@@ -240,7 +240,7 @@ od() {
   esac
 }
 EXPECTED_TP='00-123456789abcdef0123456789abcdef0-123456789abcdef0-01'
-for backend in tmux herdr; do  for harness in claude codex opencode grok pi; do
+for backend in tmux herdr; do  for harness in claude codex opencode kimi pi; do
     for kind in ship scout secondmate; do
       meta="$WORK/$backend-$harness-$kind.meta"
       {

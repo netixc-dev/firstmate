@@ -138,6 +138,27 @@ test_removed_harness_pin_refuses_before_task_mutation() {
   pass "spawn rejects a removed harness pin before task mutation or launch"
 }
 
+test_removed_grok_refuses_before_mutation() {
+  local rec id out rc command
+  id='removed-grok-z1'
+  rec=$(make_spawn_case removed-grok codex "$id")
+  read_case_record "$rec"
+  for command in '--harness grok' '--harness grok-2' 'grok --always-approve' '/usr/bin/grok --always-approve' 'env -u CLAUDECODE /usr/bin/grok --always-approve'; do
+    # Raw command values travel as one positional argument.
+    case "$command" in
+      --harness*) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "${command#--harness }"); rc=$? ;;
+      *) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" "$command"); rc=$? ;;
+    esac
+    expect_code 1 "$rc" "removed Grok selection must refuse"
+    assert_contains "$out" 'unsupported removed' "Grok refusal must name the unsupported value"
+    assert_absent "$HOME_DIR/state/$id.meta" "Grok refusal wrote metadata"
+    assert_absent "$HOME_DIR/state/$id.busy-state" "Grok refusal armed busy state"
+    assert_absent "$HOME_DIR/state/$id.grok-turnend-token" "Grok refusal wrote a token"
+    [ ! -s "$LAUNCH_LOG" ] || fail "Grok refusal launched a worker"
+  done
+  pass "standalone Grok values and raw executables refuse before task mutation"
+}
+
 test_devin_adapter_selections_refuse_and_raw_command_survives() {
   local rec id out rc meta_before sm
   id=devin-selection-z1
@@ -1731,6 +1752,7 @@ test_non_claude_harness_ignores_claude_permission_mode() {
 
 test_worker_launch_delivers_role_scope
 test_removed_harness_pin_refuses_before_task_mutation
+test_removed_grok_refuses_before_mutation
 test_devin_adapter_selections_refuse_and_raw_command_survives
 test_rovo_selections_refuse_but_raw_commands_and_home_paths_survive
 test_removed_adapter_inputs_preserve_task

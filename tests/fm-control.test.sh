@@ -320,7 +320,7 @@ test_opencode_interrupts_twice_and_others_once() {
 
 test_unverified_harness_is_refused() {
   local dir out rc removed before verb
-  for removed in "$(printf 'a%s' gy)" devin rovo rovo-wrapper muse muse-bin-0.1.0 muse-wrapper; do
+  for removed in "$(printf 'a%s' gy)" devin rovo rovo-wrapper muse muse-bin-0.1.0 muse-wrapper grok grok-2; do
     dir=$(new_case "unverified-$removed")
     add_task "$dir" t1 "$removed"
     alive_as "$dir" "$removed"
@@ -332,7 +332,10 @@ test_unverified_harness_is_refused() {
         out=$(run_control "$dir" t1 "$verb"); rc=$?
       fi
       expect_code 1 "$rc" "an unverified harness should refuse $verb: $removed"
-      assert_contains "$out" "no verified control mechanics" "refusal should name the missing verification: $removed"
+      case "$removed" in
+        grok|grok-2) assert_contains "$out" "unsupported legacy Grok record" "refusal should name the removed adapter: $removed" ;;
+        *) assert_contains "$out" "no verified control mechanics" "refusal should name the missing verification: $removed" ;;
+      esac
       [ -z "$(literals "$dir")" ] && [ -z "$(keys_sent "$dir")" ] || fail "an unverified harness received lifecycle bytes: $removed"
       [ "$(cat "$dir/home/state/t1.meta")" = "$before" ] || fail "legacy metadata was rewritten: $removed"
       assert_absent "$dir/home/state/t1.control-relaunch" "refused legacy control created a journal"

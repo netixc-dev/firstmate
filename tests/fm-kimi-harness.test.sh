@@ -6,11 +6,11 @@ set -u
 . "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
 # bin/fm-harness.sh answers from environment markers and process ancestry. A
-# suite run from inside Cursor, Claude, Pi, or Grok inherits those markers and
+# suite run from inside Cursor, Claude, or Pi inherits those markers and
 # its own real ancestry, either of which can decide a case the detection cases
 # meant to control. Drop the ambient markers so the asserted verdict does not
 # depend on which harness launched the suite.
-unset CLAUDECODE PI_CODING_AGENT FM_PI_HARNESS GROK_AGENT CURSOR_AGENT CURSOR_INVOKED_AS
+unset CLAUDECODE PI_CODING_AGENT FM_PI_HARNESS CURSOR_AGENT CURSOR_INVOKED_AS
 
 SPAWN="$ROOT/bin/fm-spawn.sh"
 TEARDOWN="$ROOT/bin/fm-teardown.sh"
@@ -965,7 +965,7 @@ esac
 SH
   chmod +x "$fakebin/ps"
 
-  out=$(env -u CLAUDECODE -u PI_CODING_AGENT -u FM_PI_HARNESS -u GROK_AGENT \
+  out=$(env -u CLAUDECODE -u PI_CODING_AGENT -u FM_PI_HARNESS \
     -u CURSOR_AGENT -u CURSOR_INVOKED_AS -u GEMINI_CLI \
     PATH="$fakebin:$BASE_PATH" FM_CONFIG_OVERRIDE="$cfg" "$ROOT/bin/fm-harness.sh")
   [ "$out" = kimi ] || fail "kimi ancestry detection returned '$out'"
@@ -1043,7 +1043,7 @@ test_kimi_busy_signature_is_scoped_to_spinner_lines() {
   fi
   printf 'Ctrl+c:cancel\n│ > │\n' > "$capture"
   if fm_pane_is_busy fake kimi; then
-    fail "Grok's exact busy token leaked into Kimi's harness-scoped matcher"
+    fail "a retired busy token leaked into Kimi's harness-scoped matcher"
   fi
   printf 'auto  K2.7 Coding thinking  /some/path\n│ > │\n' > "$capture"
   if fm_pane_is_busy fake kimi; then
@@ -1077,13 +1077,7 @@ test_watcher_never_classifies_kimi_from_its_spinner() (
   if window_is_busy fake "$busy_capture"; then
     fail "fm-watch applied Kimi's spinner to a recorded Codex task"
   fi
-  printf 'window=fake\nharness=grok\n' > "$state/kimi-watch.meta"
-  if window_is_busy fake "$busy_capture"; then
-    fail "Kimi's spinner classified a recorded Grok task through its isolated fallback"
-  fi
-  window_is_busy fake 'Ctrl+c:cancel' \
-    || fail "Grok's own verified token must still classify a recorded Grok task busy"
-  pass "fm-watch classifies Kimi as unknown rather than from its spinner, and Grok's fallback stays isolated"
+  pass "fm-watch classifies Kimi as unknown rather than from its spinner"
 )
 
 test_kimi_bordered_prompt_needs_no_override() {

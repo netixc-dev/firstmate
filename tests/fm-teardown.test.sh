@@ -704,6 +704,23 @@ test_local_only_fork_remote_allows() {
   pass "local-only worktree with HEAD on a fork remote is torn down and the home summary is refreshed"
 }
 
+test_legacy_grok_record_is_preserved() {
+  local case_dir rc
+  case_dir=$(make_case legacy-grok-record)
+  write_meta "$case_dir" local-only ship
+  printf 'harness=grok-2\n' >> "$case_dir/state/task-x1.meta"
+  printf 'unfinished\n' > "$case_dir/wt/unfinished.txt"
+  set +e
+  run_teardown "$case_dir" > "$case_dir/stdout" 2> "$case_dir/stderr"
+  rc=$?
+  set -e
+  [ "$rc" -ne 0 ] || fail "legacy Grok record must refuse cleanup"
+  grep -q 'unsupported legacy Grok record' "$case_dir/stderr" || fail "legacy Grok refusal was not named"
+  [ -f "$case_dir/state/task-x1.meta" ] && [ -f "$case_dir/wt/unfinished.txt" ] \
+    || fail "legacy Grok refusal removed the record or unfinished work"
+  pass "teardown preserves a legacy Grok record and its unfinished work"
+}
+
 test_teardown_removes_only_exact_legacy_devin_sidecar() {
   local case_dir out rc
   case_dir=$(make_case legacy-devin-sidecar)
@@ -2140,7 +2157,6 @@ test_secondmate_home_teardown_delivers_final_line_or_refuses() {
   channel="$case_dir/parent/state/mate-x.status"
   write_meta "$case_dir" local-only ship
   mkdir -p "$case_dir/tasktmp"
-  printf '!\n' > "$case_dir/state/task-x1.grok-turnend-token"
   printf '!\n' > "$case_dir/state/task-x1.kimi-turnend-token"
   printf 'tasktmp=%s\n' "$case_dir/tasktmp" >> "$case_dir/state/task-x1.meta"
   wt_commit "$case_dir" "merged work"
@@ -2156,8 +2172,7 @@ test_secondmate_home_teardown_delivers_final_line_or_refuses() {
     || fail "mate-teardown-refuses: refusal did not name the parent channel: $(cat "$case_dir/stderr")"
   [ -f "$case_dir/state/task-x1.meta" ] && [ -f "$case_dir/state/task-x1.status" ] \
     || fail "mate-teardown-refuses: refusal did not retain the task records"
-  [ -f "$case_dir/state/task-x1.grok-turnend-token" ] \
-    && [ -f "$case_dir/state/task-x1.kimi-turnend-token" ] \
+  [ -f "$case_dir/state/task-x1.kimi-turnend-token" ] \
     && [ -d "$case_dir/tasktmp" ] \
     || fail "mate-teardown-refuses: refusal removed endpoint records before parent delivery"
   rmdir "$channel"
@@ -3950,6 +3965,7 @@ EOF
 }
 
 test_local_only_fork_remote_allows
+test_legacy_grok_record_is_preserved
 test_teardown_removes_only_exact_legacy_devin_sidecar
 test_legacy_rovo_cleanup_preserves_unlanded_work
 test_teardown_closes_the_backlog_item_itself

@@ -34,7 +34,6 @@ cat > "$EXPECTED_JSON" <<'JSON'
     {"id":"trust.default","common":["references/common/control-and-recovery.md"],"harness":"references/harness/opencode.md"},
     {"id":"skill.default","common":["references/common/control-and-recovery.md"],"harness":"references/harness/pi.md"},
     {"id":"interrupt.default","common":["references/common/control-and-recovery.md"],"harness":"references/harness/pi.md"},
-    {"id":"exit.default","common":["references/common/control-and-recovery.md"],"harness":"references/harness/grok.md"},
     {"id":"resume.default","common":["references/common/control-and-recovery.md"],"harness":"references/harness/kimi.md"},
     {"id":"recovery.default","common":["references/common/control-and-recovery.md"],"harness":"references/harness/cursor.md"},
     {"id":"recovery.replacement-profile","common":["references/common/control-and-recovery.md","references/common/dispatch.md","references/common/model-and-effort.md"],"harness":"references/harness/pi.md"},
@@ -43,7 +42,6 @@ cat > "$EXPECTED_JSON" <<'JSON'
     {"id":"primary.default","common":["references/common/primary-hooks.md"],"harness":"references/harness/opencode.md"},
     {"id":"model-effort.default","common":["references/common/model-and-effort.md"],"harness":"references/harness/pi.md"},
     {"id":"model-effort.configured-profile","common":["references/common/model-and-effort.md","references/common/dispatch.md"],"harness":"references/harness/pi.md"},
-    {"id":"verify.default","common":["references/common/dispatch.md","references/common/control-and-recovery.md","references/common/primary-hooks.md","references/common/model-and-effort.md"],"harness":"references/harness/grok.md"}
   ]
 }
 JSON
@@ -59,7 +57,6 @@ JSON
     'trust.default opencode' \
     'skill.default pi' \
     'interrupt.default pi-signed' \
-    'exit.default grok' \
     'resume.default kimi' \
     'recovery.default cursor' \
     'recovery.replacement-profile pi' \
@@ -68,7 +65,6 @@ JSON
     'primary.default opencode' \
     'model-effort.default pi' \
     'model-effort.configured-profile pi-signed' \
-    'verify.default grok'
   printf '%s\n' 'Return only one JSON object with a cases array; each item must have id, common, and harness fields.'
   printf '%s\n' 'ROUTER START'
   cat "$ROUTER"
@@ -115,7 +111,7 @@ resolve_native_binary() {
   return 1
 }
 
-for harness in claude codex opencode pi pi-signed grok kimi cursor; do
+for harness in claude codex opencode pi pi-signed kimi cursor; do
   if binary=$(resolve_native_binary "$harness"); then
     version=$("$binary" --version 2>/dev/null | head -1 | tr -d '\r') || version=unknown
     printf '# native loader not claimed: %s %s is installed, but this harness-neutral evaluation does not exercise its provider transport\n' "$harness" "$version"

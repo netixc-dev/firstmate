@@ -138,7 +138,7 @@ test_real_text_is_pending() {
 # claude 2.1.226 (bare `❯` + U+00A0 NO-BREAK SPACE), codex 0.146.0 (bold `›`
 # + SGR-2 dim hint), codex 0.154.0 (the same `›` amid a braille starfield over
 # a status footer, captured through Herdr on 2026-09-15), pi (blank row
-# between solid `─` rules), opencode 1.14.46 (left-bar `┃` rows), and grok
+# between solid `─` rules), opencode 1.14.46 (left-bar `┃` rows)
 # 1.0.0 (bordered box with a TITLED bottom border), plus claude captured
 # through a styled ANSI dump (`ESC[m` `❯` U+00A0).
 #
@@ -741,7 +741,7 @@ test_cursorless_bare_wrap_region_classifies() {
 }
 
 test_cursorless_container_rejects_contiguous_lower_activity() {
-  local box leftbar grok kimi opencode
+  local box leftbar kimi opencode
   box=$'╭────────────────────────╮\n│ ❯                      │\n╰────────────────────────╯\nWorking on request...'
   assert_screen "stale box above activity on herdr" unknown "$CAPS_STYLED" "$box"
   assert_screen "stale box above activity on styled capture" unknown "$CAPS_STYLED_NOID" "$box"
@@ -750,10 +750,8 @@ test_cursorless_container_rejects_contiguous_lower_activity() {
   assert_screen "stale left-bar above activity on herdr" unknown "$CAPS_STYLED" "$leftbar"
   assert_screen "stale left-bar above activity on styled capture" unknown "$CAPS_STYLED_NOID" "$leftbar"
 
-  grok=$'╭────────────────────────╮\n│ ❯                      │\n╰──────── Grok 4.5 ──────╯\n\nGrok status'
   kimi=$'╭────────────────────────╮\n│ >                      │\n╰────────────────────────╯\n\nKimi status'
   opencode=$'┃\n┃  Ask anything...\n┃\n┃  Build · GPT-5.5 Fast OpenAI · high\n╹▀▀▀▀▀▀▀▀\n\nOpenCode status'
-  assert_screen "blank-separated grok footer" empty "$CAPS_STYLED_NOID" "$grok"
   assert_screen "blank-separated kimi footer" empty "$CAPS_UNSTYLED" "$kimi"
   assert_screen "left-bar floor and blank-separated footer" empty "$CAPS_STYLED_NOID" "$opencode"
   pass "fm_composer_classify_screen: cursorless containers reject only contiguous unclaimed activity"
@@ -784,7 +782,7 @@ test_incomplete_lower_box_invalidates_stale_candidate() {
 
 test_titled_bottom_requires_matching_width() {
   local screen out
-  screen=$'╭────────────────────────╮\n│ ❯                      │\n╰─ Grok ─╯'
+  screen=$'╭────────────────────────╮\n│ ❯                      │\n╰─ title ─╯'
   out=$(fm_composer_classify_screen "$CAPS_TMUX" "$screen" 1)
   [ "$out" = unknown ] \
     || fail "a short titled bottom must not prove an empty box, got '$out'"

@@ -310,7 +310,7 @@ make_spawn_fakebin() {
 }
 
 # fm_test_run_spawn <home> <pane-path> <fakebin> [fm-spawn args...]
-# Common spawn env. Extra variables in the caller (GROK_HOME, FM_FAKE_LAUNCH_LOG,
+# Common spawn env. Extra variables in the caller (FM_FAKE_LAUNCH_LOG,
 # CLAUDE_CONFIG_DIR, ...) are inherited. Does not add --mode/--yolo; ship tests
 # that need a delivery contract pass those flags themselves.
 fm_test_run_spawn() {

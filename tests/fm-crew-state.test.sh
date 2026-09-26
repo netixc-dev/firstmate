@@ -2219,7 +2219,7 @@ test_no_run_busy_pane() {
 # authoritative read still said working, the watcher would silently swallow
 # the wake even though bin/fm-busy-lib.sh's own classifier had already flipped
 # to unknown launch-prompt. crew_busy_verdict must therefore capture a real
-# tail for every harness, not only grok, so the backstop's own tail-based
+# tail for every harness, not only a specific adapter, so the backstop's own tail-based
 # check ever runs here at all.
 test_no_run_launch_prompt_parked_is_not_working() {
   reset_fakes
@@ -2265,8 +2265,6 @@ test_no_run_footer_text_alone_is_not_working() {
   pass "a converted adapter never reads working from rendered footer text"
 }
 
-# Grok keeps its isolated temporary rendered-tail fallback until its structured
-# lifecycle is live-verified, so a grok crew still reads working from its own
 # verified signature.
 
 test_no_run_herdr_unknown_uses_backend_capture() {

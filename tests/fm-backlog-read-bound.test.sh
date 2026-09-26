@@ -408,7 +408,7 @@ fm_write_meta "$E2E_HOME/state/wedged-task.meta" \
 
 DIGEST="$E2E/digest.out"
 DIGEST_START=$(date +%s)
-env -u CLAUDECODE -u PI_CODING_AGENT -u FM_PI_HARNESS -u GROK_AGENT \
+env -u CLAUDECODE -u PI_CODING_AGENT -u FM_PI_HARNESS \
   FM_HOME="$E2E_HOME" FM_ROOT_OVERRIDE="$E2E_ROOT" PATH="$E2E_FAKEBIN:$BASE_PATH" \
   FM_BACKLOG_ROW_TIMEOUT_SECS="$BOUND_SECS" \
   "$ROOT/bin/fm-session-start.sh" > "$DIGEST" 2>&1 || true

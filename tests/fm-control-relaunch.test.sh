@@ -239,7 +239,7 @@ run_control() {  # <case-dir> <args...>
     -u HERDR_TAB_ID -u HERDR_WORKSPACE_ID \
     PATH="$dir/fakebin:$PATH" FM_HOME="$dir/home" FM_FAKE_DIR="$dir/fake" \
     HOME="$dir/user-home" CLAUDE_CONFIG_DIR='' \
-    FM_SPAWN_NO_GUARD=1 GROK_HOME="$dir/grokhome" \
+    FM_SPAWN_NO_GUARD=1 \
     FM_CONTROL_POLL=0.01 FM_CONTROL_EXIT_WAIT=0.05 FM_CONTROL_LAUNCH_WAIT=0.05 \
     FM_REAL_GIT="${FM_REAL_GIT:-}" FM_FAKE_GIT_FAILURE="${FM_FAKE_GIT_FAILURE:-}" \
     FM_REAL_MV="${FM_REAL_MV:-}" FM_FAKE_COMPLETE_JOURNAL_MV_FAIL="${FM_FAKE_COMPLETE_JOURNAL_MV_FAIL:-}" \
@@ -261,7 +261,7 @@ run_spawn() {  # <case-dir> <args...>
     -u HERDR_TAB_ID -u HERDR_WORKSPACE_ID \
     PATH="$dir/fakebin:$PATH" FM_HOME="$dir/home" FM_FAKE_DIR="$dir/fake" \
     HOME="$dir/user-home" CLAUDE_CONFIG_DIR='' \
-    FM_SPAWN_NO_GUARD=1 GROK_HOME="$dir/grokhome" \
+    FM_SPAWN_NO_GUARD=1 \
     "$SPAWN" "$@" 2>&1
 }
 
@@ -664,63 +664,7 @@ test_harness_switch_does_not_carry_the_old_profile_axes() {
   pass "fm-control relaunch: a harness switch resets model and effort unless they are named too"
 }
 
-test_harness_switch_resolves_a_prefixed_recorded_harness() {
-  local dir out rc auth
-  dir=$(new_case prefixcontrol rl32)
-  add_ship_task "$dir" rl32 grok-2
-  printf 'grok-2' > "$dir/fake/command"
-  mkdir -p "$dir/grokhome/hooks/fm-turn-end.d"
-  printf 'fm.abcdefabcdef\n' > "$dir/home/state/rl32.grok-turnend-token"
-  auth="$dir/grokhome/hooks/fm-turn-end.d/fm.abcdefabcdef"
-  printf '%s\n' "$dir/home/state/rl32.turn-ended" > "$auth"
-  printf 'token=fm.abcdefabcdef\n' > "$dir/wt/.fm-grok-turnend"
 
-  out=$(run_control "$dir" rl32 relaunch --harness claude --note "switching runtime"); rc=$?
-  expect_code 0 "$rc" "relaunch should resolve a prefixed recorded harness"$'\n'"$out"
-  [ "$(sed -n '1p' "$dir/fake/literal")" = /exit ] \
-    || fail "relaunch should stop a grok-prefixed task with grok's exit command"
-  [ "$(meta_field "$dir" rl32 harness)" = claude ] \
-    || fail "relaunch should publish the explicitly selected replacement harness"
-  [ "$(journal_field "$dir" rl32 from_harness)" = grok-2 ] \
-    || fail "relaunch should retain the recorded harness basename in its provenance"
-  assert_contains "$out" "harness=claude from=grok-2" \
-    "relaunch should report the recorded-to-selected harness transition"
-  [ ! -e "$auth" ] && [ ! -e "$dir/home/state/rl32.grok-turnend-token" ] \
-    && [ ! -e "$dir/wt/.fm-grok-turnend" ] \
-    || fail "relaunch should retire wiring owned by the prefixed prior harness"
-  pass "fm-control relaunch: a prefixed recorded harness can switch adapters transactionally"
-}
-
-test_prefixed_recorded_harness_requires_explicit_replacement() {
-  local dir out rc meta brief
-  dir=$(new_case prefixrefuse rl34)
-  add_ship_task "$dir" rl34 grok-2
-  printf 'grok-2' > "$dir/fake/command"
-  meta="$dir/home/state/rl34.meta"
-  brief="$dir/home/data/rl34/brief.md"
-  cp "$meta" "$dir/meta.before"
-  cp "$brief" "$dir/brief.before"
-
-  out=$(run_control "$dir" rl34 relaunch --note "continue safely"); rc=$?
-  expect_code 1 "$rc" "implicit relaunch from a prefixed command should refuse"
-  assert_contains "$out" "original launch command cannot be reconstructed from its recorded basename" \
-    "the refusal should name the missing launch identity"
-  assert_contains "$out" "would substitute the canonical adapter 'grok'" \
-    "the refusal should name the unsafe substitution"
-  assert_contains "$out" "Pass an explicit --harness" \
-    "the refusal should name the deliberate replacement path"
-  cmp -s "$meta" "$dir/meta.before" \
-    || fail "a refused prefixed relaunch must leave metadata byte-identical"
-  cmp -s "$brief" "$dir/brief.before" \
-    || fail "a refused prefixed relaunch must leave instructions byte-identical"
-  [ "$(cat "$dir/fake/command")" = grok-2 ] \
-    || fail "a refused prefixed relaunch must leave the original agent alive"
-  [ -z "$(cat "$dir/fake/literal")" ] && [ -z "$(cat "$dir/fake/keys")" ] \
-    || fail "a refused prefixed relaunch must deliver no lifecycle input"
-  [ ! -e "$dir/home/state/rl34.control-relaunch" ] \
-    || fail "a refused prefixed relaunch must not create a durable journal"
-  pass "fm-control relaunch: a prefixed command requires an explicit replacement harness"
-}
 
 test_same_harness_relaunch_keeps_the_profile_axes() {
   local dir out rc
@@ -835,21 +779,6 @@ test_relaunch_onto_an_unverified_harness_is_refused() {
   pass "fm-control relaunch: refuses to relaunch onto an adapter with no verified mechanics"
 }
 
-test_prior_harness_turnend_registry_entry_is_cleared() {
-  local dir auth
-  dir=$(new_case grokauth rl9)
-  add_ship_task "$dir" rl9 grok
-  mkdir -p "$dir/grokhome/hooks/fm-turn-end.d"
-  printf 'fm.abcdefabcdef\n' > "$dir/home/state/rl9.grok-turnend-token"
-  auth="$dir/grokhome/hooks/fm-turn-end.d/fm.abcdefabcdef"
-  printf '%s\n' "$dir/home/state/rl9.turn-ended" > "$auth"
-  printf 'grok' > "$dir/fake/command"
-  printf 'grok' > "$dir/fake/becomes"
-  run_control "$dir" rl9 relaunch --note "restart on the same runtime" >/dev/null
-  [ ! -e "$auth" ] \
-    || fail "the previous incarnation's turn-end registry entry must not outlive it"
-  pass "fm-control relaunch: the retired incarnation's global turn-end token is revoked"
-}
 
 test_wiring_removal_failure_refuses_before_replacement_arm() {
   local dir hook out rc real_rm
@@ -876,24 +805,20 @@ test_wiring_removal_failure_refuses_before_replacement_arm() {
 }
 
 test_turnend_auth_paths_are_owned_by_the_control_adapter() {
-  local dir state grok_path kimi_path token_path
+  local dir state kimi_path token_path
   dir=$(fm_test_tmproot fm-control-auth)
   state="$dir/state"
   mkdir -p "$state"
-  printf 'fm.111111111111\n' > "$state/x.grok-turnend-token"
   printf 'fm.222222222222\n' > "$state/x.kimi-turnend-token"
-  token_path=$(fm_control_harness_turnend_token_path grok "$state" x)
-  [ "$token_path" = "$state/x.grok-turnend-token" ] \
-    || fail "the grok token path should be computed without reading it"
-  grok_path=$(GROK_HOME="$dir/gh" fm_control_harness_turnend_auth_path grok fm.111111111111)
-  [ "$grok_path" = "$dir/gh/hooks/fm-turn-end.d/fm.111111111111" ] \
-    || fail "grok's registry path should resolve under GROK_HOME, got '$grok_path'"
+  token_path=$(fm_control_harness_turnend_token_path kimi "$state" x)
+  [ "$token_path" = "$state/x.kimi-turnend-token" ] \
+    || fail "the Kimi token path should be computed without reading it"
   kimi_path=$(HOME="$dir/kh" fm_control_harness_turnend_auth_path kimi fm.222222222222)
   [ "$kimi_path" = "$dir/kh/.kimi-code/fm-turn-end.d/fm.222222222222" ] \
-    || fail "kimi's registry path should resolve under the home store, got '$kimi_path'"
-  grok_path=$(GROK_HOME="$dir/gh" fm_control_harness_turnend_auth_path grok 'not a token/../..')
-  [ -z "$grok_path" ] || fail "a malformed token must resolve to no path, got '$grok_path'"
-  pass "fm-control-lib: one owner resolves each harness's turn-end registry entry, and refuses a malformed token"
+    || fail "Kimi's registry path should resolve under the home store, got '$kimi_path'"
+  kimi_path=$(HOME="$dir/kh" fm_control_harness_turnend_auth_path kimi 'not a token/../..')
+  [ -z "$kimi_path" ] || fail "a malformed token must resolve to no path, got '$kimi_path'"
+  pass "fm-control-lib: one owner resolves Kimi's turn-end registry entry and refuses a malformed token"
 }
 
 test_secondmate_relaunch_picks_up_the_configured_harness_pin() {
@@ -1166,27 +1091,7 @@ test_promoted_scout_relaunch_receives_the_current_delivery_contract() {
 # fm-spawn arms per-task wiring on harness PREFIXES, because a task launched
 # from a raw command records that command's basename rather than the exact
 # adapter name. Retirement must resolve the same way, or a task recorded as
-# `grok-2` would have its turn-end token and hook pointer armed and never
 # retired - leaving a registry entry that outlives the agent that owned it.
-test_prefixed_prior_harness_wiring_is_still_retired() {
-  local dir auth
-  dir=$(new_case prefixwiring rl30)
-  add_ship_task "$dir" rl30 grok-2
-  mkdir -p "$dir/grokhome/hooks/fm-turn-end.d"
-  printf 'fm.abcdefabcdef\n' > "$dir/home/state/rl30.grok-turnend-token"
-  auth="$dir/grokhome/hooks/fm-turn-end.d/fm.abcdefabcdef"
-  printf '%s\n' "$dir/home/state/rl30.turn-ended" > "$auth"
-  printf 'token=fm.abcdefabcdef\n' > "$dir/wt/.fm-grok-turnend"
-  printf 'zsh' > "$dir/fake/command"
-  run_spawn "$dir" rl30 --relaunch --harness claude >/dev/null
-  [ ! -e "$auth" ] \
-    || fail "a prefixed prior harness must still have its turn-end registry entry revoked"
-  [ ! -e "$dir/home/state/rl30.grok-turnend-token" ] \
-    || fail "a prefixed prior harness must still have its private token retired"
-  [ ! -e "$dir/wt/.fm-grok-turnend" ] \
-    || fail "a prefixed prior harness must still have its worktree hook pointer removed"
-  pass "fm-spawn --relaunch: wiring armed under a prefixed harness name is still retired"
-}
 
 # Cleanup-only legacy bindings must retire without following vendor paths.
 test_muse_session_binding_is_retired_on_a_harness_switch() {
@@ -2425,15 +2330,12 @@ test_relaunch_appends_the_progress_note_to_the_instructions
 test_relaunch_requires_a_note_for_a_ship_task
 test_harness_switch_moves_the_record_and_clears_prior_wiring
 test_harness_switch_does_not_carry_the_old_profile_axes
-test_harness_switch_resolves_a_prefixed_recorded_harness
-test_prefixed_recorded_harness_requires_explicit_replacement
 test_same_harness_relaunch_keeps_the_profile_axes
 test_native_ultra_relaunch_preserves_profile_and_rejects_before_stop
 test_signed_out_worker_account_pin_refuses_before_stop
 test_worker_account_pin_follows_the_relaunch
 test_explicit_model_wins_over_the_recorded_one
 test_relaunch_onto_an_unverified_harness_is_refused
-test_prior_harness_turnend_registry_entry_is_cleared
 test_wiring_removal_failure_refuses_before_replacement_arm
 test_turnend_auth_paths_are_owned_by_the_control_adapter
 test_secondmate_relaunch_picks_up_the_configured_harness_pin
@@ -2444,7 +2346,6 @@ test_ship_relaunch_ignores_the_crew_harness_config
 test_spawn_relaunch_without_a_harness_reuses_the_recorded_one
 test_spawn_relaunch_of_promoted_scout_uses_the_recorded_branch
 test_promoted_scout_relaunch_receives_the_current_delivery_contract
-test_prefixed_prior_harness_wiring_is_still_retired
 test_muse_session_binding_is_retired_on_a_harness_switch
 test_legacy_devin_sidecar_is_retired_on_a_harness_switch
 test_legacy_rovo_replacement_requires_explicit_agent_free_choice

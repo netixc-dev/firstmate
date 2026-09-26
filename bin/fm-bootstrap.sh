@@ -1455,6 +1455,7 @@ fi
 # Local detection: presence, version floors, and configuration. Nothing here
 # leaves this machine, so it stays on the session-start critical path.
 detect_local_tools() {
+  local crew secondmate_pin
   if [ "$BACKEND_VALID" -eq 0 ]; then
     echo "BACKEND_INVALID: $BACKEND (known: $FM_BACKEND_KNOWN)"
   fi
@@ -1503,6 +1504,15 @@ detect_local_config() {
   fi
   crew=
   [ -f "$CONFIG/crew-harness" ] && crew=$(tr -d '[:space:]' < "$CONFIG/crew-harness" || true)
+  case "$crew" in
+    grok|grok-*) echo "CREW_DISPATCH: invalid config/crew-harness - unsupported removed Grok worker '$crew'; choose a supported harness explicitly" ;;
+  esac
+  if [ -f "$CONFIG/secondmate-harness" ]; then
+    read -r secondmate_pin _ < "$CONFIG/secondmate-harness" || true
+    case "$secondmate_pin" in
+      grok|grok-*) echo "CREW_DISPATCH: invalid config/secondmate-harness - unsupported removed Grok worker '$secondmate_pin'; choose a supported harness explicitly" ;;
+    esac
+  fi
   if [ "${FM_BOOTSTRAP_VERBOSE_FACTS:-0}" = 1 ] && [ -n "$crew" ] && [ "$crew" != "default" ]; then
     echo "BOOTSTRAP_INFO: crew harness override active: $crew"
   fi

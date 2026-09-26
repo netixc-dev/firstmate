@@ -184,7 +184,6 @@ install_guard_scripts() {
   local dir=$1
   mkdir -p "$dir/bin"
   cp "$ROOT/bin/fm-turnend-guard.sh" "$dir/bin/fm-turnend-guard.sh"
-  cp "$ROOT/bin/fm-turnend-guard-grok.sh" "$dir/bin/fm-turnend-guard-grok.sh"
   cp "$ROOT/bin/fm-operational-input.sh" "$dir/bin/fm-operational-input.sh"
   cp "$ROOT/bin/fm-supervision-instructions.sh" "$dir/bin/fm-supervision-instructions.sh"
   cp "$ROOT/bin/fm-harness.sh" "$dir/bin/fm-harness.sh"
@@ -196,7 +195,7 @@ install_guard_scripts() {
   cp "$ROOT/bin/fm-cursor-lib.sh" "$dir/bin/fm-cursor-lib.sh"
   mkdir -p "$dir/docs"
   cp -R "$ROOT/docs/supervision-protocols" "$dir/docs/supervision-protocols"
-  chmod +x "$dir/bin/fm-turnend-guard.sh" "$dir/bin/fm-turnend-guard-grok.sh" "$dir/bin/fm-operational-input.sh" "$dir/bin/fm-supervision-instructions.sh" "$dir/bin/fm-harness.sh"
+  chmod +x "$dir/bin/fm-turnend-guard.sh" "$dir/bin/fm-operational-input.sh" "$dir/bin/fm-supervision-instructions.sh" "$dir/bin/fm-harness.sh"
 }
 
 mark_codex_hook_root() {
@@ -402,7 +401,6 @@ OpenCode|{"stop_hook_active":false}
 Pi|{"stop_hook_active":false}
 pi-signed|{"stop_hook_active":false}
 omp|{"stop_hook_active":false}
-Grok|{"sessionId":"grok-session","stopHookActive":false}
 Kimi|{"stop_hook_active":false}
 EOF
   kill "$holder" "$pid" 2>/dev/null || true
@@ -728,21 +726,6 @@ test_hook_runs_fast() {
 
 
 
-
-
-
-
-# Grok loads Claude-compatible settings, so a TRACKED .claude/settings.json entry
-# that also has a .grok/hooks/ counterpart must refuse to run under Grok, or the
-# home gets a duplicate path. The regression this pins: the guard once tested
-# GROK_AGENT alone, which a grok 1.0.0 HOOK process does not carry, so the
-# Claude-only Stop auto-arm ran synchronously under Grok, foregrounded the
-# watcher, and wedged the Grok turn for its declared 28800-second timeout.
-#
-# bin/fm-subagent-pretool-check.sh is the deliberate exception: Grok has no
-# counterpart registration, so guarding it would REMOVE the guard from Grok
-# rather than deduplicate it (docs/subagent-guard.md "Known residual gap").
-# It is asserted to stay unguarded so the exception cannot be closed silently.
 
 test_codex_hook_uses_process_pwd_when_payload_cwd_is_outside_root() {
   local settings command dir expected_root outside payload out status
