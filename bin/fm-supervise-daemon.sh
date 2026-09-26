@@ -108,7 +108,7 @@
 #          FM_HOUSEKEEPING_TICK     seconds between housekeeping passes while
 #                                   the watcher is mid-cycle (default 15)
 #          FM_BUSY_REGEX            optional rendered busy-signature override
-#                                   for delivery guards and Grok's fallback
+#                                   for delivery guards
 #          FM_COMPOSER_IDLE_RE      optional shared classifier override; see
 #                                   docs/configuration.md for its safety gates
 #          FM_MAX_DEFER_SECS        max seconds a buffered escalation may sit
@@ -216,7 +216,7 @@ WEDGE_ALARM_NOTIFIER_PID=
 # live in bin/fm-classify-lib.sh, shared with the always-on watcher.
 # Composer-empty detection, submit acknowledgement, and the harness-scoped
 # supervisor-pane busy guard live in bin/fm-tmux-lib.sh.
-# FM_BUSY_REGEX also overrides Grok's isolated task-state fallback.
+# FM_BUSY_REGEX is reserved for supported task-state classifiers.
 INJECT_FAIL_SLEEP_DEFAULT=30
 INJECT_CONFIRM_RETRIES_DEFAULT=3
 INJECT_CONFIRM_SLEEP_DEFAULT=0.5

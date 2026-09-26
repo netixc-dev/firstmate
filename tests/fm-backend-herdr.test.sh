@@ -3814,36 +3814,6 @@ test_composer_state_real_text_is_pending() {
 # Issue #3436: Grok 1.0.5's real bottom border is three columns wider than
 # the aligned top and content rows. Herdr has no cursor anchor, so the old
 # geometry verdict was unknown even when this composer was genuinely idle.
-test_composer_state_grok_oversized_title_preserves_safe_verdicts() {
-  local dir log resp fb out
-  dir="$TMP_ROOT/composer-grok-oversized-title"; mkdir -p "$dir/responses"; log="$dir/log"; resp="$dir/responses"; : > "$log"
-  printf '%s\n' \
-    '  ╭──────────────────────────────────────────────────────────────────────────╮' \
-    '  │ ❯                                                                        │' \
-    '  ╰────────────────────────────────────────────────────────── Grok 4.6 (xhigh) ─╯' \
-    '' \
-    '  Shift+Tab:mode  │  Ctrl+x:shortcuts' > "$resp/1.out"
-  printf '%s\n' \
-    '  ╭──────────────────────────────────────────────────────────────────────────╮' \
-    '  │ ❯ deploy the fix                                                         │' \
-    '  ╰────────────────────────────────────────────────────────── Grok 4.6 (xhigh) ─╯' > "$resp/2.out"
-  printf '%s\n' \
-    '  ╭──────────────────────────────────────────────────────────────────────────╮' \
-    '  │ ❯                                                                        │' \
-    '  ╰────────────────────────────────────────────────────────── unknown surface ─╯' > "$resp/3.out"
-  fb=$(make_herdr_fakebin "$dir")
-
-  out=$( PATH="$fb:$PATH" FM_HERDR_LOG="$log" FM_HERDR_RESPONSES="$resp" \
-    bash -c '. "$0/bin/backends/herdr.sh"; fm_backend_herdr_composer_state default:w1:p2' "$ROOT" )
-  [ "$out" = empty ] || fail "issue #3436's idle Grok/Herdr composer should read empty, got '$out'"
-  out=$( PATH="$fb:$PATH" FM_HERDR_LOG="$log" FM_HERDR_RESPONSES="$resp" \
-    bash -c '. "$0/bin/backends/herdr.sh"; fm_backend_herdr_composer_state default:w1:p2' "$ROOT" )
-  [ "$out" = pending ] || fail "typed text inside Grok's oversized box should stay pending, got '$out'"
-  out=$( PATH="$fb:$PATH" FM_HERDR_LOG="$log" FM_HERDR_RESPONSES="$resp" \
-    bash -c '. "$0/bin/backends/herdr.sh"; fm_backend_herdr_composer_state default:w1:p2' "$ROOT" )
-  [ "$out" = unknown ] || fail "an oversized unrecognized title should stay unknown, got '$out'"
-  pass "fm_backend_herdr_composer_state: Grok's exact title overhang is empty while pending and unproved panes remain safe"
-}
 
 # Live-verified incident (2026-07-03, real grok 0.2.82 on herdr, isolated
 # session): typing "/compact" opens the completion popup; the FIRST Enter
@@ -4083,28 +4053,8 @@ test_composer_state_claude_dim_ghost_row_with_real_text_is_pending() {
 # against grok 0.2.93: border 38;2;86;82;110, muted 38;2;50;47;70, hint
 # 38;2;110;106;134; real input is the BRIGHT 38;2;224;222;244), while the "❯"
 # prompt glyph stays bright. The dark placeholder drops and the row reads empty.
-test_composer_state_grok_dark_truecolor_placeholder_is_empty() {
-  local dir log resp fb out
-  dir="$TMP_ROOT/composer-grok-truecolor-ghost"; mkdir -p "$dir/responses"; log="$dir/log"; resp="$dir/responses"; : > "$log"
-  printf '  \x1b[38;2;86;82;110m\xe2\x95\xad\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x95\xae\x1b[39m\n  \x1b[38;2;86;82;110m\xe2\x94\x82\x1b[38;2;224;222;244m \xe2\x9d\xaf \x1b[38;2;50;47;70mType a message...\x1b[38;2;86;82;110m \xe2\x94\x82\x1b[39m\n  \x1b[38;2;86;82;110m\xe2\x95\xb0\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x95\xaf\x1b[39m\n' > "$resp/1.out"
-  fb=$(make_herdr_fakebin "$dir")
-  out=$( PATH="$fb:$PATH" FM_HERDR_LOG="$log" FM_HERDR_RESPONSES="$resp" \
-    bash -c '. "$0/bin/backends/herdr.sh"; fm_backend_herdr_composer_state default:w1:p2' "$ROOT" )
-  [ "$out" = empty ] || fail "a grok bordered composer whose only content is a dark-truecolor placeholder must read empty, got '$out'"
-  pass "fm_backend_herdr_composer_state: grok's dark-truecolor placeholder (the TRUECOLOR gap) reads empty"
-}
 
 # grok's bordered composer with REAL bright typed input must still read pending.
-test_composer_state_grok_bright_truecolor_real_text_is_pending() {
-  local dir log resp fb out
-  dir="$TMP_ROOT/composer-grok-truecolor-real"; mkdir -p "$dir/responses"; log="$dir/log"; resp="$dir/responses"; : > "$log"
-  printf '  \x1b[38;2;86;82;110m\xe2\x95\xad\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x95\xae\x1b[39m\n  \x1b[38;2;86;82;110m\xe2\x94\x82\x1b[38;2;224;222;244m \xe2\x9d\xaf fix the login bug \x1b[38;2;86;82;110m\xe2\x94\x82\x1b[39m\n  \x1b[38;2;86;82;110m\xe2\x95\xb0\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x95\xaf\x1b[39m\n' > "$resp/1.out"
-  fb=$(make_herdr_fakebin "$dir")
-  out=$( PATH="$fb:$PATH" FM_HERDR_LOG="$log" FM_HERDR_RESPONSES="$resp" \
-    bash -c '. "$0/bin/backends/herdr.sh"; fm_backend_herdr_composer_state default:w1:p2' "$ROOT" )
-  [ "$out" = pending ] || fail "real bright typed text in a grok bordered composer must read pending, got '$out'"
-  pass "fm_backend_herdr_composer_state: grok's real bright typed input still reads pending"
-}
 
 test_composer_state_codex_bare_prompt_glyph_is_empty() {
   local dir log resp fb out
@@ -5720,7 +5670,6 @@ test_busy_state_unknown_on_no_agent
 test_composer_state_bare_prompt_is_empty
 test_composer_state_styled_placeholder_draft_is_pending
 test_composer_state_real_text_is_pending
-test_composer_state_grok_oversized_title_preserves_safe_verdicts
 test_composer_state_popup_placeholder_fill_is_pending
 test_composer_state_unknown_on_capture_failure
 test_composer_state_unknown_when_no_composer_row_found
@@ -5734,8 +5683,6 @@ test_composer_state_claude_unbordered_prompt_is_pending
 test_composer_state_bare_prompt_below_stale_bordered_banner_wins
 test_composer_state_claude_dim_prompt_suggestion_ghost_is_empty
 test_composer_state_claude_dim_ghost_row_with_real_text_is_pending
-test_composer_state_grok_dark_truecolor_placeholder_is_empty
-test_composer_state_grok_bright_truecolor_real_text_is_pending
 test_composer_state_codex_bare_prompt_glyph_is_empty
 test_composer_state_codex_faint_suggestion_is_empty
 test_composer_state_codex_non_faint_same_text_is_pending

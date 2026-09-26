@@ -798,59 +798,8 @@ test_codex_secondmate_launch_keeps_the_hook_layer() {
   pass "a codex secondmate keeps the project hook layer its primary session runs on"
 }
 
-test_grok_threads_model_and_reasoning_effort() {
-  local rec id out status launch
-  id=profile-grok-z5
-  rec=$(make_spawn_case profile-grok grok "$id")
-  read_case_record "$rec"
 
-  out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --model grok-4 --effort high)
-  status=$?
-  expect_code 0 "$status" "grok spawn with profile flags should succeed"
-  assert_meta_profile "$HOME_DIR/state/$id.meta" grok grok-4 high
-  launch=$(cat "$LAUNCH_LOG")
-  assert_contains "$launch" "grok --always-approve --model 'grok-4' --reasoning-effort 'high'" \
-    "grok launch did not thread model and reasoning-effort flags"
-  assert_not_contains "$launch" "--effort" "grok launch must use --reasoning-effort, not --effort"
-  pass "grok receives --model and --reasoning-effort profile flags"
-}
 
-test_grok_omits_invalid_max_reasoning_effort() {
-  local rec id out status launch
-  id=profile-grok-max-z6
-  rec=$(make_spawn_case profile-grok-max grok "$id")
-  read_case_record "$rec"
-
-  out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --model grok-4 --effort max)
-  status=$?
-  expect_code 0 "$status" "grok spawn with unsupported max reasoning effort should omit the effort flag"
-  assert_meta_profile "$HOME_DIR/state/$id.meta" grok grok-4 max
-  launch=$(cat "$LAUNCH_LOG")
-  assert_contains "$launch" "grok --always-approve --model 'grok-4' \"\$('${ROOT}/bin/fm-operational-input.sh' encode launch-brief < " \
-    "grok launch did not preserve the model flag and typed brief when max effort was omitted"
-  assert_not_contains "$launch" "--reasoning-effort" "grok launch must omit unsupported max reasoning effort"
-  assert_not_contains "$launch" "--effort" "grok launch must not fall back to --effort for reasoning effort"
-  pass "grok omits unsupported max reasoning effort"
-}
-
-test_grok_omits_invalid_xhigh_reasoning_effort() {
-  local rec id out status launch
-  id=profile-grok-xhigh-z6b
-  rec=$(make_spawn_case profile-grok-xhigh grok "$id")
-  read_case_record "$rec"
-
-  # grok 0.2.99 rejects xhigh (accepted set is only low|medium|high).
-  out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --model grok-4 --effort xhigh)
-  status=$?
-  expect_code 0 "$status" "grok spawn with unsupported xhigh reasoning effort should omit the effort flag"
-  assert_meta_profile "$HOME_DIR/state/$id.meta" grok grok-4 xhigh
-  launch=$(cat "$LAUNCH_LOG")
-  assert_contains "$launch" "grok --always-approve --model 'grok-4' \"\$('${ROOT}/bin/fm-operational-input.sh' encode launch-brief < " \
-    "grok launch did not preserve the model flag and typed brief when xhigh effort was omitted"
-  assert_not_contains "$launch" "--reasoning-effort" "grok launch must omit unsupported xhigh reasoning effort"
-  assert_not_contains "$launch" "--effort" "grok launch must not fall back to --effort for reasoning effort"
-  pass "grok omits unsupported xhigh reasoning effort"
-}
 
 test_cursor_threads_model_workspace_and_omits_effort_axis() {
   local rec id out status launch
@@ -1805,9 +1754,6 @@ test_codex_threads_model_and_max_effort
 test_codex_omits_max_effort_for_unsupported_model
 test_codex_crewmate_launch_disables_the_hook_layer
 test_codex_secondmate_launch_keeps_the_hook_layer
-test_grok_threads_model_and_reasoning_effort
-test_grok_omits_invalid_max_reasoning_effort
-test_grok_omits_invalid_xhigh_reasoning_effort
 test_cursor_threads_model_workspace_and_omits_effort_axis
 test_cursor_refuses_model_absent_from_live_catalog
 test_cursor_failed_catalog_probe_does_not_block_spawn

@@ -210,7 +210,7 @@ shift 2
 if ! fm_control_verb_allowed "$VERB"; then
   {
     if [ "$VERB" = resume ]; then
-      echo "error: 'resume' is not a control verb: resuming an exited agent is not deterministic across the verified adapters (codex and grok need a session id printed at exit, opencode continues the most recent session for the cwd, and claude, pi, pi-signed, and kimi have no verified pane-resume contract). Use 'relaunch', which carries the brief plus a progress note into a fresh agent on any adapter."
+      echo "error: 'resume' is not a control verb: resuming an exited agent is not deterministic across the verified adapters (codex needs a session id printed at exit, opencode continues the most recent session for the cwd, and claude, pi, pi-signed, and kimi have no verified pane-resume contract). Use 'relaunch', which carries the brief plus a progress note into a fresh agent on any adapter."
     else
       echo "error: '$VERB' is not a control verb"
     fi
@@ -333,6 +333,9 @@ BACKEND=$FM_BACKEND_VALIDATED_BACKEND
 T=$FM_BACKEND_VALIDATED_TARGET
 LABEL="fm-$ID"
 RECORDED_HARNESS=$(fm_meta_get "$META" harness)
+if fm_control_removed_harness "$RECORDED_HARNESS"; then
+  die "task $ID has an unsupported legacy Grok record; explicitly migrate it without discarding its work"
+fi
 KIND=$(fm_meta_get "$META" kind)
 WT=$(fm_meta_get "$META" worktree)
 [ -n "$KIND" ] || KIND=ship

@@ -228,21 +228,12 @@ test_stdin_transports_and_output_shapes() {
 
   rc=0
   : > "$OUT"; : > "$ERR"
-  printf '%s' '{"toolName":"Agent"}' \
-    | FM_ROOT_OVERRIDE="$PRIMARY" FM_HOME="$PRIMARY" FM_STATE_OVERRIDE="$STATE" \
-      "$CHECK" > "$OUT" 2> "$ERR" || rc=$?
-  [ "$rc" -eq 2 ] || fail "Grok-shaped stdin must deny, got exit $rc"
-  jq -e '.decision == "deny" and (.reason | startswith("[subagent-dispatch]"))' "$OUT" >/dev/null 2>&1 \
-    || fail "default deny mode must write a Grok decision object on stdout: $(cat "$OUT")"
-
-  rc=0
-  : > "$OUT"; : > "$ERR"
   printf '%s' '{"tool_name":"Bash","tool_input":{"command":"ls"}}' \
     | FM_ROOT_OVERRIDE="$PRIMARY" FM_HOME="$PRIMARY" FM_STATE_OVERRIDE="$STATE" \
       "$CHECK" --claude > "$OUT" 2> "$ERR" || rc=$?
   [ "$rc" -eq 0 ] || fail "Bash through stdin must allow, got exit $rc"
   [ ! -s "$OUT" ] && [ ! -s "$ERR" ] || fail "stdin allow wrote output"
-  pass "both stdin transports classify correctly and Claude's deny keeps stdout empty"
+  pass "stdin classification keeps Claude's deny stdout empty"
 }
 
 test_malformed_transport_fails_open() {

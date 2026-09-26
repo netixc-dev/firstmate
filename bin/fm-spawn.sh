@@ -156,7 +156,7 @@
 #   profile consultation. A --secondmate spawn is exempt and resolves the SECONDMATE
 #   harness (config/secondmate-harness -> config/crew-harness -> own), so the
 #   secondmate-vs-crewmate split is DURABLE across every respawn (recovery,
-#   /updatefirstmate, restart). A bare adapter name (claude|codex|opencode|pi|pi-signed|grok|kimi|cursor|gemini|omp)
+#   /updatefirstmate, restart). A bare adapter name (claude|codex|opencode|pi|pi-signed|kimi|cursor|gemini|omp)
 #   overrides it for this spawn (either kind). A non-flag string containing
 #   whitespace is treated as a RAW launch command - the escape hatch for verifying
 #   new adapters. The removed agy adapter is refused for explicit selections,
@@ -350,8 +350,6 @@
 # each ready and dialog-free before the ordinary readiness gates can pass. A
 # blank viewport read proves nothing either way: it costs the poll and restarts
 # that count. A viewport read that fails outright fails readiness at once.
-# grok uses a firstmate-owned global hook under ${GROK_HOME:-$HOME/.grok}/hooks
-# plus a gitignored .fm-grok-turnend worktree pointer and a state token.
 # gemini is crewmate/scout only and is refused for --secondmate.
 # cursor installs no per-task hook either: it writes state/<id>.cursor-session to
 # bind the pane to cursor's own conversation transcript (projects root, the exact
@@ -753,6 +751,31 @@ esac
 
 spawn_refuse_removed_harness() { # <harness-or-command>
   local input=${1-} executable legacy=agy
+  case "$input" in
+    grok|grok-*)
+      echo "error: unsupported removed harness '$input'; refusing before task mutation" >&2
+      return 1
+      ;;
+  esac
+  # Inspect only the first executable, not a model argument containing grok.
+  local word raw_env=0 raw_env_arg=0
+  for word in $input; do
+    if [ "$raw_env_arg" -eq 1 ]; then raw_env_arg=0; continue; fi
+    case "$word" in
+      [A-Za-z_]*=*) continue ;;
+      env) raw_env=1; continue ;;
+      -u|--unset) if [ "$raw_env" -eq 1 ]; then raw_env_arg=1; continue; fi ;;
+      -u?*|--unset=*) if [ "$raw_env" -eq 1 ]; then continue; fi ;;
+      --) if [ "$raw_env" -eq 1 ]; then raw_env=0; continue; fi ;;
+    esac
+    case "${word##*/}" in
+      grok|grok-*)
+        echo "error: unsupported removed Grok executable '$word'; refusing before task mutation" >&2
+        return 1
+        ;;
+    esac
+    break
+  done
   if [ "$input" = devin ] || [ "$input" = rovo ] || [ "$input" = muse ]; then
     echo "error: unsupported removed harness '$input'; refusing before task mutation" >&2
     return 1
@@ -772,9 +795,13 @@ spawn_refuse_removed_harness() { # <harness-or-command>
 spawn_refuse_removed_record() { # <meta-file>
   local recorded
   recorded=$(fm_meta_get "$1" harness)
-  # These basenames do not distinguish old adapters from caller-owned raw
-  # commands. Keep explicit agent-free replacement available, never infer it.
+  # A removed Grok record must be preserved for explicit recovery, never
+  # relaunched as an inferred replacement or cleaned as a supported task.
   case "$recorded" in
+    grok|grok-*)
+      echo "error: unsupported legacy Grok record '$recorded'; retaining its work" >&2
+      return 1
+      ;;
     devin | rovo | muse) return 0 ;;
     *) spawn_refuse_removed_harness "$recorded" ;;
   esac
@@ -922,7 +949,7 @@ spawn_remote_secondmate() {
     harness=$("$FM_ROOT/bin/fm-harness.sh" secondmate)
   fi
   case "$harness" in
-  claude | codex | opencode | pi | pi-signed | grok | kimi | cursor) ;;
+  claude | codex | opencode | pi | pi-signed | kimi | cursor) ;;
   *)
     fm_lock_release "$registry_lock" || true
     fm_lock_release "$SPAWN_TASK_LOCK" || true
@@ -1321,7 +1348,7 @@ clear_relaunch_harness_wiring() {
   # from a raw command records that command's basename rather than the exact
   # adapter name. The retirement tables are keyed by the exact adapter, so the
   # recorded value is resolved to its adapter first; otherwise a task recorded
-  # as, say, `grok-2` would have wiring armed and never retired. An
+  # as, say, `unrecognized-adapter` would have wiring armed and never retired. An
   # unrecognized value normally resolves to no adapter. The cleanup-only legacy
   # rows retain exact task artifacts without restoring removed adapter support.
   case "$harness" in
@@ -1742,7 +1769,7 @@ if [ "$RELAUNCH" -eq 1 ]; then
   }
 elif [ "$KIND" = secondmate ]; then
   case "${POS[1]:-}" in
-  '' | claude | codex | opencode | pi | pi-signed | grok | kimi | cursor | gemini | omp)
+  '' | claude | codex | opencode | pi | pi-signed | kimi | cursor | gemini | omp)
     ARG3=${POS[1]:-}
     ;;
   *' '*)
@@ -1920,21 +1947,13 @@ launch_template() {
   # naming them with -e as well loads each twice (verified), doubling every
   # session_stop continuation.
   omp)
-    printf '%s' 'env -u CLAUDECODE -u PI_CODING_AGENT -u GROK_AGENT -u FM_PI_HARNESS -u GEMINI_CLI -u CURSOR_AGENT -u CURSOR_INVOKED_AS FM_OMP_HARNESS=omp OMP_SKIP_SETUP=1 __OMPBIN__ --config __OMPWORKERCFG__ --auto-approve --cwd __WORKTREE__'
+    printf '%s' 'env -u CLAUDECODE -u PI_CODING_AGENT -u FM_PI_HARNESS -u GEMINI_CLI -u CURSOR_AGENT -u CURSOR_INVOKED_AS FM_OMP_HARNESS=omp OMP_SKIP_SETUP=1 __OMPBIN__ --config __OMPWORKERCFG__ --auto-approve --cwd __WORKTREE__'
     if [ "$kind" = secondmate ]; then
       printf '%s' ' __MODELFLAG____EFFORTFLAG__"$(__OPINPUT__ encode launch-brief < __BRIEF__)"'
     else
       printf '%s' ' __MODELFLAG____EFFORTFLAG__-e __OMPEXT__ "$(__OPINPUT__ encode launch-brief < __BRIEF__)"'
     fi
     ;;
-  # grok (Grok Build TUI): a positional prompt starts the supervised interactive
-  # session. --always-approve auto-approves every tool execution (verified: the
-  # crewmate runs fully autonomously, no permission gate), which an unattended
-  # crewmate needs; it is the targeted equivalent of claude's
-  # --dangerously-skip-permissions. grok's turn-end signal does NOT ride the
-  # launch command - it is a Stop-event hook installed below (global hook +
-  # per-task pointer), so the template is identical for ship/scout/secondmate.
-  grok) printf '%s' 'grok --always-approve __MODELFLAG____EFFORTFLAG__"$(__OPINPUT__ encode launch-brief < __BRIEF__)"' ;;
   # Cursor Agent CLI. --trust suppresses the workspace-trust prompt, which
   # --yolo does NOT cover and which would otherwise block every spawn, since
   # each task gets a fresh worktree path cursor has never seen. --yolo is the
@@ -1947,10 +1966,10 @@ launch_template() {
   # inherited CLAUDECODE cannot outrank cursor's own marker in a process that
   # only reads the environment. Cursor exposes no effort flag, so the shared
   # effort axis is deliberately omitted and stays in task metadata only.
-  cursor) printf '%s' 'env -u CLAUDECODE -u PI_CODING_AGENT -u GROK_AGENT -u FM_PI_HARNESS -u GEMINI_CLI -u CURSOR_INVOKED_AS __CURSORBIN__ --trust --yolo __MODELFLAG__--workspace __WORKTREE__ "$(__OPINPUT__ encode launch-brief < __BRIEF__)"' ;;
+  cursor) printf '%s' 'env -u CLAUDECODE -u PI_CODING_AGENT -u FM_PI_HARNESS -u GEMINI_CLI -u CURSOR_INVOKED_AS __CURSORBIN__ --trust --yolo __MODELFLAG__--workspace __WORKTREE__ "$(__OPINPUT__ encode launch-brief < __BRIEF__)"' ;;
   # gemini (Google Gemini CLI): a positional query starts the supervised
   # interactive session and auto-submits it, so the brief rides the launch
-  # command exactly as it does for claude and grok (verified: a multi-line
+  # command exactly as it does for claude (verified: a multi-line
   # brief submitted itself with no extra Enter, gemini-cli 0.58.0).
   # -y (--yolo) auto-approves every tool call, which an unattended crewmate
   # needs; the footer renders ` YOLO Ctrl+Y` while it is on and a WriteFile
@@ -1982,7 +2001,7 @@ launch_template() {
   # stays in task metadata only, per the record-and-omit contract.
   # Its turn-end and busy-state signals do NOT ride the launch command:
   # they are project hooks written into the worktree below.
-  gemini) printf '%s' 'env -u CLAUDECODE -u PI_CODING_AGENT -u GROK_AGENT -u FM_PI_HARNESS GEMINI_CLI_TRUST_WORKSPACE=true GEMINI_CLI_SYSTEM_SETTINGS_PATH=__GEMINISETTINGS__ gemini -y __MODELFLAG__"$(__OPINPUT__ encode launch-brief < __BRIEF__)"' ;;
+  gemini) printf '%s' 'env -u CLAUDECODE -u PI_CODING_AGENT -u FM_PI_HARNESS GEMINI_CLI_TRUST_WORKSPACE=true GEMINI_CLI_SYSTEM_SETTINGS_PATH=__GEMINISETTINGS__ gemini -y __MODELFLAG__"$(__OPINPUT__ encode launch-brief < __BRIEF__)"' ;;
   # Kimi Code rejects a positional prompt, so it launches bare and receives
   # only an absolute brief pointer after the TUI readiness gate below.
   # Its turn-end signal is a globally configured Stop hook plus a guarded
@@ -1997,12 +2016,18 @@ case "$ARG3" in
   RAW_LAUNCH=1
   LAUNCH=$ARG3
   HARNESS=""
+  raw_env=0 raw_env_arg=0
   for word in $LAUNCH; do
-    case "$word" in [A-Za-z_]*=*) continue ;; *)
-      HARNESS=$(basename "$word")
-      break
-      ;;
+    if [ "$raw_env_arg" -eq 1 ]; then raw_env_arg=0; continue; fi
+    case "$word" in
+      [A-Za-z_]*=*) continue ;;
+      env) raw_env=1; continue ;;
+      -u|--unset) if [ "$raw_env" -eq 1 ]; then raw_env_arg=1; continue; fi ;;
+      -u?*|--unset=*) if [ "$raw_env" -eq 1 ]; then continue; fi ;;
+      --) if [ "$raw_env" -eq 1 ]; then raw_env=0; continue; fi ;;
     esac
+    HARNESS=$(basename "$word")
+    break
   done
   ;;
 '')
@@ -2037,6 +2062,15 @@ case "$ARG3" in
     exit 1
   }
   ;;
+esac
+
+# A removed executable must not pass through the raw-command escape hatch.
+# Reject before any endpoint, worktree, busy writer, or task record is created.
+case "$HARNESS" in
+  grok|grok-*)
+    echo "error: standalone Grok worker '$HARNESS' is unsupported; explicitly choose a supported harness" >&2
+    exit 1
+    ;;
 esac
 
 # gemini is verified for CREWMATE/SCOUT work only: no primary supervision
@@ -2175,7 +2209,7 @@ model_flag_for_harness() {
   local harness=$1 model=$2
   [ -n "$model" ] && [ "$model" != default ] || return 0
   case "$harness" in
-  claude | codex | opencode | pi | pi-signed | grok | kimi | cursor | gemini | omp)
+  claude | codex | opencode | pi | pi-signed | kimi | cursor | gemini | omp)
     printf -- '--model %s ' "$(shell_quote "$model")"
     ;;
   esac
@@ -2202,15 +2236,7 @@ effort_flag_for_harness() {
       ;;
     esac
     ;;
-  grok)
-    # grok exposes both --effort and --reasoning-effort; firstmate's profile
-    # axis is the reasoning knob. As of grok 0.2.99, --reasoning-effort accepts
-    # only low|medium|high and rejects both xhigh and max, so omit those rather
-    # than passing a known-bad value.
-    case "$effort" in
-    low | medium | high) printf -- '--reasoning-effort %s ' "$(shell_quote "$effort")" ;;
-    esac
-    ;;
+
   pi | pi-signed)
     # Pi 0.80.6 accepts the full shared effort vocabulary, including max, through
     # its --thinking flag.
@@ -2235,7 +2261,7 @@ effort_flag_for_harness() {
     # kimi provider catalogs expose supported and default effort values, but a
     # launch flag and mapping have not been live-verified; the requested axis
     # stays in task metadata but never reaches the launch command. Cursor encodes
-    # effort in model ids such as cursor-grok-4.5-high, so it also receives no
+    # effort in its model ids, so it also receives no
     # separate effort flag.
   esac
 }
@@ -2256,7 +2282,6 @@ case "$LAUNCH" in
   fi
   ;;
 esac
-
 json_escape() {
   printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
 }
@@ -3624,7 +3649,7 @@ if [ "$KIND" != secondmate ]; then
   # adapter with a verified semantic source. The launch brief sent below IS a
   # submitted turn, so the seed record is busy/fm-spawn. The minted gen is
   # embedded into each adapter's wiring so an event from a superseded
-  # incarnation is rejected as stale. Grok stays on its isolated
+  # incarnation is rejected as stale. Other adapters stay on their isolated
   # rendered-tail fallback and standalone Kimi stays unknown until
   # fm_busy_kimi_verified opens, so neither is armed here. Gemini IS
   # armed: its BeforeAgent / AfterAgent / SessionEnd hooks are a verified
@@ -3866,55 +3891,6 @@ EOF
     # an explicit reason rather than falling back to idle, and no busy
     # wiring is installed. The turn-end NOTIFICATION marker still rides
     # the launch command via -c notify=[...] and __TURNEND__.
-    ;;
-  grok*)
-    # grok fires a Stop hook at every turn boundary (verified, grok 0.2.73), the
-    # clean equivalent of codex's notify= and pi's turn_end. But grok only loads
-    # PROJECT hooks (<worktree>/.grok/hooks/, <worktree>/.claude/settings.local.json)
-    # after the folder is granted hook-trust, which is not automatic and which
-    # firstmate cannot establish at launch without editing grok's own managed
-    # trust store (a high-blast-radius write). GLOBAL hooks in ~/.grok/hooks/ are
-    # always trusted and load on first launch with no gate. So the turn-end hook
-    # lives OUTSIDE the worktree as a single firstmate-owned global hook that is a
-    # guarded no-op for every non-firstmate grok session: it fires only when the
-    # current workspace holds a .fm-grok-turnend token pointer that matches the
-    # firstmate-owned hook registry. firstmate then drops that per-task pointer
-    # (gitignored, like the other harnesses' worktree hook files).
-    # Result: the hook is outside the worktree, needs no trust grant, and never
-    # touches grok's managed config - only firstmate-owned files.
-    GROK_HOOKS_DIR="${GROK_HOME:-$HOME/.grok}/hooks"
-    GROK_AUTH_DIR="$GROK_HOOKS_DIR/fm-turn-end.d"
-    mkdir -p "$GROK_AUTH_DIR"
-    old_umask=$(umask)
-    umask 077
-    auth_file=$(mktemp "$GROK_AUTH_DIR/fm.XXXXXXXXXXXX")
-    umask "$old_umask"
-    printf '%s\n' "$TURNEND" >"$auth_file"
-    printf '%s\n' "${auth_file##*/}" >"$STATE/$ID.grok-turnend-token"
-    sq_grok_auth_dir=$(shell_quote "$GROK_AUTH_DIR")
-    cat >"$GROK_HOOKS_DIR/fm-turn-end.sh" <<EOF
-#!/usr/bin/env bash
-set -u
-auth_dir=$sq_grok_auth_dir
-workspace=\${GROK_WORKSPACE_ROOT:-}
-[ -n "\$workspace" ] || exit 0
-p="\$workspace/.fm-grok-turnend"
-[ -f "\$p" ] || exit 0
-first=
-IFS= read -r -n 256 first < "\$p" 2>/dev/null || [ -n "\$first" ] || exit 0
-case "\$first" in token=*) token=\${first#token=} ;; *) exit 0 ;; esac
-case "\$token" in fm.????????????) : ;; *) exit 0 ;; esac
-case "\$token" in *[!A-Za-z0-9._-]*) exit 0 ;; esac
-t=\$(cat "\$auth_dir/\$token" 2>/dev/null) || exit 0
-case "\$t" in /*.turn-ended) : ;; *) exit 0 ;; esac
-touch "\$t" 2>/dev/null || true
-exit 0
-EOF
-    chmod +x "$GROK_HOOKS_DIR/fm-turn-end.sh"
-    hook_command=$(json_escape "bash $(shell_quote "$GROK_HOOKS_DIR/fm-turn-end.sh")")
-    printf '{"hooks":{"Stop":[{"hooks":[{"type":"command","command":"%s"}]}]}}\n' "$hook_command" >"$GROK_HOOKS_DIR/fm-turn-end.json"
-    printf 'token=%s\n' "${auth_file##*/}" >"$WT/.fm-grok-turnend"
-    exclude_path '.fm-grok-turnend'
     ;;
   cursor*)
     # Cursor's turn lifecycle is neither a hook nor a launch flag: it writes
@@ -4186,7 +4162,7 @@ omp) LAUNCH=${LAUNCH//__OMPBIN__/"$(shell_quote "$OMP_BIN")"} ;;
 esac
 LAUNCH=${LAUNCH//__WORKTREE__/$sq_worktree}
 case "$HARNESS" in
-claude | codex | opencode | pi | pi-signed | grok | kimi | gemini)
+claude | codex | opencode | pi | pi-signed | kimi | gemini)
   LAUNCH="env -u CURSOR_AGENT -u CURSOR_INVOKED_AS -u GEMINI_CLI $LAUNCH"
   ;;
 esac

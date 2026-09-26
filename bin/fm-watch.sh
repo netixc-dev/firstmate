@@ -250,7 +250,7 @@ TURNEND_CHURN_ABSORB_SECS=${FM_TURNEND_CHURN_ABSORB_SECS:-900}  # longest a task
                                       # evidence alone (signal_turnend_panes_churned)
 # Busy state is decided by the semantic contract in bin/fm-busy-lib.sh, which
 # is the single owner of per-harness sources, source attribution, and the one
-# remaining rendered-text fallback (Grok only).
+# remaining harness-specific busy classifiers.
 # Always-on wake triage: most wakes during a long crew validation are benign (a
 # working: note or turn-end while a pipeline runs, a no-change heartbeat). Rather
 # than wake firstmate's LLM for each, this watcher classifies every wake in bash
@@ -353,7 +353,7 @@ hash_pane() {
 # adapter whose semantic state is missing, malformed, stale, or unverified is
 # treated as not-provably-working and surfaces rather than being absorbed.
 # <tail40> is the same bounded capture already read for hashing and is passed
-# into the contract's harness-scoped rendered-text checks: the Grok
+# into the contract's harness-scoped rendered-text checks: the adapter-scoped
 # busy fallback and the launch-prompt backstop that keeps a launch pinned at
 # its fm-spawn seed from reading as provably working.
 window_is_busy() {  # <window> <tail40>

@@ -87,10 +87,9 @@ Uncertainty and ineligibility are different findings:
 - Reserve login wording for that proven-unusable case, and name the harness, model, surface, and evidence.
 
 When a credential's local classification is the only thing standing between a candidate and a block, get ground truth before blocking.
-`bin/fm-vendor-auth-probe.sh` is the only approved vendor-credential probe; its `--help` owns the registered probes and mechanics.
+Use `quota-axi auth --json` for available provider authentication evidence; do not launch a vendor CLI to probe another harness.
 It takes no harness, model, or provider and returns a fact, not a route: only `authenticated` and `unauthenticated` are ground truth, while `indeterminate`, `timeout`, and `unavailable` establish nothing and must never be read as either outcome.
 Never launch a vendor CLI yourself, and never probe a credential store the candidate does not use.
-Grok prepaid `credits` are unrelated to paid-window headroom; never read them as exhaustion.
 
 Malformed configuration is an actionable error, not a candidate to rank around.
 
@@ -130,5 +129,5 @@ Do not select by array order, harness name, or another arbitrary identity orderi
 Report duplicate concrete profiles as a configuration error.
 
 Account for every candidate visibly before selecting or escalating, naming its catalog evidence, provider relation, applicable quota and authentication facts, remaining uncertainty, fit and reasoning class, `spendPriority`, and runway-versus-horizon result.
-A blocked credential report must name `harness`, `model`, authentication surface, and concrete failure evidence; never emit a bare `Grok unauthenticated` statement.
+A blocked credential report must name `harness`, `model`, authentication surface, and concrete failure evidence; never emit a bare `unauthenticated` statement.
 Never conclude with an unexplained "best quota" label.

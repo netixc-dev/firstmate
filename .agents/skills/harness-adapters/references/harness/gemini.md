@@ -90,7 +90,7 @@ Two quirks are wired for deliberately.
 
 The system settings layer also makes the busy contract independent of the trust decision: its hooks were verified firing under `--skip-trust` in an untrusted folder, and they need no entry in Gemini's per-workspace `~/.gemini/trusted_hooks.json`, which only records PROJECT hooks.
 Workspace trust therefore buys skills, not state.
-A guarded user-level hook in `~/.gemini/settings.json` was also proven to work, gated grok-style by a worktree pointer and a private token registry, and was rejected because it mutates the captain's own global settings for every session on the machine.
+A guarded user-level hook in `~/.gemini/settings.json` was also proven to work, gated by a worktree pointer and a private token registry, and was rejected because it mutates the captain's own global settings for every session on the machine.
 
 While a hook runs, the status row shows `Executing Hook: <name>` and the `(esc to cancel,` token is already gone, so that brief window reads idle; the turn itself is genuinely over by then.
 

@@ -34,7 +34,7 @@ Hold-for-return is the default and the only reach profile this release records: 
    - **Claude with `config/supervision-host`**: nothing to launch for `/afk`; go on to the announcement.
      The supervision host (`docs/supervision-host.md`) is the away session there: it runs the branch's contract on a headless engine under the record while main is parked, and `bin/fm-afk-launch.sh start-native` refuses the away daemon on that home.
      `/quiet` is unchanged there and still launches the daemon below.
-   - **Harness WITH a native in-pane tracked-background tool** (claude's background bash without the supervision host, grok's background tool): run `bin/fm-afk-launch.sh start-native`, then run `FM_AFK_STATE_PREPARED=1 bin/fm-afk-start.sh` through that native tool.
+   - **Harness WITH a native in-pane tracked-background tool** (claude's background bash without the supervision host): run `bin/fm-afk-launch.sh start-native`, then run `FM_AFK_STATE_PREPARED=1 bin/fm-afk-start.sh` through that native tool.
      This is a deliberate no-separate-terminal exception because the harness-hosted job creates no terminal or layout mutation, and a shell launcher cannot invoke a harness-native background tool.
      If the native launch fails, run `bin/fm-afk-launch.sh stop` to roll back the prepared lifecycle.
      Do not wrap it in `nohup ... &` (Codex/herdr can reap fire-and-forget shell children after a tool call returns).
@@ -106,7 +106,7 @@ The daemon constructs every current injection as the `away-supervisor` kind owne
 The bare `FM_INJECT_MARK` form remains accepted for legacy daemon escalations during rollout.
 U+2063 has no normal keyboard keystroke and survives terminal transport as UTF-8 text.
 This is how firstmate tells a daemon escalation apart from a real message in the same pane.
-The operational prefix travels with the message text; it does not rely on harness-level typed-vs-injected detection, which is not portable across claude, codex, opencode, grok, and kimi.
+The operational prefix travels with the message text; it does not rely on harness-level typed-vs-injected detection, which is not portable across claude, codex, opencode, and kimi.
 
 ### Busy-guard and composer guard
 
@@ -197,7 +197,7 @@ the operational prefix lets firstmate distinguish it from a real captain message
   Styled captures let that owner remove dim/faint and dark-TRUECOLOR ghost or placeholder text while shape detection uses the ANSI-stripped screen, so a dark border is not lost with ghost content.
   A ghost-only or idle bordered composer such as claude's `│ > ... │` therefore reads empty without allowing an unbordered shell prompt to do the same.
   `FM_COMPOSER_IDLE_RE` overrides the shared idle-placeholder regex, but a match alone never bypasses the classifier's shape-specific position and ANSI de-emphasis safety gates.
-  `FM_BUSY_REGEX` overrides the rendered delivery guards plus Grok's isolated task-state fallback.
+  `FM_BUSY_REGEX` overrides the rendered delivery guards.
   A blank or otherwise unidentified input row carries no positive container proof and defers injection, so a modal dialog or a mid-redraw pane is never an injection target.
 - **Max-defer escape** - the daemon must never silently wedge. If anything stays
   buffered past `FM_MAX_DEFER_SECS` (default 300s), the daemon attempts one

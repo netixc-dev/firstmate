@@ -166,10 +166,6 @@
       "audience": "agent-runtime"
     },
     {
-      "path": ".agents/skills/harness-adapters/references/harness/grok.md",
-      "audience": "agent-runtime"
-    },
-    {
       "path": ".agents/skills/harness-adapters/references/harness/kimi.md",
       "audience": "agent-runtime"
     },
@@ -232,10 +228,6 @@
     {
       "path": "CONTRIBUTING.md",
       "audience": "maintainer-architecture"
-    },
-    {
-      "path": "GROK_BOT.md",
-      "audience": "public-product"
     },
     {
       "path": "README.md",
@@ -367,10 +359,6 @@
     },
     {
       "path": "docs/supervision-protocols/cursor.md",
-      "audience": "agent-runtime"
-    },
-    {
-      "path": "docs/supervision-protocols/grok.md",
       "audience": "agent-runtime"
     },
     {

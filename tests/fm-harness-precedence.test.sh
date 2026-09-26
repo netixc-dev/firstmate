@@ -177,11 +177,9 @@ test_genuine_marker_and_ancestry_agree() {
 
   bin=$(named_bin "$dir/grok-tree" grok)
   got=$(under_process "$bin" GROK_AGENT=1)
-  [ "$got" = grok ] || fail "a genuine grok session resolved '$got', expected grok"
-  # grok 1.0.0 hook processes carry no GROK_AGENT at all, so ancestry alone must
-  # still answer for them.
+  [ "$got" != grok ] || fail "removed Grok marker selected an unsupported harness"
   got=$(under_process "$bin")
-  [ "$got" = grok ] || fail "an unmarked grok hook process resolved '$got', expected grok"
+  [ "$got" != grok ] || fail "removed Grok ancestry selected an unsupported harness"
 
   pass "a harness that publishes a marker inside its own process tree is unchanged"
 }

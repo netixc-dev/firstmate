@@ -16,7 +16,7 @@
 # CURSOR_VERSION into every child process, so an environment guard would also
 # fire inside a Claude session a human started by hand from a Cursor pane and
 # would silently disable Claude's own supervision - the exact hazard
-# docs/turnend-guard.md records for GROK_SESSION_ID. The delivered payload
+# the native host hook record. The delivered payload
 # describes THIS event and cannot be inherited: Cursor stamps every hook payload
 # with its own `cursor_version`, and Claude never emits that key.
 #

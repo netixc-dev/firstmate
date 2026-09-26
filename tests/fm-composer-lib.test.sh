@@ -621,30 +621,6 @@ test_matrix_opencode_leftbar_signals() {
   pass "matrix: opencode's left-bar composer reads empty everywhere and scans the full active run"
 }
 
-test_matrix_grok_titled_bottom_border() {
-  # Grok 1.0.5 widened its titled BOTTOM border three columns past the top and
-  # content rows. This is the idle capture from issue #3436; Herdr has no
-  # cursor anchor, so the geometry mismatch used to make the proven box
-  # ambiguous and the verdict unknown, stranding away-mode injection.
-  local titled plain_border typed malformed placeholder_draft
-  titled=$'  ╭──────────────────────────────────────────────────────────────────────────╮\n  │ ❯                                                                        │\n  ╰────────────────────────────────────────────────────────── Grok 4.6 (xhigh) ─╯\n\n  Shift+Tab:mode  │  Ctrl+x:shortcuts'
-  plain_border=$'  ╭──────────────────────────────────────╮\n  │ ❯                                    │\n  ╰──────────────────────────────────────╯'
-  assert_screen "grok titled on tmux" empty "$CAPS_TMUX" "$titled" 1
-  assert_screen "grok titled on tmux bottom-border cursor" empty "$CAPS_TMUX" "$titled" 2
-  assert_screen "issue #3436 idle grok 1.0.5 on herdr" empty "$CAPS_STYLED" "$titled"
-  placeholder_draft=$'  ╭──────────────────────────────────────────────────────────────────────────╮\n  │ ❯ Type a message...                                                      │\n  ╰────────────────────────────────────────────────────────── Grok 4.6 (xhigh) ─╯'
-  assert_screen "grok bright placeholder-like draft on tmux" pending "$CAPS_TMUX" "$placeholder_draft" 1
-  assert_screen "grok placeholder on plain backends" empty "$CAPS_UNSTYLED" "$placeholder_draft"
-  assert_screen "grok titled on styled capture" empty "$CAPS_STYLED_NOID" "$titled"
-  # The tolerance is additive: an untitled border still proves the same box.
-  assert_screen "grok untitled border" empty "$CAPS_TMUX" "$plain_border" 1
-  typed=$'  ╭──────────────────────────────────────────────────────────────────────────╮\n  │ ❯ deploy the fix                                                         │\n  ╰────────────────────────────────────────────────────────── Grok 4.6 (xhigh) ─╯'
-  assert_screen "grok typed on tmux" pending "$CAPS_TMUX" "$typed" 1
-  assert_screen "grok typed on herdr" pending "$CAPS_STYLED" "$typed"
-  malformed=$'  ╭──────────────────────────────────────────────────────────────────────────╮\n  │ ❯                                                                        │\n  ╰────────────────────────────────────────────────────────── unknown surface ─╯'
-  assert_screen "oversized unknown title on herdr" unknown "$CAPS_STYLED" "$malformed"
-  pass "matrix: grok's real oversized titled bottom is empty while typed and unproved panes stay safe"
-}
 
 test_matrix_kimi_bordered_shell_glyph_box() {
   # Kimi's bordered `│ > │` composer - the shape fm-spawn.sh's retired
@@ -886,7 +862,6 @@ test_matrix_omp_status_row_bounds_bare_composer
 test_matrix_codex_idle_starfield_furniture
 test_matrix_pi_separated_needs_identity
 test_matrix_opencode_leftbar_signals
-test_matrix_grok_titled_bottom_border
 test_matrix_kimi_bordered_shell_glyph_box
 test_matrix_claude_styled_ansi_dump
 test_strict_blank_row_divergence

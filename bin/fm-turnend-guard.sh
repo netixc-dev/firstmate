@@ -12,9 +12,7 @@
 # the primary is about to end a turn.
 # Claude and codex can block directly by preserving exit status 2 and stderr.
 # OpenCode and pi adapters use the same predicate and force one bounded
-# follow-up because their turn-end events are passive. Grok delegates native
-# blocking when its running Stop payload advertises that capability, with one
-# bounded resume fallback for payloads from pre-native processes. Cursor calls
+# follow-up because their turn-end events are passive. Cursor calls
 # this guard back with --cursor from bin/fm-turnend-guard-cursor.sh and renders
 # exit 2 as one bounded follow-up, because exit 2 is a silent no-op on Cursor's
 # stop step; without that flag a Cursor-shaped payload is the Claude-settings
@@ -47,9 +45,8 @@
 # are unchanged everywhere else, including for a dead daemon pid or a beacon
 # older than AFK_GRACE, which still block.
 #
-# Loop-guard, codex/Grok (default) mode: never block twice in the same turn.
-# Codex uses stop_hook_active and Grok uses stopHookActive; typed camel-case
-# takes precedence when both spellings are present. A true value means the
+# Loop-guard, codex (default) mode: never block twice in the same turn.
+# Codex uses stop_hook_active. A true value means the
 # current stop attempt already follows a block, so this guard always allows it.
 # Passive harness adapters provide their own one-follow-up guard before calling
 # this script.
@@ -143,8 +140,6 @@ fi
 
 STOP_HOOK_ACTIVE=$(printf '%s' "$PAYLOAD" | jq -r '
   if type != "object" then error("payload")
-  elif has("stopHookActive") then
-    if ((.stopHookActive | type) == "boolean") then .stopHookActive else error("stopHookActive") end
   elif has("stop_hook_active") then
     if ((.stop_hook_active | type) == "boolean") then .stop_hook_active else error("stop_hook_active") end
   else false

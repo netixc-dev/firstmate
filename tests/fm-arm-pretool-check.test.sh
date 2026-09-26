@@ -161,11 +161,6 @@ run_matrix_entry() {
       printf '%s' "$payload" | "$CHECK" --claude >"$out_file" 2>"$err_file"
       rc=$?
       ;;
-    grok)
-      payload=$(jq -cn --arg command "$cmd" '{toolName:"run_terminal_command",toolInput:{command:$command}}')
-      printf '%s' "$payload" | "$CHECK" >"$out_file" 2>"$err_file"
-      rc=$?
-      ;;
     opencode|pi)
       "$CHECK" --command "$cmd" >"$out_file" 2>"$err_file"
       rc=$?
@@ -187,16 +182,13 @@ run_matrix_entry() {
     || fail "$id via $entry deny must carry a stable reason code on stderr: $(cat "$err_file")"
   if [ "$entry" = claude ]; then
     [ ! -s "$out_file" ] || fail "$id via claude deny must leave stdout empty: $(cat "$out_file")"
-  elif [ "$entry" = grok ]; then
-    jq -e '.decision == "deny"' "$out_file" >/dev/null 2>&1 \
-      || fail "$id via grok deny must carry decision=deny on stdout: $(cat "$out_file")"
   fi
 }
 
 test_full_acceptance_matrix() {
   local i entry
   for ((i = 0; i < ${#MATRIX_IDS[@]}; i++)); do
-    for entry in codex claude grok opencode pi; do
+    for entry in codex claude opencode pi; do
       run_matrix_entry "${MATRIX_IDS[$i]}" "${MATRIX_EXPECTED[$i]}" "$entry" "${MATRIX_COMMANDS[$i]}"
     done
     pass "matrix ${MATRIX_IDS[$i]}: ${MATRIX_EXPECTED[$i]} through all five entry forms"
@@ -266,14 +258,6 @@ test_unknown_flag_errors() {
 
 # --- stdin JSON mode ----------------------------------------------------------
 
-test_stdin_grok_schema_deny() {
-  local out rc
-  out=$(printf '%s' '{"toolInput":{"command":"bin/fm-watch-arm.sh &","background":false},"toolName":"run_terminal_command"}' | "$CHECK" 2>/dev/null)
-  rc=$?
-  [ "$rc" -eq 2 ] || fail "grok toolInput.command schema must be read and denied, got exit $rc"
-  printf '%s' "$out" | jq -e '.decision == "deny"' >/dev/null 2>&1 || fail "stdout must carry Grok's {\"decision\":\"deny\",...} shape: $out"
-  pass "stdin grok schema (toolInput.command): denied with Grok-shaped stdout JSON"
-}
 
 test_stdin_claude_codex_schema_allow() {
   local rc
@@ -418,15 +402,6 @@ test_claude_mode_stdout_empty_on_deny() {
   pass "--claude: stdout empty, stderr carries hookSpecificOutput deny JSON"
 }
 
-test_default_mode_stdout_has_grok_json_on_deny() {
-  local out rc
-  out=$("$CHECK" --command 'bin/fm-watch-arm.sh &' 2>/dev/null)
-  rc=$?
-  [ "$rc" -eq 2 ] || fail "default deny must exit 2, got $rc"
-  printf '%s' "$out" | jq -e '.decision == "deny"' >/dev/null 2>&1 \
-    || fail "default (non-claude) deny must put Grok's decision JSON on stdout: $out"
-  pass "default mode: stdout carries Grok-shaped decision JSON on deny"
-}
 
 test_allow_is_silent_both_modes() {
   local out1 out2
@@ -459,7 +434,6 @@ test_direct_policy_contract
 test_command_equals_form
 test_background_flag_accepted_and_non_gating
 test_unknown_flag_errors
-test_stdin_grok_schema_deny
 test_stdin_claude_codex_schema_allow
 test_stdin_claude_codex_schema_deny
 test_stdin_unrelated_command_allowed
@@ -469,6 +443,5 @@ test_failopen_garbage_stdin
 test_failopen_missing_jq
 test_failopen_missing_node
 test_claude_mode_stdout_empty_on_deny
-test_default_mode_stdout_has_grok_json_on_deny
 test_allow_is_silent_both_modes
 test_shellcheck_clean
