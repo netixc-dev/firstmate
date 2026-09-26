@@ -228,11 +228,10 @@ The integration surface of each was inspected and each is structurally wireable 
 - Grok's tracked hooks (`.grok/hooks/fm-primary-pretool-check.json`, `.grok/hooks/fm-primary-cd-check.json`) use a `PreToolUse` matcher, currently `Bash`, and pipe stdin to a checker.
   The checker already reads Grok's `.toolName` field, so only the matcher token is missing.
   Grok does expose a delegation surface: `docs/supervision-protocols/grok.md` documents `get_command_or_subagent_output(<task_id>)`, which implies a corresponding dispatch tool.
-  Swapping that comparison for a call into this checker with `--tool` is the whole change.
 - Pi's tracked extension gates on `event.toolName !== "bash"` inside `pi.on("tool_call", ...)` and blocks by returning `{block: true}`.
   The same change applies. A parallel evaluation reports that Pi exposes no delegation tool at all, which would make it not applicable, but that was not verified here.
 
-None of the three is wired in this change because none of the three binaries is installed on the host where this work was done, so the exact tool-name tokens could not be confirmed and the wiring could not be validated against the real harness.
+Neither is wired in this change because neither binary is installed on the host where this work was done, so the exact tool-name tokens could not be confirmed and the wiring could not be validated against the real harness.
 This repo's rule in the `firstmate-coding-guidelines` skill is that a harness hook must be validated in a scratch project before it is trusted, and `arm-pretool-check.md` records the concrete cost of guessing: a Grok hook whose `command` string is even slightly wrong fails to launch the hook at all.
 Wiring an unvalidated matcher would trade a known gap for an unknown breakage.
 
