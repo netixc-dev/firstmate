@@ -139,12 +139,33 @@ test_removed_harness_pin_refuses_before_task_mutation() {
 }
 
 test_kimi_selections_refuse_before_mutation() {
-  local rec id safe_id escaped_id out rc form before after raw
+  local rec id safe_id escaped_id out rc form before after raw probe_value probe_args
   id=kimi-retired-z1
   rec=$(make_spawn_case kimi-retired pi "$id")
   read_case_record "$rec"
   before=$(git -C "$WT_DIR" status --short)
-  for form in flag positional config raw env_raw env_unset_raw env_chdir_raw env_unset_equals_raw env_ignore_raw env_separator_raw env_cluster_raw env_unknown_raw env_split_raw env_split_equals_raw env_split_option_raw env_split_cluster_raw env_split_escape_raw secondmate; do
+  probe_value="$CASE_DIR/env-probe-value"
+  probe_args="$CASE_DIR/env-probe-args"
+  cat > "$FAKEBIN_DIR/kimi" <<'SH'
+#!/bin/sh
+printf '%s' "$X" > "$FM_ENV_PROBE_VALUE"
+printf '%s\n' "$@" > "$FM_ENV_PROBE_ARGS"
+SH
+  cat > "$FAKEBIN_DIR/custom-agent" <<'SH'
+#!/bin/sh
+printf '%s' "$FOO" > "$FM_ENV_PROBE_VALUE"
+printf '%s\n' "$@" > "$FM_ENV_PROBE_ARGS"
+SH
+  chmod +x "$FAKEBIN_DIR/kimi" "$FAKEBIN_DIR/custom-agent"
+  FM_ENV_PROBE_VALUE="$probe_value" FM_ENV_PROBE_ARGS="$probe_args" PATH="$FAKEBIN_DIR:$PATH" \
+    /usr/bin/env -S 'X=a\nb kimi --auto' || fail "real env -S control-escape probe failed"
+  [ "$(cat "$probe_value")" = "$(printf 'a\nb')" ] || fail "real env -S split the escaped newline assignment"
+  [ "$(cat "$probe_args")" = --auto ] || fail "real env -S did not execute the Kimi-shaped probe"
+  FM_ENV_PROBE_VALUE="$probe_value" FM_ENV_PROBE_ARGS="$probe_args" PATH="$FAKEBIN_DIR:$PATH" \
+    /usr/bin/env -S 'FOO=hello\"world custom-agent --flag' || fail "real env -S escaped-quote probe failed"
+  [ "$(cat "$probe_value")" = 'hello"world' ] || fail "real env -S treated an escaped quote as grouping"
+  [ "$(cat "$probe_args")" = --flag ] || fail "real env -S did not execute the unrelated probe"
+  for form in flag positional config raw env_raw env_unset_raw env_chdir_raw env_unset_equals_raw env_ignore_raw env_separator_raw env_cluster_raw env_unknown_raw env_split_raw env_split_equals_raw env_split_option_raw env_split_cluster_raw env_split_escape_raw env_split_control_raw secondmate; do
     case "$form" in
       flag) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness kimi); rc=$? ;;
       positional) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" kimi); rc=$? ;;
@@ -167,6 +188,7 @@ test_kimi_selections_refuse_before_mutation() {
       env_split_option_raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "env -S '-u FOO kimi --auto'"); rc=$? ;;
       env_split_cluster_raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "env -S '-iv kimi --auto'"); rc=$? ;;
       env_split_escape_raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "env -S 'kimi\\_--auto'"); rc=$? ;;
+      env_split_control_raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "env -S 'X=a\\nb kimi --auto'"); rc=$? ;;
       secondmate) out=$(run_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" --secondmate --harness kimi); rc=$? ;;
     esac
     expect_code 1 "$rc" "$form must refuse standalone Kimi"
@@ -174,7 +196,7 @@ test_kimi_selections_refuse_before_mutation() {
       env_unknown_raw)
         assert_contains "$out" "env raw command cannot be classified safely" "$form refusal was not identified"
         ;;
-      env_split_escape_raw)
+      env_split_escape_raw|env_split_control_raw)
         assert_contains "$out" "unsupported removed harness 'kimi'" "$form did not identify Kimi"
         ;;
     esac
@@ -194,7 +216,7 @@ test_kimi_selections_refuse_before_mutation() {
   assert_contains "$(cat "$LAUNCH_LOG")" "$raw" "env-wrapped raw launch was rewritten"
   escaped_id=kimi-env-escaped-safe-z3
   fm_test_spawn_brief "$HOME_DIR" "$escaped_id"
-  raw="env -S 'FOO=\\\"hello\\_world\\\" /opt/bin/custom-agent --flag'"
+  raw="env -S 'FOO=hello\\\"world /opt/bin/custom-agent --flag'"
   out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$escaped_id" "$PROJ_DIR" --harness "$raw"); rc=$?
   expect_code 0 "$rc" "an unrelated escaped env split-string must remain available"
   assert_grep 'harness=env' "$HOME_DIR/state/$escaped_id.meta" "escaped env split-string metadata changed"

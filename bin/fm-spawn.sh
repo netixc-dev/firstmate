@@ -787,52 +787,63 @@ spawn_split_shell_words() { # <command>
 }
 
 spawn_split_env_words() { # <split-string>
-  local input=$1 output='' char next quote='' i=0
+  local input=$1 token='' char next quote='' i=0 active=0
+  SPAWN_SHELL_WORDS=()
   while [ "$i" -lt "${#input}" ]; do
     char=${input:i:1}
     i=$((i + 1))
-    if [ "$char" != "\\" ]; then
-      case "$char" in
-      "'")
-        if [ -z "$quote" ]; then quote=single; elif [ "$quote" = single ]; then quote=''; fi
+    if [ "$char" = "\\" ]; then
+      [ "$i" -lt "${#input}" ] || return 1
+      next=${input:i:1}
+      i=$((i + 1))
+      case "$next" in
+      _)
+        if [ -n "$quote" ]; then
+          token=$token' '
+          active=1
+        elif [ "$active" -eq 1 ]; then
+          SPAWN_SHELL_WORDS+=("$token")
+          token=''
+          active=0
+        fi
         ;;
-      '"')
-        if [ -z "$quote" ]; then quote=double; elif [ "$quote" = double ]; then quote=''; fi
-        ;;
-      '$') return 1 ;;
-      '#') [ -n "$quote" ] || return 1 ;;
+      \\|"'"|'"'|'$'|'#') token=$token$next; active=1 ;;
+      c) break ;;
+      f) token=$token$'\f'; active=1 ;;
+      n) token=$token$'\n'; active=1 ;;
+      r) token=$token$'\r'; active=1 ;;
+      t) token=$token$'\t'; active=1 ;;
+      v) token=$token$'\v'; active=1 ;;
+      *) return 1 ;;
       esac
-      output=$output$char
       continue
     fi
-    [ "$i" -lt "${#input}" ] || return 1
-    next=${input:i:1}
-    i=$((i + 1))
-    case "$next" in
-    _)
-      output=$output' '
+    if [ "$quote" = single ]; then
+      if [ "$char" = "'" ]; then quote=''; else token=$token$char; fi
+      active=1
+      continue
+    fi
+    if [ "$quote" = double ]; then
+      if [ "$char" = '"' ]; then quote=''; else token=$token$char; fi
+      active=1
+      continue
+    fi
+    case "$char" in
+    [[:space:]])
+      if [ "$active" -eq 1 ]; then
+        SPAWN_SHELL_WORDS+=("$token")
+        token=''
+        active=0
+      fi
       ;;
-    "'")
-      if [ -z "$quote" ]; then quote=single; elif [ "$quote" = single ]; then quote=''; fi
-      output=$output$next
-      ;;
-    '"')
-      if [ -z "$quote" ]; then quote=double; elif [ "$quote" = double ]; then quote=''; fi
-      output=$output$next
-      ;;
-    \\) output=$output'\\' ;;
-    c) break ;;
-    f) output=$output$'\f' ;;
-    n) output=$output$'\n' ;;
-    r) output=$output$'\r' ;;
-    t) output=$output$'\t' ;;
-    v) output=$output$'\v' ;;
-    '$'|'#') output=$output$next ;;
-    *) return 1 ;;
+    "'") quote=single; active=1 ;;
+    '"') quote=double; active=1 ;;
+    '$'|'#') return 1 ;;
+    *) token=$token$char; active=1 ;;
     esac
   done
   [ -z "$quote" ] || return 1
-  spawn_split_shell_words "$output"
+  [ "$active" -eq 0 ] || SPAWN_SHELL_WORDS+=("$token")
 }
 
 spawn_raw_executable() { # <command>
