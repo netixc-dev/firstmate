@@ -160,12 +160,22 @@ test_markerless_ancestry_outranks_foreign_marker() {
 }
 
 test_removed_runtime_ancestry_is_unknown() {
-  local bin got
-  bin=$(named_bin "$TMP_ROOT/removed-runtime" opencode)
-  got=$(under_process "$bin" CLAUDECODE=1)
-  [ "$got" = unknown ] || fail "removed runtime inherited Claude identity: $got"
-  got=$(under_process "$bin" FM_PI_HARNESS=pi)
-  [ "$got" = unknown ] || fail "removed runtime inherited Pi identity: $got"
+  local dir bin node script got name
+  dir="$TMP_ROOT/removed-runtime"
+  for name in opencode opencode-1.18; do
+    bin=$(named_bin "$dir/$name" "$name")
+    got=$(under_process "$bin" CLAUDECODE=1)
+    [ "$got" = unknown ] || fail "removed runtime $name inherited Claude identity: $got"
+    got=$(under_process "$bin" PI_CODING_AGENT=true FM_PI_HARNESS=pi)
+    [ "$got" = unknown ] || fail "removed runtime $name inherited Pi identity: $got"
+  done
+
+  node=$(named_bin "$dir/interpreter" node)
+  script="$dir/interpreter/opencode-1.18.js"
+  printf 'r=$("%s"); printf "%%s" "$r"\n' "$HARNESS" > "$script"
+  got=$(env -u PI_CODING_AGENT -u FM_PI_HARNESS -u GROK_AGENT \
+    -u CURSOR_AGENT -u CURSOR_INVOKED_AS CLAUDECODE=1 "$node" "$script")
+  [ "$got" = unknown ] || fail "removed runtime interpreter path inherited Claude identity: $got"
   pass "removed runtime ancestry remains unknown despite foreign markers"
 }
 

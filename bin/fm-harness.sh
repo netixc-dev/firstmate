@@ -179,7 +179,7 @@ harness_process_verdict() {  # <pid>
   case "$(basename -- "$comm")" in
     # A removed runtime is an identity boundary, not an invitation to inherit
     # the launcher harness farther up this ancestry chain.
-    opencode) echo "comm unknown"; return ;;
+    *opencode*) echo "comm unknown"; return ;;
     # gemini precedes claude here for the same precedence reason as the
     # marker layer above, so a gemini worker under a claude primary is never
     # read as claude. This arm covers a natively-named gemini binary only.
@@ -220,7 +220,7 @@ harness_process_verdict() {  # <pid>
         return
       fi
       case "$args" in
-        */opencode|*/opencode\ *) echo "comm unknown"; return ;;
+        */opencode*) echo "comm unknown"; return ;;
         *claude*) echo "args claude"; return ;;
         *codex*) echo "args codex"; return ;;
         *grok*) echo "args grok"; return ;;
