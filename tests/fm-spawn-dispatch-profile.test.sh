@@ -683,7 +683,7 @@ test_active_dispatch_profile_allows_raw_launch_command() {
   status=$?
   expect_code 0 "$status" "raw launch command should satisfy active dispatch-profile requirement"
   assert_contains "$out" "spawned $id harness=unknown" "spawn did not report raw command harness"
-  assert_meta_profile "$HOME_DIR/state/$id.meta" custom-agent default default
+  assert_meta_profile "$HOME_DIR/state/$id.meta" unknown default default
   launch=$(cat "$LAUNCH_LOG")
   # The unverified-adapter escape hatch is still an agent this fleet launched,
   # so it carries the compact-adviser floor; nothing else may rewrite the
