@@ -136,7 +136,7 @@ Pi and pi-signed 0.82.0 were reverified on 2026-07-27 through real isolated `fm-
 The earlier record that every harness is observed under its own `#{pane_current_command}` no longer holds and has been replaced by the per-harness evidence below.
 In this macOS run that reading reflected a rewritable process title rather than stable executable identity, so it is now one of two independent name sources rather than the sole basis of a verdict.
 
-The seven primary-capable adapters were relaunched on 2026-08-03 with tmux 3.6a on macOS 26.5.2 arm64, each on a private socket in an isolated lab.
+The retained-adapter rows below come from a seven-adapter run on 2026-08-03 with tmux 3.6a on macOS 26.5.2 arm64, with each adapter relaunched on a private socket in an isolated lab.
 
 ```sh
 tmux -L "$socket" new-window -d -t "$session:" -n "$harness" -c "$wt" -- "$bin"
@@ -173,7 +173,7 @@ FM_HARNESS_LIVENESS_DRIFT=1 bin/fm-test-run.sh tests/fm-harness-liveness-drift-l
 
 ### 2026-09-06 default-on drift refresh, and the Cursor editor CLI collision
 
-Retained-surface excerpt from the guard's 2026-09-06 run with no variable set on macOS 26.5.2 arm64; all seven retained results classified `alive`:
+Retained-surface excerpt from the guard's 2026-09-06 run with no variable set on macOS 26.5.2 arm64; all six retained results classified `alive`:
 
 ```text
 # claude 2.1.263 (Claude Code): title='2.1.263' foreground=[/Users/kunchen/.local/bin/claude <defunct> <defunct> ]

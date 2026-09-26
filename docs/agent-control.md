@@ -142,7 +142,9 @@ The worktree and the task's records are unaffected either way.
   Drive that lifecycle on its own host and reconcile it through the secondmate recovery path.
   For `relaunch` that host-side drive is `bin/fm-on.sh <id> fm-remote-secondmate-control.sh relaunch ...`, whose host-local leg runs this same plane against a record that is ordinary and local there, so every checkpoint, journal, rollback, and postcondition below applies unchanged ([`docs/remote-secondmates.md`](remote-secondmates.md)); `interrupt` and `exit` have no such route.
 - An unverified harness is refused rather than guessed at.
-  Legacy `harness=devin`, `harness=rovo`, and `harness=muse` records have no verified lifecycle mechanics, so `fm-control.sh` refuses even with an explicit replacement; [harness configuration](configuration.md#harness-support) owns their steering, replacement, and cleanup boundaries.
+  Legacy `harness=devin`, `harness=rovo`, and `harness=muse` records have no verified lifecycle mechanics, so `fm-control.sh` refuses even with an explicit replacement.
+  A legacy `harness=grok*` record also has no interrupt or exit mechanics, but an explicit relaunch onto a supported adapter may proceed after the backend proves the old endpoint agent-free; implicit replacement, a live or ambiguous endpoint, and an unprovable missing endpoint all refuse without changing the record.
+  [Harness configuration](configuration.md#harness-support) owns the removed adapters' steering and guarded-cleanup boundaries.
 - An implicit relaunch from a prefixed raw-command basename is refused before the agent or durable state is touched because its original launch command cannot be reconstructed.
 - An adapter that is not verified for this task's kind is refused **before** the running agent is stopped, not after.
   Gemini is a crewmate and scout adapter only, so relaunching a secondmate onto it refuses while its agent is still up rather than leaving that secondmate with no agent when the launch owner refuses.
