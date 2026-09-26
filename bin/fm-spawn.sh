@@ -787,8 +787,52 @@ spawn_split_shell_words() { # <command>
 }
 
 spawn_split_env_words() { # <split-string>
-  case "$1" in *\\*) return 1 ;; esac
-  spawn_split_shell_words "$1"
+  local input=$1 output='' char next quote='' i=0
+  while [ "$i" -lt "${#input}" ]; do
+    char=${input:i:1}
+    i=$((i + 1))
+    if [ "$char" != "\\" ]; then
+      case "$char" in
+      "'")
+        if [ -z "$quote" ]; then quote=single; elif [ "$quote" = single ]; then quote=''; fi
+        ;;
+      '"')
+        if [ -z "$quote" ]; then quote=double; elif [ "$quote" = double ]; then quote=''; fi
+        ;;
+      '$') return 1 ;;
+      '#') [ -n "$quote" ] || return 1 ;;
+      esac
+      output=$output$char
+      continue
+    fi
+    [ "$i" -lt "${#input}" ] || return 1
+    next=${input:i:1}
+    i=$((i + 1))
+    case "$next" in
+    _)
+      output=$output' '
+      ;;
+    "'")
+      if [ -z "$quote" ]; then quote=single; elif [ "$quote" = single ]; then quote=''; fi
+      output=$output$next
+      ;;
+    '"')
+      if [ -z "$quote" ]; then quote=double; elif [ "$quote" = double ]; then quote=''; fi
+      output=$output$next
+      ;;
+    \\) output=$output'\\' ;;
+    c) break ;;
+    f) output=$output$'\f' ;;
+    n) output=$output$'\n' ;;
+    r) output=$output$'\r' ;;
+    t) output=$output$'\t' ;;
+    v) output=$output$'\v' ;;
+    '$'|'#') output=$output$next ;;
+    *) return 1 ;;
+    esac
+  done
+  [ -z "$quote" ] || return 1
+  spawn_split_shell_words "$output"
 }
 
 spawn_raw_executable() { # <command>

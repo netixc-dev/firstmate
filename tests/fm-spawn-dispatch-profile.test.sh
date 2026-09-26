@@ -139,7 +139,7 @@ test_removed_harness_pin_refuses_before_task_mutation() {
 }
 
 test_kimi_selections_refuse_before_mutation() {
-  local rec id safe_id out rc form before after raw
+  local rec id safe_id escaped_id out rc form before after raw
   id=kimi-retired-z1
   rec=$(make_spawn_case kimi-retired pi "$id")
   read_case_record "$rec"
@@ -171,8 +171,11 @@ test_kimi_selections_refuse_before_mutation() {
     esac
     expect_code 1 "$rc" "$form must refuse standalone Kimi"
     case "$form" in
-      env_unknown_raw|env_split_escape_raw)
+      env_unknown_raw)
         assert_contains "$out" "env raw command cannot be classified safely" "$form refusal was not identified"
+        ;;
+      env_split_escape_raw)
+        assert_contains "$out" "unsupported removed harness 'kimi'" "$form did not identify Kimi"
         ;;
     esac
     assert_absent "$HOME_DIR/state/$id.meta" "$form published metadata"
@@ -189,6 +192,13 @@ test_kimi_selections_refuse_before_mutation() {
   expect_code 0 "$rc" "an unrelated env-wrapped raw command must remain available"
   assert_grep 'harness=env' "$HOME_DIR/state/$safe_id.meta" "env-wrapped raw metadata changed"
   assert_contains "$(cat "$LAUNCH_LOG")" "$raw" "env-wrapped raw launch was rewritten"
+  escaped_id=kimi-env-escaped-safe-z3
+  fm_test_spawn_brief "$HOME_DIR" "$escaped_id"
+  raw="env -S 'FOO=\\\"hello\\_world\\\" /opt/bin/custom-agent --flag'"
+  out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$escaped_id" "$PROJ_DIR" --harness "$raw"); rc=$?
+  expect_code 0 "$rc" "an unrelated escaped env split-string must remain available"
+  assert_grep 'harness=env' "$HOME_DIR/state/$escaped_id.meta" "escaped env split-string metadata changed"
+  assert_contains "$(cat "$LAUNCH_LOG")" "$raw" "escaped env split-string launch was rewritten"
   fm_write_meta "$HOME_DIR/state/$id.meta" "window=sess:fm-$id" "worktree=$WT_DIR" "harness=kimi" "kind=ship"
   out=$(run_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" --relaunch --harness pi); rc=$?
   expect_code 1 "$rc" "a recorded Kimi task must not silently switch to Pi"
