@@ -798,11 +798,15 @@ spawn_refuse_removed_harness() { # <harness-or-command>
 spawn_refuse_removed_record() { # <meta-file>
   local recorded
   recorded=$(fm_meta_get "$1" harness)
-  # A removed Grok record must be preserved for explicit recovery, never
-  # relaunched as an inferred replacement or cleaned as a supported task.
+  # A removed adapter record may be replaced only through an explicit,
+  # agent-free relaunch onto a supported adapter; it is never inferred.
   case "$recorded" in
     grok*)
-      echo "error: unsupported legacy Grok record '$recorded'; retaining its work" >&2
+      if [ "$RELAUNCH" -eq 1 ] && [ "$HARNESS_SET" -eq 1 ] \
+        && fm_control_harness_supported "$HARNESS_ARG"; then
+        return 0
+      fi
+      echo "error: unsupported legacy Grok record '$recorded'; pass --relaunch with an explicit supported --harness to migrate it" >&2
       return 1
       ;;
     devin | rovo | muse) return 0 ;;
@@ -825,9 +829,11 @@ if [ "$RELAUNCH" -eq 0 ]; then
     spawn_refuse_removed_harness "${POS[2]:-}" || exit 1
   fi
 fi
-spawn_refuse_removed_harness "$("$SCRIPT_DIR/fm-harness.sh" crew)" || exit 1
-if [ "$KIND" = secondmate ]; then
-  spawn_refuse_removed_harness "$("$SCRIPT_DIR/fm-harness.sh" secondmate)" || exit 1
+if [ "$RELAUNCH" -eq 0 ]; then
+  spawn_refuse_removed_harness "$("$SCRIPT_DIR/fm-harness.sh" crew)" || exit 1
+  if [ "$KIND" = secondmate ]; then
+    spawn_refuse_removed_harness "$("$SCRIPT_DIR/fm-harness.sh" secondmate)" || exit 1
+  fi
 fi
 
 # --relaunch reuses an existing task's endpoint, worktree, project, and kind,
@@ -1356,6 +1362,7 @@ clear_relaunch_harness_wiring() {
   # rows retain exact task artifacts without restoring removed adapter support.
   case "$harness" in
     devin) ;;
+    grok*) harness=grok ;; # cleanup-only legacy row
     muse*) harness=muse ;; # the old binding producer also matched this prefix
     *) harness=$(fm_control_harness_family "$harness") || harness= ;;
   esac

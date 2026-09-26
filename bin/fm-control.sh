@@ -333,17 +333,21 @@ BACKEND=$FM_BACKEND_VALIDATED_BACKEND
 T=$FM_BACKEND_VALIDATED_TARGET
 LABEL="fm-$ID"
 RECORDED_HARNESS=$(fm_meta_get "$META" harness)
+REMOVED_HARNESS=0
 if fm_control_removed_harness "$RECORDED_HARNESS"; then
-  die "task $ID has an unsupported legacy Grok record; explicitly migrate it without discarding its work"
+  [ "$VERB" = relaunch ] && [ "$HARNESS_SET" = 1 ] \
+    || die "task $ID has an unsupported legacy Grok record; only an explicit relaunch onto a supported harness can migrate it"
+  REMOVED_HARNESS=1
+  HARNESS=$RECORDED_HARNESS
+else
+  HARNESS=$(fm_control_harness_family "$RECORDED_HARNESS") \
+    || die "task $ID records harness '${RECORDED_HARNESS:-none}', which has no verified control mechanics; fm-control refuses to guess an interrupt key or exit command"
+  fm_control_harness_supported "$HARNESS" \
+    || die "task $ID records harness '${RECORDED_HARNESS:-none}', which has no verified control mechanics; fm-control refuses to guess an interrupt key or exit command"
 fi
 KIND=$(fm_meta_get "$META" kind)
 WT=$(fm_meta_get "$META" worktree)
 [ -n "$KIND" ] || KIND=ship
-
-HARNESS=$(fm_control_harness_family "$RECORDED_HARNESS") \
-  || die "task $ID records harness '${RECORDED_HARNESS:-none}', which has no verified control mechanics; fm-control refuses to guess an interrupt key or exit command"
-fm_control_harness_supported "$HARNESS" \
-  || die "task $ID records harness '${RECORDED_HARNESS:-none}', which has no verified control mechanics; fm-control refuses to guess an interrupt key or exit command"
 
 fm_backend_validate "$BACKEND" || exit 1
 
@@ -908,6 +912,23 @@ record_note() {
   esac
 }
 
+removed_harness_agent_free() {
+  local state absence
+  state=$(agent_state)
+  case "$state" in
+    dead) printf 'already-stopped' ;;
+    missing)
+      absence=$(fm_control_endpoint_absence_verdict "$BACKEND" "$T")
+      case "${absence%%$'\t'*}" in
+        gone) printf 'endpoint-gone' ;;
+        dead) printf 'already-stopped' ;;
+        *) die "task $ID's legacy Grok endpoint is not proven agent-free; stop it manually before explicit migration (${absence#*$'\t'})" ;;
+      esac
+      ;;
+    *) die "task $ID's legacy Grok endpoint reads '$state'; stop it manually before explicit migration" ;;
+  esac
+}
+
 do_relaunch() {
   local exit_result state note_line
   local -a spawn_args
@@ -947,7 +968,11 @@ do_relaunch() {
   journal_write noted "${CHECKPOINT_LINES[@]}" "$note_line"
 
   journal_write stopping "${CHECKPOINT_LINES[@]}" "$note_line"
-  exit_result=$(do_exit)
+  if [ "$REMOVED_HARNESS" = 1 ]; then
+    exit_result=$(removed_harness_agent_free)
+  else
+    exit_result=$(do_exit)
+  fi
   journal_write exited "${CHECKPOINT_LINES[@]}" "$note_line" "exit_result=$exit_result"
 
   # The launch owner (fm-spawn --relaunch) clears the previous incarnation's

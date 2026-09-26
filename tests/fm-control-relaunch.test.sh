@@ -1121,6 +1121,31 @@ test_muse_session_binding_is_retired_on_a_harness_switch() {
   pass "fm-spawn --relaunch: exact and prefixed legacy Muse records retire only their owned bindings"
 }
 
+test_legacy_grok_record_migrates_only_when_explicit_and_agent_free() {
+  local dir out rc auth token
+  dir=$(new_case grok-migration rl-grok)
+  add_ship_task "$dir" rl-grok grok-2
+  printf 'zsh' > "$dir/fake/command"
+  printf 'pi' > "$dir/fake/becomes"
+  token=fm.222222222222
+  auth="$dir/user-home/.grok/hooks/fm-turn-end.d/$token"
+  mkdir -p "${auth%/*}"
+  printf 'owned auth\n' > "$auth"
+  printf '%s\n' "$token" > "$dir/home/state/rl-grok.grok-turnend-token"
+  printf 'token=%s\n' "$token" > "$dir/wt/.fm-grok-turnend"
+  printf 'other task\n' > "$dir/home/state/other.grok-turnend-token"
+
+  out=$(run_control "$dir" rl-grok relaunch --harness pi --note "continue on Pi"); rc=$?
+  expect_code 0 "$rc" "explicit agent-free Grok migration should succeed: $out"
+  [ "$(meta_field "$dir" rl-grok harness)" = pi ] || fail "migration did not publish Pi"
+  assert_absent "$dir/home/state/rl-grok.grok-turnend-token" "legacy Grok token survived migration"
+  assert_absent "$dir/wt/.fm-grok-turnend" "legacy Grok pointer survived migration"
+  assert_absent "$auth" "legacy Grok auth entry survived migration"
+  assert_grep 'other task' "$dir/home/state/other.grok-turnend-token" \
+    "migration removed another task's token"
+  pass "fm-control relaunch: explicit agent-free Grok migration retires exact wiring"
+}
+
 test_legacy_devin_sidecar_is_retired_on_a_harness_switch() {
   local dir out rc
   dir=$(new_case devinwiring rl80)
@@ -2347,6 +2372,7 @@ test_spawn_relaunch_without_a_harness_reuses_the_recorded_one
 test_spawn_relaunch_of_promoted_scout_uses_the_recorded_branch
 test_promoted_scout_relaunch_receives_the_current_delivery_contract
 test_muse_session_binding_is_retired_on_a_harness_switch
+test_legacy_grok_record_migrates_only_when_explicit_and_agent_free
 test_legacy_devin_sidecar_is_retired_on_a_harness_switch
 test_legacy_rovo_replacement_requires_explicit_agent_free_choice
 test_cursor_session_binding_is_retired_on_a_harness_switch

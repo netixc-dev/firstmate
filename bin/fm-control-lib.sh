@@ -296,6 +296,10 @@ fm_control_harness_wiring_paths() {  # <harness> <worktree> <state-dir> <id>
     opencode) printf '%s\n' "$wt/.opencode/plugins/fm-busy-state.js" ;;
     pi|pi-signed) printf '%s\n' "$state/$id.pi-ext.ts" ;;
     omp) printf '%s\n' "$state/$id.omp-ext.ts" ;;
+    grok)
+      printf '%s\n' "$wt/.fm-grok-turnend"
+      printf '%s\n' "$state/$id.grok-turnend-token"
+      ;;
     kimi)
       printf '%s\n' "$wt/.fm-kimi-turnend"
       printf '%s\n' "$state/$id.kimi-turnend-token"
@@ -321,13 +325,14 @@ fm_control_harness_wiring_paths() {  # <harness> <worktree> <state-dir> <id>
 }
 
 # The firstmate-owned global turn-end registry entry a harness mints per task.
-# Kimi is the adapter whose turn-end hook is global and gated by
-# a private token file; every other adapter's wiring is fully covered by
+# This includes the cleanup-only legacy Grok row and the supported Kimi row;
+# every other adapter's wiring is fully covered by
 # fm_control_harness_wiring_paths. Prints the registry path or nothing.
 fm_control_harness_turnend_token_path() {  # <harness> <state-dir> <id>
   local harness=${1-} state=${2-} id=${3-}
   [ -n "$state" ] && [ -n "$id" ] || return 1
   case "$harness" in
+    grok) printf '%s\n' "$state/$id.grok-turnend-token" ;;
     kimi) printf '%s\n' "$state/$id.kimi-turnend-token" ;;
   esac
 }
@@ -336,6 +341,7 @@ fm_control_harness_turnend_auth_path() {  # <harness> <token>
   local harness=${1-} token=${2-}
   case "$token" in ''|*[!A-Za-z0-9._-]*) return 0 ;; esac
   case "$harness" in
+    grok) printf '%s\n' "${GROK_HOME:-$HOME/.grok}/hooks/fm-turn-end.d/$token" ;;
     kimi) printf '%s\n' "$HOME/.kimi-code/fm-turn-end.d/$token" ;;
     *) return 0 ;;
   esac

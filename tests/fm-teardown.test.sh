@@ -628,6 +628,7 @@ run_teardown() {
   FM_STATE_OVERRIDE="$case_dir/state" \
   FM_DATA_OVERRIDE="$case_dir/data" \
   FM_CONFIG_OVERRIDE="$case_dir/config" \
+  GROK_HOME="${GROK_HOME:-$case_dir/grok-home}" \
   PATH="$case_dir/fakebin:${FM_TEARDOWN_TEST_PATH:-$PATH}" \
     "$TEARDOWN" task-x1 "$@"
 }
@@ -704,21 +705,49 @@ test_local_only_fork_remote_allows() {
   pass "local-only worktree with HEAD on a fork remote is torn down and the home summary is refreshed"
 }
 
-test_legacy_grok_record_is_preserved() {
-  local case_dir rc
-  case_dir=$(make_case legacy-grok-record)
-  write_meta "$case_dir" local-only ship
-  printf 'harness=grok-2\n' >> "$case_dir/state/task-x1.meta"
-  printf 'unfinished\n' > "$case_dir/wt/unfinished.txt"
-  set +e
-  run_teardown "$case_dir" > "$case_dir/stdout" 2> "$case_dir/stderr"
-  rc=$?
-  set -e
-  [ "$rc" -ne 0 ] || fail "legacy Grok record must refuse cleanup"
-  grep -q 'unsupported legacy Grok record' "$case_dir/stderr" || fail "legacy Grok refusal was not named"
-  [ -f "$case_dir/state/task-x1.meta" ] && [ -f "$case_dir/wt/unfinished.txt" ] \
-    || fail "legacy Grok refusal removed the record or unfinished work"
-  pass "teardown preserves a legacy Grok record and its unfinished work"
+test_legacy_grok_cleanup_is_guarded_and_exact() {
+  local case_dir mode out rc before head token auth
+  for mode in landed dirty unlanded; do
+    case_dir=$(make_case "legacy-grok-$mode")
+    write_meta "$case_dir" local-only ship
+    printf 'harness=grok-2\n' >> "$case_dir/state/task-x1.meta"
+    wt_commit "$case_dir" "legacy Grok work"
+    head=$(git -C "$case_dir/wt" rev-parse HEAD)
+    [ "$mode" = unlanded ] || add_fork_with_pushed_branch "$case_dir"
+    seed_backlog_in_flight "$case_dir"
+    [ "$mode" != dirty ] || printf 'dirty work\n' > "$case_dir/wt/uncommitted.txt"
+    before=$(cat "$case_dir/state/task-x1.meta")
+    token=fm.222222222222
+    auth="$case_dir/grok-home/hooks/fm-turn-end.d/$token"
+    mkdir -p "${auth%/*}"
+    printf 'owned auth\n' > "$auth"
+    printf '%s\n' "$token" > "$case_dir/state/task-x1.grok-turnend-token"
+    printf 'token=%s\n' "$token" > "$case_dir/wt/.fm-grok-turnend"
+    printf 'other task\n' > "$case_dir/state/other.grok-turnend-token"
+
+    set +e
+    out=$(run_teardown "$case_dir" 2>&1); rc=$?
+    set -e
+    if [ "$mode" = landed ]; then
+      expect_code 0 "$rc" "landed legacy Grok task must clean up normally: $out"
+      assert_absent "$case_dir/state/task-x1.meta" "landed Grok record was stranded"
+      assert_absent "$case_dir/state/task-x1.grok-turnend-token" "Grok token was stranded"
+      assert_absent "$auth" "Grok auth entry was stranded"
+    else
+      expect_code 1 "$rc" "$mode legacy Grok work must refuse cleanup: $out"
+      assert_contains "$out" REFUSED "$mode cleanup did not report work protection"
+      [ "$(cat "$case_dir/state/task-x1.meta")" = "$before" ] || fail "$mode cleanup changed Grok metadata"
+      [ "$(git -C "$case_dir/wt" rev-parse HEAD)" = "$head" ] || fail "$mode cleanup lost Grok commits"
+      assert_present "$case_dir/state/task-x1.grok-turnend-token" "$mode cleanup removed the Grok token"
+      assert_present "$auth" "$mode cleanup removed the Grok auth entry"
+      if [ "$mode" = dirty ]; then
+        assert_grep 'dirty work' "$case_dir/wt/uncommitted.txt" "cleanup lost uncommitted Grok work"
+      fi
+    fi
+    assert_grep 'other task' "$case_dir/state/other.grok-turnend-token" \
+      "cleanup removed another task's Grok token"
+  done
+  pass "legacy Grok cleanup removes exact wiring only after work is safe"
 }
 
 test_teardown_removes_only_exact_legacy_devin_sidecar() {
@@ -3965,7 +3994,7 @@ EOF
 }
 
 test_local_only_fork_remote_allows
-test_legacy_grok_record_is_preserved
+test_legacy_grok_cleanup_is_guarded_and_exact
 test_teardown_removes_only_exact_legacy_devin_sidecar
 test_legacy_rovo_cleanup_preserves_unlanded_work
 test_teardown_closes_the_backlog_item_itself
