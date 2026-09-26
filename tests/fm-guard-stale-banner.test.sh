@@ -803,7 +803,7 @@ test_extension_handoff_keeps_queued_wake_warning() {
 }
 
 # The tolerance is scoped to the extension model alone. Every persistent-watcher
-# primary (codex, opencode, grok, kimi, tmux, unknown) must keep alarming on the
+# primary (codex, opencode, grok, tmux, unknown) must keep alarming on the
 # same state, even when Pi extension markers happen to be present on disk.
 # The supervision branch runs guarded commands (fm-peek, fm-crew-state) while
 # handling the very rows that are queued. For that actor the drain warning is

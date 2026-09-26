@@ -157,14 +157,13 @@ Verified 2026-07-30 against quota-axi 0.1.16.
       { "source": "auth-json", "path": "<home>/.grok/auth.json", "status": "available" },
       { "source": "pi:xai", "status": "available" } ] },
   { "provider": "kimi", "sources": [
-      { "source": "pi:kimi-coding", "status": "available" },
-      { "source": "kimi-code-cli", "status": "expired", "error": "kimi_code_cli_credential_expired" } ] }
+      { "source": "pi:kimi-coding", "status": "available" } ] }
 ]
 ```
 
 Observed source statuses are `available`, `expired` (with an `error` slug), and `missing`.
 
-- A provider can carry a healthy source beside a missing or expired one, so a provider must not be collapsed to a single status. Claude's `oauth-file` is missing while its keychain source is available, and Kimi's standalone CLI credential is expired while its Pi source is available.
+- A provider can carry a healthy source beside a missing or expired one, so a provider must not be collapsed to a single status. Claude's `oauth-file` is missing while its keychain source is available.
 - In this captured setup, only `pi:xai` and `pi:kimi-coding` have `pi:`-prefixed sources.
   The Pi `openai-codex` candidate used the Codex store listed above; this observation does not establish the credential source for another account or setup.
   The [eligibility procedure](../../.agents/skills/quota-array-dispatch/SKILL.md#1-eligibility) owns how missing authentication evidence affects dispatch.

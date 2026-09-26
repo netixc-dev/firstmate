@@ -191,17 +191,17 @@ fi
 ok "help renders the complete header only"
 
 # 1. First candidate with positive effective quota.
-out=$(call_choose --snapshot "$LAB/captured.json" --candidate kimi:default --candidate codex:model:codex_bengalfox --candidate claude:claude-3-5-sonnet)
+out=$(call_choose --snapshot "$LAB/captured.json" --candidate codex:model:codex_bengalfox --candidate claude:claude-3-5-sonnet)
 [ "$out" = "claude claude-3-5-sonnet" ] || fail "first positive: expected 'claude claude-3-5-sonnet', got '$out'"
 ok "first positive candidate wins"
 
 # 2. Exhausted provider is skipped.
-out=$(call_choose --snapshot "$LAB/captured.json" --candidate kimi:default --candidate claude:claude-3-5-sonnet)
+out=$(call_choose --snapshot "$LAB/captured.json" --candidate codex:model:codex_bengalfox --candidate claude:claude-3-5-sonnet)
 [ "$out" = "claude claude-3-5-sonnet" ] || fail "exhausted skip: expected 'claude claude-3-5-sonnet', got '$out'"
 ok "exhausted provider is skipped"
 
 # 3. No candidates have positive quota.
-if out=$(call_choose --snapshot "$LAB/captured.json" --candidate kimi:default 2>/dev/null); then
+if out=$(call_choose --snapshot "$LAB/captured.json" --candidate codex:model:codex_bengalfox 2>/dev/null); then
   fail "no positive: expected exit 1, got exit 0 with '$out'"
 fi
 [ "$out" = "none" ] || fail "no positive: expected 'none', got '$out'"

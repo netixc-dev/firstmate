@@ -1071,6 +1071,38 @@ assert_contains "$UPDATE_OUT" 'synced:' "remote update did not report a host-loc
 assert_present "$REMOTE_HOME/REMOTE_UPDATE_PROBE" "remote update did not materialize the code-root commit"
 pass "remote update imports and fast-forwards the persistent home on its configured host"
 
+# Retired adapters must be rejected on the host before an existing endpoint is read or changed.
+cp "$PARENT/state/ios.meta" "$TMP_ROOT/parent-ios-before-kimi-record.meta"
+awk '
+  /^harness=/ { print "harness=kimi"; next }
+  { print }
+' "$TMP_ROOT/parent-ios-before-kimi-record.meta" > "$PARENT/state/ios.meta"
+set +e
+remote_env "$ROOT/bin/fm-spawn.sh" ios --secondmate --harness codex \
+  > "$TMP_ROOT/parent-kimi-record-refusal.out" 2>&1
+KIMI_PARENT_RECORD_RC=$?
+set -e
+[ "$KIMI_PARENT_RECORD_RC" -ne 0 ] || fail "parent respawn accepted a recorded standalone Kimi secondmate"
+assert_grep 'recorded standalone Kimi task cannot be relaunched' "$TMP_ROOT/parent-kimi-record-refusal.out" \
+  "parent respawn did not identify the retired record"
+assert_absent "$PARENT/state/.spawn-ios.lock" "recorded Kimi refusal retained the spawn lock"
+assert_absent "$PARENT/state/.secondmate-registry.lock" "recorded Kimi refusal retained the registry lock"
+mv -f "$TMP_ROOT/parent-ios-before-kimi-record.meta" "$PARENT/state/ios.meta"
+KIMI_REMOTE_BEFORE=$(git -C "$REMOTE_HOME" status --short)
+KIMI_REMOTE_LAUNCH=$(remote_env "$ROOT/bin/fm-on.sh" ios fm-remote-secondmate-control.sh \
+  launch ios kimi - - herdr 2>&1) && fail "standalone Kimi remote launch should refuse"
+assert_contains "$KIMI_REMOTE_LAUNCH" 'unverified remote secondmate harness' \
+  "remote launch accepted standalone Kimi"
+KIMI_REMOTE_RELAUNCH=$(remote_env "$ROOT/bin/fm-on.sh" ios fm-remote-secondmate-control.sh \
+  relaunch ios kimi - - 2>&1) && fail "standalone Kimi remote relaunch should refuse"
+assert_contains "$KIMI_REMOTE_RELAUNCH" 'unverified remote secondmate harness' \
+  "remote relaunch accepted standalone Kimi"
+[ "$(git -C "$REMOTE_HOME" status --short)" = "$KIMI_REMOTE_BEFORE" ] \
+  || fail "retired remote adapter changed the host copy"
+[ "$(remote_env "$ROOT/bin/fm-on.sh" ios fm-remote-secondmate-control.sh state ios)" = alive ] \
+  || fail "retired remote adapter altered the existing endpoint"
+pass "standalone Kimi remote launch and relaunch refuse before endpoint mutation"
+
 # The remote restart verb is not a second implementation: its host-local leg runs
 # the ORDINARY control plane against a record that is plain and local on that
 # host. These two refusals can only come from that plane's own pre-stop

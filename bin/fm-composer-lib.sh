@@ -3,8 +3,7 @@
 # every shape a verified harness draws, every glyph, every container proof, and
 # the empty|pending|pending-unproven|unknown verdict, shared by every
 # session-provider adapters (tmux via bin/fm-tmux-lib.sh and
-# bin/backends/herdr.sh) and by fm-spawn.sh's kimi
-# launch-readiness check.
+# bin/backends/herdr.sh).
 #
 # WHY THIS EXISTS (tasks fm-composer-shellglyph-safety and
 # fm-composer-thin-adapter-refactor-r1): the adapters each carried their own
@@ -51,7 +50,7 @@
 # captures in data/fm-composer-consolidation-audit-s1/report.md and
 # docs/verification/runtime-backends.md):
 #   bordered   - a complete boxed composer: a top border, side-bordered content
-#                rows of the same family, and a bottom border (grok, kimi,
+#                rows of the same family, and a bottom border (grok,
 #                older claude). The bottom border may carry a TITLE (grok
 #                writes its model name there); a titled bottom border that
 #                still starts and ends with the family's rule glyph is
@@ -351,16 +350,6 @@ fm_composer_strip_ghost() {
 # line has an ellipsis followed by a parenthesized elapsed duration. Keep this
 # signature separate from the shared default because that shape is not generic
 # enough to classify arbitrary harness output safely.
-# Kimi's anchored moon-phase spinner is separate because bare moon glyphs in
-# ordinary output must not classify another harness as busy. Leading whitespace is
-# OPTIONAL; whitespace on both sides of the separator is REQUIRED because every
-# captured spinner row had it. A zero-whitespace form has NEVER been observed and
-# is deliberately not matched. The line end is intentionally unanchored because
-# rotating tip text follows and is not required to be present. The idle status
-# bar's lowercase `thinking` label and independently rotating tip text are not
-# busy signals on their own.
-# The full moon-phase set remains locale- and emoji-font-sensitive because Kimi
-# exposes no stable ASCII busy token.
 # The harness-less default is the UNION of the per-harness tokens below, used
 # when a caller has no recorded harness for the pane (the submit cores read the
 # baseline and the post-Enter transition this way). cursor's `ctrl+c to stop` is
@@ -398,7 +387,6 @@ FM_DELIVERY_GROK_BUSY_REGEX_DEFAULT='Ctrl\+c:cancel'
 # injection. Cursor's recorded worker state comes from its transcript fold in
 # bin/fm-busy-lib.sh, never from this row.
 FM_DELIVERY_CURSOR_BUSY_REGEX_DEFAULT='ctrl\+c to stop'
-FM_DELIVERY_KIMI_BUSY_REGEX_DEFAULT='^[[:space:]]*(🌑|🌒|🌓|🌔|🌕|🌖|🌗|🌘)[[:space:]]+·[[:space:]]+'
 
 fm_busy_lines_match() {  # [harness]
   local harness=${1:-} lines regex
@@ -413,7 +401,6 @@ fm_busy_lines_match() {  # [harness]
       pi|pi-signed) regex=$FM_DELIVERY_PI_BUSY_REGEX_DEFAULT ;;
       omp) regex=$FM_DELIVERY_OMP_BUSY_REGEX_DEFAULT ;;
       grok) regex=$FM_DELIVERY_GROK_BUSY_REGEX_DEFAULT ;;
-      kimi) regex=$FM_DELIVERY_KIMI_BUSY_REGEX_DEFAULT ;;
       cursor) regex=$FM_DELIVERY_CURSOR_BUSY_REGEX_DEFAULT ;;
       '') regex=$FM_DELIVERY_BUSY_REGEX_DEFAULT ;;
       *)

@@ -646,16 +646,14 @@ test_matrix_grok_titled_bottom_border() {
   pass "matrix: grok's real oversized titled bottom is empty while typed and unproved panes stay safe"
 }
 
-test_matrix_kimi_bordered_shell_glyph_box() {
-  # Kimi's bordered `│ > │` composer - the shape fm-spawn.sh's retired
-  # spawn-local regex used to own. Now the shared owner proves it everywhere,
-  # which is what kimi launch-readiness and delivery route through.
+test_matrix_bordered_shell_glyph_box() {
+  # A shell-glyph composer remains a generic bordered shape on every backend.
   local screen
   screen=$'╭────────────────────────╮\n│ >                      │\n╰────────────────────────╯'
-  assert_screen "kimi idle on tmux" empty "$CAPS_TMUX" "$screen" 1
-  assert_screen "kimi idle on herdr" empty "$CAPS_STYLED" "$screen"
-  assert_screen "kimi idle on styled capture" empty "$CAPS_STYLED_NOID" "$screen"
-  pass "matrix: kimi's bordered shell-glyph box reads empty through the shared owner (spawn's fourth copy retired)"
+  assert_screen "shell glyph on tmux" empty "$CAPS_TMUX" "$screen" 1
+  assert_screen "shell glyph on herdr" empty "$CAPS_STYLED" "$screen"
+  assert_screen "shell glyph on styled capture" empty "$CAPS_STYLED_NOID" "$screen"
+  pass "matrix: bordered shell-glyph box reads empty through the shared owner"
 }
 
 test_matrix_claude_styled_ansi_dump() {
@@ -765,7 +763,7 @@ test_cursorless_bare_wrap_region_classifies() {
 }
 
 test_cursorless_container_rejects_contiguous_lower_activity() {
-  local box leftbar grok kimi opencode
+  local box leftbar grok shell_box opencode
   box=$'╭────────────────────────╮\n│ ❯                      │\n╰────────────────────────╯\nWorking on request...'
   assert_screen "stale box above activity on herdr" unknown "$CAPS_STYLED" "$box"
   assert_screen "stale box above activity on styled capture" unknown "$CAPS_STYLED_NOID" "$box"
@@ -775,10 +773,10 @@ test_cursorless_container_rejects_contiguous_lower_activity() {
   assert_screen "stale left-bar above activity on styled capture" unknown "$CAPS_STYLED_NOID" "$leftbar"
 
   grok=$'╭────────────────────────╮\n│ ❯                      │\n╰──────── Grok 4.5 ──────╯\n\nGrok status'
-  kimi=$'╭────────────────────────╮\n│ >                      │\n╰────────────────────────╯\n\nKimi status'
+  shell_box=$'╭────────────────────────╮\n│ >                      │\n╰────────────────────────╯\n\nShell status'
   opencode=$'┃\n┃  Ask anything...\n┃\n┃  Build · GPT-5.5 Fast OpenAI · high\n╹▀▀▀▀▀▀▀▀\n\nOpenCode status'
   assert_screen "blank-separated grok footer" empty "$CAPS_STYLED_NOID" "$grok"
-  assert_screen "blank-separated kimi footer" empty "$CAPS_UNSTYLED" "$kimi"
+  assert_screen "blank-separated shell-glyph footer" empty "$CAPS_UNSTYLED" "$shell_box"
   assert_screen "left-bar floor and blank-separated footer" empty "$CAPS_STYLED_NOID" "$opencode"
   pass "fm_composer_classify_screen: cursorless containers reject only contiguous unclaimed activity"
 }
@@ -887,7 +885,7 @@ test_matrix_codex_idle_starfield_furniture
 test_matrix_pi_separated_needs_identity
 test_matrix_opencode_leftbar_signals
 test_matrix_grok_titled_bottom_border
-test_matrix_kimi_bordered_shell_glyph_box
+test_matrix_bordered_shell_glyph_box
 test_matrix_claude_styled_ansi_dump
 test_strict_blank_row_divergence
 test_bare_wrap_region_classifies

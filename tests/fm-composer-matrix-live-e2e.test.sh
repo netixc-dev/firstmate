@@ -151,7 +151,7 @@ check_harness_idle_cursorless() {  # <name> <version> <target>
 }
 
 # --- 1. Every installed verified harness must reach a proven-empty composer --
-for h in claude codex opencode pi grok kimi; do
+for h in claude codex opencode pi grok; do
   if command -v "$h" >/dev/null 2>&1; then
     check_harness_idle_empty "$h" "$h"
   else

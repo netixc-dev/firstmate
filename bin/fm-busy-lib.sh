@@ -36,7 +36,6 @@
 #                    SessionEnd close)
 #   codex-hook, codex-appserver  reserved: Codex, gated by
 #                    fm_busy_codex_semantic_source
-#   kimi-wire, kimi-hook  reserved: standalone Kimi, gated by fm_busy_kimi_verified
 # Firstmate-owned sources accepted for every converted adapter:
 #   fm-spawn         the launch-brief turn seeded at spawn
 #   fm-interrupt     the legacy Claude fm-send --key Escape idle event
@@ -44,12 +43,11 @@
 # Classifier-only sources (never written into a record):
 #   endpoint-gone, herdr-native, grok-regex,
 #   cursor-transcript, missing, malformed, gen-mismatch, source-mismatch,
-#   kimi-unverified, codex-unverified, capture-failed, no-target, launch-prompt
+#   codex-unverified, capture-failed, no-target, launch-prompt
 #
 # Classification (fm_busy_classify): busy | idle | unknown | dead, always
 # with the producing source as the second token. Precedence:
 #   1. dead endpoint (fm_busy_classify_live only) -> dead endpoint-gone
-#   2. standalone Kimi before verification       -> unknown kimi-unverified
 #   3. a valid, gen-matching, source-trusted record -> its state and source,
 #      UNLESS the record is still the untouched seed fm-spawn wrote at arm
 #      time (state=busy source=fm-spawn - no adapter hook has posted since
@@ -112,30 +110,6 @@
 # Sourcing: set -u and set -e safe; no subshell-unfriendly globals.
 
 FM_BUSY_LIB_VERSION=v1
-
-# Standalone-Kimi verification gate. Empty means no installed Kimi version
-# has passed live verification, so every standalone Kimi task classifies
-# unknown kimi-unverified and fm-spawn wires no Kimi busy events. Kimi's
-# rendered moon-phase spinner is deliberately NOT a state source here: the
-# approved redesign forbids inventing a Kimi UI signature, and that spinner
-# is locale- and emoji-font-sensitive.
-#
-# Preferred source, in order: Wire mode's JSON-RPC `prompt` request lifetime,
-# whose outstanding request exactly brackets a turn and returns finished,
-# cancelled, or max_steps_reached (so it covers interruption, which `Stop`
-# does not); then the documented lifecycle hooks, which must include
-# `Interrupt` because Kimi documents that `Stop` does not fire on interrupts.
-#
-# To open the gate: install Kimi, live-verify the chosen source brackets a
-# real turn on a firstmate-launched worker including the interrupt path,
-# record the version, exact commands, and observed output in
-# docs/verification/supervision.md, add the verified version string(s) here,
-# and land the wiring in fm-spawn behind this same gate in the same change.
-FM_BUSY_KIMI_VERIFIED_VERSIONS=""
-
-fm_busy_kimi_verified() {
-  [ -n "$FM_BUSY_KIMI_VERIFIED_VERSIONS" ]
-}
 
 # fm_busy_codex_appserver_observable: capability/version negotiation for the
 # Codex app-server turn lifecycle. Returns 0 only when a pane worker's turns
@@ -218,10 +192,6 @@ fm_busy_sources_for_harness() {  # <harness>
     gemini*) adapter=gemini-hook ;;
     pi|pi-signed) adapter=pi-ext ;;
     omp) adapter=omp-ext ;;
-    kimi*)
-      fm_busy_kimi_verified || { printf ''; return 0; }
-      adapter='kimi-wire kimi-hook'
-      ;;
     *) printf ''; return 0 ;;
   esac
   printf '%s fm-spawn fm-interrupt fm-recovery' "$adapter"
@@ -614,7 +584,7 @@ fm_busy_gemini_launch_prompt_tail() {
 # or fail when this harness has none. Consumes the tail on stdin. Scoped to
 # exactly the harnesses fm-spawn.sh arms with the fm-spawn busy source
 # (claude*, opencode*, pi, pi-signed, omp, gemini) since only those can ever
-# read a pinned "busy fm-spawn" record; codex and standalone Kimi already
+# read a pinned "busy fm-spawn" record; codex already
 # classify unknown before a record is ever consulted, and opencode ships no
 # trust dialog at all.
 fm_busy_launch_prompt_parked() {  # <harness>
@@ -639,12 +609,6 @@ fm_busy_classify() {  # <backend> <target> <harness> <id> <state-dir> [tail40]
   local backend=$1 target=$2 harness=$3 id=$4 state=$5 tail40=${6-}
   local out rc r_state r_source native log
   case "$harness" in
-    kimi*)
-      if ! fm_busy_kimi_verified; then
-        printf 'unknown kimi-unverified'
-        return 0
-      fi
-      ;;
     codex*)
       if ! fm_busy_codex_semantic_source; then
         printf 'unknown codex-unverified'

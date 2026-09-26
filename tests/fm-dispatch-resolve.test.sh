@@ -59,7 +59,7 @@ cat > "$BASE_RULES" <<'JSON'
       "use": [
         { "harness": "claude", "model": "sonnet", "effort": "high" },
         { "harness": "cursor", "model": "cursor-grok-4.6-medium" },
-        { "harness": "kimi", "model": "kimi-code/k3" }
+        { "harness": "pi", "model": "kimi-code/k3", "provider": "kimi" }
       ]
     }
   ],
@@ -221,7 +221,7 @@ assert_contains "$out" '  status: clear' "clear status"
 assert_contains "$out" '  rule: rule_4 (A simple bug fix with a stated root cause.)   confidence: 0.9' "rule and confidence line"
 assert_contains "$out" "  profile: --harness 'cursor' --model 'cursor-grok-4.6-medium'" "argmax picks the highest spendPriority"
 assert_contains "$out" 'candidate: claude:sonnet  provider=claude  scope=all_models  remaining=79%  spendPriority=-0.4627  runway=projected_exhaustion  -> eligible' "every candidate is accounted for"
-assert_contains "$out" 'candidate: kimi:kimi-code/k3  provider=kimi  -> eligible, unranked: provider kimi unmeasured (unknown): disclosed uncertainty' "unmeasured provider stays listed as eligible and unranked"
+assert_contains "$out" 'candidate: pi:kimi-code/k3  provider=kimi  -> eligible, unranked: provider kimi unmeasured (unknown): disclosed uncertainty' "unmeasured provider stays listed as eligible and unranked"
 assert_contains "$out" '  note: 1 eligible candidate(s) unranked (kimi)' "clear results flag eligible unranked candidates once"
 assert_not_contains "$out" '--effort' "cursor profile without effort emits no --effort"
 argv=$(cat "$LOG/argv")
@@ -346,7 +346,7 @@ expect_code 0 "$code" "ambiguous exits 0"
 assert_contains "$out" '  status: ambiguous' "below the floor is ambiguous"
 assert_contains "$out" '  reason: confidence 0.41 below floor 0.6' "ambiguous names the floor"
 assert_contains "$out" 'candidate: claude:sonnet  provider=claude  scope=all_models  remaining=79%  spendPriority=-0.4627  runway=projected_exhaustion  -> eligible' "ambiguous preserves matched candidate evidence"
-assert_contains "$out" 'candidate: kimi:kimi-code/k3  provider=kimi  -> eligible, unranked: provider kimi unmeasured (unknown): disclosed uncertainty' "ambiguous preserves eligible unranked candidate evidence"
+assert_contains "$out" 'candidate: pi:kimi-code/k3  provider=kimi  -> eligible, unranked: provider kimi unmeasured (unknown): disclosed uncertainty' "ambiguous preserves eligible unranked candidate evidence"
 assert_not_contains "$out" '  profile:' "ambiguous emits no profile line"
 pass "ambiguous: confidence below the fixed floor hands the decision back"
 

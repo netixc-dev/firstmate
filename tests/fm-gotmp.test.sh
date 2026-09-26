@@ -7,7 +7,7 @@
 #
 # These tests exercise fm-teardown directly as a subprocess against a fake FM_HOME/FM_ROOT
 # built so the real script resolves into it, with stub helper scripts.
-# The isolated fm-spawn subprocess in fm-kimi-harness.test.sh covers temp-root creation,
+# Isolated fm-spawn subprocess tests cover temp-root creation,
 # metadata publication, and the pane environment export.
 set -u
 
