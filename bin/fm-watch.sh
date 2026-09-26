@@ -793,7 +793,7 @@ secondmate_busy_class() {  # <window>
 
 # 0 iff a child ring is authorized: exact idle, a live agent, and a composer
 # that is not proven pending. Busy, unknown, dead, missing, and pending
-# composer all refuse, so a Kimi or Claude pane without an exact idle
+# composer all refuse, so a Claude pane without an exact idle
 # verdict is never typed into.
 secondmate_idle_ring_safe() {  # <window>
   local w=$1 backend agent_state cstate

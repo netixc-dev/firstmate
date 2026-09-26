@@ -63,7 +63,7 @@ fm_control_verb_allowed() {  # <verb>
 # section 4's verified-adapter list; an unverified adapter is refused rather
 # than guessed at, exactly as a spawn on it would be.
 fm_control_harnesses() {
-  printf '%s\n' claude codex opencode pi pi-signed grok kimi cursor gemini omp
+  printf '%s\n' claude codex opencode pi pi-signed grok cursor gemini omp
 }
 
 fm_control_harness_supported() {  # <harness>
@@ -91,7 +91,6 @@ fm_control_harness_family() {  # <recorded-harness>
     codex*) printf 'codex' ;;
     opencode*) printf 'opencode' ;;
     grok*) printf 'grok' ;;
-    kimi*) printf 'kimi' ;;
     cursor*) printf 'cursor' ;;
     gemini*) printf 'gemini' ;;
     *) return 1 ;;
@@ -122,7 +121,7 @@ fm_control_harness_supports_kind() {  # <harness> <kind>
 # through Herdr).
 fm_control_interrupt_key() {  # <harness>
   case "${1-}" in
-    claude|codex|opencode|pi|pi-signed|omp|kimi|cursor|gemini) printf 'Escape' ;;
+    claude|codex|opencode|pi|pi-signed|omp|cursor|gemini) printf 'Escape' ;;
     grok) printf 'C-c' ;;
     *) return 1 ;;
   esac
@@ -133,7 +132,7 @@ fm_control_interrupt_key() {  # <harness>
 fm_control_interrupt_repeat() {  # <harness>
   case "${1-}" in
     opencode) printf '2' ;;
-    claude|codex|pi|pi-signed|omp|grok|kimi|cursor|gemini) printf '1' ;;
+    claude|codex|pi|pi-signed|omp|grok|cursor|gemini) printf '1' ;;
     *) return 1 ;;
   esac
 }
@@ -143,7 +142,7 @@ fm_control_interrupt_repeat() {  # <harness>
 # its presses blind.
 fm_control_interrupt_arm_signal() {  # <harness>
   case "${1-}" in
-    claude|codex|opencode|pi|pi-signed|omp|grok|kimi|cursor|gemini) ;;
+    claude|codex|opencode|pi|pi-signed|omp|grok|cursor|gemini) ;;
     *) return 1 ;;
   esac
 }
@@ -151,7 +150,7 @@ fm_control_interrupt_arm_signal() {  # <harness>
 # The minimum seconds between two presses of an armed interrupt.
 fm_control_interrupt_press_gap() {  # <harness>
   case "${1-}" in
-    claude|codex|opencode|pi|pi-signed|omp|grok|kimi|cursor|gemini) printf '0.2' ;;
+    claude|codex|opencode|pi|pi-signed|omp|grok|cursor|gemini) printf '0.2' ;;
     *) return 1 ;;
   esac
 }
@@ -161,7 +160,7 @@ fm_control_interrupt_press_gap() {  # <harness>
 # when the adapter has none.
 fm_control_interrupt_hazard_signal() {  # <harness>
   case "${1-}" in
-    claude|codex|opencode|pi|pi-signed|omp|grok|kimi|cursor|gemini) ;;
+    claude|codex|opencode|pi|pi-signed|omp|grok|cursor|gemini) ;;
     *) return 1 ;;
   esac
 }
@@ -177,7 +176,7 @@ fm_control_interrupt_hazard_signal() {  # <harness>
 # above.
 fm_control_interrupt_clear_key() {  # <harness>
   case "${1-}" in
-    claude|codex|opencode|pi|pi-signed|omp|grok|kimi|cursor|gemini) ;;
+    claude|codex|opencode|pi|pi-signed|omp|grok|cursor|gemini) ;;
     *) return 1 ;;
   esac
 }
@@ -185,7 +184,7 @@ fm_control_interrupt_clear_key() {  # <harness>
 # The command that exits the agent from its own composer.
 fm_control_exit_command() {  # <harness>
   case "${1-}" in
-    claude|opencode|grok|kimi|cursor) printf '/exit' ;;
+    claude|opencode|grok|cursor) printf '/exit' ;;
     codex|pi|pi-signed|omp|gemini) printf '/quit' ;;
     *) return 1 ;;
   esac
@@ -298,10 +297,6 @@ fm_control_harness_wiring_paths() {  # <harness> <worktree> <state-dir> <id>
       printf '%s\n' "$wt/.fm-grok-turnend"
       printf '%s\n' "$state/$id.grok-turnend-token"
       ;;
-    kimi)
-      printf '%s\n' "$wt/.fm-kimi-turnend"
-      printf '%s\n' "$state/$id.kimi-turnend-token"
-      ;;
     muse)
       # Legacy cleanup only: retire the exact Firstmate-owned bindings after
       # an agent-free replacement. Never follow their vendor-log paths, and
@@ -323,7 +318,7 @@ fm_control_harness_wiring_paths() {  # <harness> <worktree> <state-dir> <id>
 }
 
 # The firstmate-owned global turn-end registry entry a harness mints per task.
-# grok and kimi are the two adapters whose turn-end hook is global and gated by
+# grok's turn-end hook is global and gated by
 # a private token file; every other adapter's wiring is fully covered by
 # fm_control_harness_wiring_paths. Prints the registry path or nothing.
 fm_control_harness_turnend_token_path() {  # <harness> <state-dir> <id>
@@ -331,7 +326,6 @@ fm_control_harness_turnend_token_path() {  # <harness> <state-dir> <id>
   [ -n "$state" ] && [ -n "$id" ] || return 1
   case "$harness" in
     grok) printf '%s\n' "$state/$id.grok-turnend-token" ;;
-    kimi) printf '%s\n' "$state/$id.kimi-turnend-token" ;;
   esac
 }
 
@@ -340,7 +334,6 @@ fm_control_harness_turnend_auth_path() {  # <harness> <token>
   case "$token" in ''|*[!A-Za-z0-9._-]*) return 0 ;; esac
   case "$harness" in
     grok) printf '%s\n' "${GROK_HOME:-$HOME/.grok}/hooks/fm-turn-end.d/$token" ;;
-    kimi) printf '%s\n' "$HOME/.kimi-code/fm-turn-end.d/$token" ;;
     *) return 0 ;;
   esac
 }

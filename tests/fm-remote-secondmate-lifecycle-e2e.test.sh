@@ -1071,6 +1071,22 @@ assert_contains "$UPDATE_OUT" 'synced:' "remote update did not report a host-loc
 assert_present "$REMOTE_HOME/REMOTE_UPDATE_PROBE" "remote update did not materialize the code-root commit"
 pass "remote update imports and fast-forwards the persistent home on its configured host"
 
+# Retired adapters must be rejected on the host before an existing endpoint is read or changed.
+KIMI_REMOTE_BEFORE=$(git -C "$REMOTE_HOME" status --short)
+KIMI_REMOTE_LAUNCH=$(remote_env "$ROOT/bin/fm-on.sh" ios fm-remote-secondmate-control.sh \
+  launch ios kimi - - herdr 2>&1) && fail "standalone Kimi remote launch should refuse"
+assert_contains "$KIMI_REMOTE_LAUNCH" 'unverified remote secondmate harness' \
+  "remote launch accepted standalone Kimi"
+KIMI_REMOTE_RELAUNCH=$(remote_env "$ROOT/bin/fm-on.sh" ios fm-remote-secondmate-control.sh \
+  relaunch ios kimi - - 2>&1) && fail "standalone Kimi remote relaunch should refuse"
+assert_contains "$KIMI_REMOTE_RELAUNCH" 'unverified remote secondmate harness' \
+  "remote relaunch accepted standalone Kimi"
+[ "$(git -C "$REMOTE_HOME" status --short)" = "$KIMI_REMOTE_BEFORE" ] \
+  || fail "retired remote adapter changed the host copy"
+[ "$(remote_env "$ROOT/bin/fm-on.sh" ios fm-remote-secondmate-control.sh state ios)" = alive ] \
+  || fail "retired remote adapter altered the existing endpoint"
+pass "standalone Kimi remote launch and relaunch refuse before endpoint mutation"
+
 # The remote restart verb is not a second implementation: its host-local leg runs
 # the ORDINARY control plane against a record that is plain and local on that
 # host. These two refusals can only come from that plane's own pre-stop

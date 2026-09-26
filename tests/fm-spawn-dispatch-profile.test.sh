@@ -138,6 +138,41 @@ test_removed_harness_pin_refuses_before_task_mutation() {
   pass "spawn rejects a removed harness pin before task mutation or launch"
 }
 
+test_kimi_selections_refuse_before_mutation() {
+  local rec id out rc form before after
+  id=kimi-retired-z1
+  rec=$(make_spawn_case kimi-retired pi "$id")
+  read_case_record "$rec"
+  before=$(git -C "$WT_DIR" status --short)
+  for form in flag positional config raw env_raw env_unset_raw secondmate; do
+    case "$form" in
+      flag) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness kimi); rc=$? ;;
+      positional) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" kimi); rc=$? ;;
+      config)
+        printf 'kimi\n' > "$HOME_DIR/config/crew-harness"
+        out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR"); rc=$?
+        printf 'pi\n' > "$HOME_DIR/config/crew-harness"
+        ;;
+      raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness 'kimi --auto'); rc=$? ;;
+      env_raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness 'env FOO=bar kimi --auto'); rc=$? ;;
+      env_unset_raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness '/usr/bin/env -u FOO /opt/bin/kimi --auto'); rc=$? ;;
+      secondmate) out=$(run_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" --secondmate --harness kimi); rc=$? ;;
+    esac
+    expect_code 1 "$rc" "$form must refuse standalone Kimi"
+    assert_absent "$HOME_DIR/state/$id.meta" "$form published metadata"
+    assert_absent "$HOME_DIR/state/$id.busy-gen" "$form armed busy state"
+    assert_absent "$HOME_DIR/state/$id.kimi-turnend-token" "$form created a hook token"
+    [ ! -s "$LAUNCH_LOG" ] || fail "$form launched an endpoint"
+    after=$(git -C "$WT_DIR" status --short)
+    [ "$after" = "$before" ] || fail "$form changed the isolated copy"
+  done
+  fm_write_meta "$HOME_DIR/state/$id.meta" "window=sess:fm-$id" "worktree=$WT_DIR" "harness=kimi" "kind=ship"
+  out=$(run_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" --relaunch --harness pi); rc=$?
+  expect_code 1 "$rc" "a recorded Kimi task must not silently switch to Pi"
+  assert_contains "$out" "recorded standalone Kimi" "relaunch must identify the old task"
+  pass "standalone Kimi selections and replacement refuse without mutation"
+}
+
 test_devin_adapter_selections_refuse_and_raw_command_survives() {
   local rec id out rc meta_before sm
   id=devin-selection-z1
@@ -1782,6 +1817,7 @@ test_non_claude_harness_ignores_claude_permission_mode() {
 
 test_worker_launch_delivers_role_scope
 test_removed_harness_pin_refuses_before_task_mutation
+test_kimi_selections_refuse_before_mutation
 test_devin_adapter_selections_refuse_and_raw_command_survives
 test_rovo_selections_refuse_but_raw_commands_and_home_paths_survive
 test_removed_adapter_inputs_preserve_task

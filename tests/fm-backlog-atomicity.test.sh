@@ -483,36 +483,6 @@ SH
   chmod +x "$case_dir/fakebin/treehouse"
 }
 
-interrupt_kimi_readiness() {  # <case-dir>
-  local case_dir=$1 home
-  home=$(home_of "$case_dir")
-  mkdir -p "$home/.kimi-code"
-  printf '# test config\n' > "$home/.kimi-code/config.toml"
-  fm_fake_exit0 "$case_dir/fakebin" kimi
-  cat > "$case_dir/fakebin/tmux" <<SH
-#!/usr/bin/env bash
-case "\$*" in
-  *"#{pane_current_path}"*) printf '%s\\n' "\${FM_FAKE_PANE_PATH:-}"; exit 0 ;;
-  *"#{cursor_y}"*) printf '1\\n'; exit 0 ;;
-esac
-case "\${1:-}" in
-  display-message) printf 'firstmate\\n'; exit 0 ;;
-  capture-pane)
-    if [ ! -f "$case_dir/kimi-interrupted" ]; then
-      : > "$case_dir/kimi-interrupted"
-      spawn_pid=\$(ps -o ppid= -p "\$PPID" | tr -d ' ')
-      case "\$spawn_pid" in ''|*[!0-9]*) exit 1 ;; esac
-      kill -TERM "\$spawn_pid"
-    fi
-    printf 'shell starting\\n$ \\n'
-    exit 0
-    ;;
-esac
-exit 0
-SH
-  chmod +x "$case_dir/fakebin/tmux"
-}
-
 break_meta_removal() {  # <case-dir> <meta-path>
   local case_dir=$1 meta=$2 real
   real=$(command -v rm)
@@ -1498,25 +1468,6 @@ test_deferred_signal_verification_outlives_an_unresponsive_tasks_axi() {
   assert_present "$(home_of "$case_dir")/state/$id.meta" \
     "the timed-out repair removed the paired task record"
   pass "a signal-deferred spawn bounds its verification so an unresponsive tasks-axi cannot hold the meta lock forever"
-}
-
-test_dispatch_interruption_during_kimi_readiness_fails_before_commit() {
-  local case_dir home id out rc=0
-  id=atomic-dispatch-kimi-readiness-signal-b5
-  case_dir=$(make_home dispatch-kimi-readiness-signal "$id")
-  home=$(home_of "$case_dir")
-  add_item "$case_dir" "$id"
-  interrupt_kimi_readiness "$case_dir"
-
-  out=$(HOME="$home" FM_KIMI_READY_POLLS=2 FM_KIMI_POLL_INTERVAL=0 \
-    run_spawn "$case_dir" "$id" "$case_dir/project" --harness kimi \
-      --mode no-mistakes --yolo off) || rc=$?
-  [ "$rc" -ne 0 ] || fail "Kimi readiness interruption was reported as success"
-  assert_absent "$home/state/$id.meta" \
-    "Kimi readiness interruption retained an unconfirmed task record"
-  [ "$(row_state "$case_dir" "$id")" = queued ] \
-    || fail "Kimi readiness interruption committed unconfirmed work In flight: $out"
-  pass "Kimi readiness interruptions fail before backlog commit"
 }
 
 test_dispatch_does_not_resurrect_a_row_closed_after_preflight() {
@@ -3032,7 +2983,6 @@ test_fm_tasks_axi_fallback_bounds_the_call_without_a_timeout_binary
 test_fm_tasks_axi_fallback_passes_the_child_status_and_output_through
 test_fm_tasks_axi_fails_closed_when_nothing_can_bound_the_call
 test_fm_tasks_axi_gnu_timeout_forces_termination_of_a_sigterm_ignoring_child
-test_dispatch_interruption_during_kimi_readiness_fails_before_commit
 test_dispatch_does_not_resurrect_a_row_closed_after_preflight
 test_dispatch_fails_when_its_row_vanishes_after_preflight
 test_completion_closes_a_local_only_ship_before_reporting_success

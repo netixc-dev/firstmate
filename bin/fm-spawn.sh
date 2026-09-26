@@ -156,7 +156,7 @@
 #   profile consultation. A --secondmate spawn is exempt and resolves the SECONDMATE
 #   harness (config/secondmate-harness -> config/crew-harness -> own), so the
 #   secondmate-vs-crewmate split is DURABLE across every respawn (recovery,
-#   /updatefirstmate, restart). A bare adapter name (claude|codex|opencode|pi|pi-signed|grok|kimi|cursor|gemini|omp)
+#   /updatefirstmate, restart). A bare adapter name (claude|codex|opencode|pi|pi-signed|grok|cursor|gemini|omp)
 #   overrides it for this spawn (either kind). A non-flag string containing
 #   whitespace is treated as a RAW launch command - the escape hatch for verifying
 #   new adapters. The removed agy adapter is refused for explicit selections,
@@ -339,17 +339,6 @@
 #     __CURSORBIN__ resolved, cursor-verified executable for a cursor launch
 #     __GEMINISETTINGS__ firstmate-owned per-task gemini settings file (busy-state hooks)
 # Verified per-harness turn-end hooks are installed automatically where enabled; some live outside the worktree.
-# Kimi uses one surgically installed Firstmate region in $HOME/.kimi-code/config.toml,
-# a firstmate-owned global hook and registry, and a gitignored per-task pointer.
-# Kimi 2.0.0 also gates a fresh worktree on an interactive folder-trust dialog.
-# Its launch-readiness loop reads the visible viewport - so the spawn refuses at
-# preflight on a backend with no viewport-bounded capture - recognizes the
-# complete dialog, re-selects the already highlighted affirmative option on
-# every poll the complete dialog is still there, refuses any ready verdict while
-# dialog text is on that pane, and requires two consecutive captures that are
-# each ready and dialog-free before the ordinary readiness gates can pass. A
-# blank viewport read proves nothing either way: it costs the poll and restarts
-# that count. A viewport read that fails outright fails readiness at once.
 # grok uses a firstmate-owned global hook under ${GROK_HOME:-$HOME/.grok}/hooks
 # plus a gitignored .fm-grok-turnend worktree pointer and a state token.
 # gemini is crewmate/scout only and is refused for --secondmate.
@@ -752,15 +741,34 @@ case "$EFFORT" in
 esac
 
 spawn_refuse_removed_harness() { # <harness-or-command>
-  local input=${1-} executable legacy=agy
-  if [ "$input" = devin ] || [ "$input" = rovo ] || [ "$input" = muse ]; then
+  local input=${1-} executable='' word env_mode=0 skip_next=0 legacy=agy
+  if [ "$input" = devin ] || [ "$input" = rovo ] || [ "$input" = muse ] || [ "$input" = kimi ]; then
     echo "error: unsupported removed harness '$input'; refusing before task mutation" >&2
     return 1
   fi
-  executable=${input#"${input%%[![:space:]]*}"}
-  executable=${executable%%[[:space:]]*}
+  # Inspect only the first executable; do not execute or rewrite a raw command.
+  # env options and assignments precede that executable, including -u NAME.
+  for word in $input; do
+    if [ "$skip_next" -eq 1 ]; then skip_next=0; continue; fi
+    if [ "$env_mode" -eq 0 ]; then
+      case "${word##*/}" in env) env_mode=1; continue ;; esac
+    else
+      case "$word" in
+      -u|--unset|-C|--chdir|-S) skip_next=1; continue ;;
+      -i|--ignore-environment|--) continue ;;
+      [A-Za-z_]*=*) continue ;;
+      esac
+    fi
+    executable=$word
+    break
+  done
   case "${executable##*/}" in
+  kimi)
+    echo "error: unsupported removed harness '$executable'; refusing before task mutation" >&2
+    return 1
+    ;;
   "$legacy")
+    [ "$env_mode" -eq 0 ] || return 0
     if [[ $executable =~ ^[[:alnum:]_./:@%+,=-]+$ ]]; then
       echo "error: unsupported removed harness '$executable'; refusing before task mutation" >&2
       return 1
@@ -776,6 +784,7 @@ spawn_refuse_removed_record() { # <meta-file>
   # commands. Keep explicit agent-free replacement available, never infer it.
   case "$recorded" in
     devin | rovo | muse) return 0 ;;
+    kimi) echo "error: recorded standalone Kimi task cannot be relaunched on another worker; resolve its original work first" >&2; return 1 ;;
     *) spawn_refuse_removed_harness "$recorded" ;;
   esac
 }
@@ -922,7 +931,7 @@ spawn_remote_secondmate() {
     harness=$("$FM_ROOT/bin/fm-harness.sh" secondmate)
   fi
   case "$harness" in
-  claude | codex | opencode | pi | pi-signed | grok | kimi | cursor) ;;
+  claude | codex | opencode | pi | pi-signed | grok | cursor) ;;
   *)
     fm_lock_release "$registry_lock" || true
     fm_lock_release "$SPAWN_TASK_LOCK" || true
@@ -1742,7 +1751,7 @@ if [ "$RELAUNCH" -eq 1 ]; then
   }
 elif [ "$KIND" = secondmate ]; then
   case "${POS[1]:-}" in
-  '' | claude | codex | opencode | pi | pi-signed | grok | kimi | cursor | gemini | omp)
+  '' | claude | codex | opencode | pi | pi-signed | grok | cursor | gemini | omp)
     ARG3=${POS[1]:-}
     ;;
   *' '*)
@@ -1983,11 +1992,6 @@ launch_template() {
   # Its turn-end and busy-state signals do NOT ride the launch command:
   # they are project hooks written into the worktree below.
   gemini) printf '%s' 'env -u CLAUDECODE -u PI_CODING_AGENT -u GROK_AGENT -u FM_PI_HARNESS GEMINI_CLI_TRUST_WORKSPACE=true GEMINI_CLI_SYSTEM_SETTINGS_PATH=__GEMINISETTINGS__ gemini -y __MODELFLAG__"$(__OPINPUT__ encode launch-brief < __BRIEF__)"' ;;
-  # Kimi Code rejects a positional prompt, so it launches bare and receives
-  # only an absolute brief pointer after the TUI readiness gate below.
-  # Its turn-end signal is a globally configured Stop hook plus a guarded
-  # per-task worktree token, so no launch placeholder belongs here.
-  kimi) printf '%s' '__KIMIBIN__ __MODELFLAG__--auto' ;;
   *) return 1 ;;
   esac
 }
@@ -2038,6 +2042,13 @@ case "$ARG3" in
   }
   ;;
 esac
+
+# Reject a retired standalone adapter before account, endpoint, worktree,
+# task record, or hook mutation. Keep unrelated raw commands available.
+if [ "$HARNESS" = kimi ]; then
+  echo "error: standalone Kimi worker support was removed; use plain Pi with an explicit provider instead" >&2
+  exit 1
+fi
 
 # gemini is verified for CREWMATE/SCOUT work only: no primary supervision
 # protocol exists for a secondmate running it.
@@ -2144,38 +2155,11 @@ secondmate_registry_value() {
   secondmate_registry_field "$DATA/secondmates.md" "$1" "$2"
 }
 
-resolve_kimi_binary() {
-  local candidate dir fallback
-  candidate=$(command -v kimi 2>/dev/null || true)
-  if [ -n "$candidate" ] && [ -x "$candidate" ]; then
-    case "$candidate" in
-    /*)
-      printf '%s\n' "$candidate"
-      return 0
-      ;;
-    *)
-      dir=$(cd "$(dirname "$candidate")" 2>/dev/null && pwd -P) || dir=
-      if [ -n "$dir" ]; then
-        printf '%s/%s\n' "$dir" "$(basename "$candidate")"
-        return 0
-      fi
-      ;;
-    esac
-  fi
-  fallback="${HOME:-}/.kimi-code/bin/kimi"
-  if [ -n "${HOME:-}" ] && [ -x "$fallback" ]; then
-    printf '%s\n' "$fallback"
-    return 0
-  fi
-  echo "error: kimi executable not found; searched PATH for 'kimi' and fallback '$fallback'" >&2
-  return 1
-}
-
 model_flag_for_harness() {
   local harness=$1 model=$2
   [ -n "$model" ] && [ "$model" != default ] || return 0
   case "$harness" in
-  claude | codex | opencode | pi | pi-signed | grok | kimi | cursor | gemini | omp)
+  claude | codex | opencode | pi | pi-signed | grok | cursor | gemini | omp)
     printf -- '--model %s ' "$(shell_quote "$model")"
     ;;
   esac
@@ -2232,30 +2216,11 @@ effort_flag_for_harness() {
     # opencode's interactive `opencode --prompt` launch has a verified --model
     # flag but no verified effort flag. Its `opencode run --variant` flag belongs
     # to a different, non-interactive launch mode, so fm-spawn does not pass it.
-    # kimi provider catalogs expose supported and default effort values, but a
-    # launch flag and mapping have not been live-verified; the requested axis
-    # stays in task metadata but never reaches the launch command. Cursor encodes
+    # Cursor encodes
     # effort in model ids such as cursor-grok-4.5-high, so it also receives no
     # separate effort flag.
   esac
 }
-
-case "$LAUNCH" in
-*__KIMIBIN__*)
-  KIMI_BIN=$(resolve_kimi_binary) || exit 1
-  LAUNCH=${LAUNCH//__KIMIBIN__/$(shell_quote "$KIMI_BIN")}
-  fm_backend_visible_capture_supported "$BACKEND" || {
-    echo "error: refusing Kimi spawn because backend '$BACKEND' has no verified viewport-bounded capture; Kimi 2.0.0 gates a fresh worktree on a trust dialog that can only be answered and confirmed cleared from a scrollback-free read of the live pane" >&2
-    exit 1
-  }
-  if [ "$KIND" != secondmate ]; then
-    "$FM_ROOT/bin/fm-kimi-turnend-hook.sh" install || {
-      echo "error: refusing Kimi spawn because the global turn-end hook could not be installed safely" >&2
-      exit 1
-    }
-  fi
-  ;;
-esac
 
 json_escape() {
   printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
@@ -3268,158 +3233,6 @@ spawn_send_key() { # <target> <key>
   esac
 }
 
-kimi_capture() {
-  fm_backend_capture "$BACKEND" "$T" 120 "$W" 2>/dev/null || true
-}
-
-# Trust decisions read the visible pane only. The dialog is a TUI frame, so a
-# scrollback-backed capture keeps reporting it long after Kimi redrew past it -
-# which would storm Enter into a live composer and then fail an already trusted
-# spawn for a dialog that did clear. There is deliberately no fallback to the
-# bounded capture: the spawn refuses at preflight on a backend that cannot read
-# the viewport, a read that fails outright fails readiness with its exit status
-# and the backend's own error on stderr, and only a successful empty read is
-# absence of evidence, which the poll loop treats as a skipped poll.
-kimi_visible_capture() {
-  fm_backend_visible_capture "$BACKEND" "$T" "$W"
-}
-
-# Kimi launch-readiness and delivery route their composer-emptiness half
-# through the shared classifier (bin/fm-composer-lib.sh via
-# fm_backend_composer_state), the same owner every steer and injection guard
-# reads. This retired a fourth, spawn-local copy of composer shape knowledge -
-# a hardcoded bordered `│ > │` regex that would have silently broken kimi
-# spawn readiness fleet-wide the day kimi's TUI goes borderless the way
-# claude's did. The banner and brief-echo greps below are launch-progress
-# signals, not composer shapes, so they stay here.
-kimi_composer_is_empty() {
-  [ "$(fm_backend_composer_state "$BACKEND" "$T" "$W" 2>/dev/null)" = empty ]
-}
-
-# The navigation hint is matched as its two distinctive tokens rather than as
-# one row: a pane narrower than the row wraps it, and a wrapped hint is still
-# the complete dialog waiting for an answer.
-kimi_trust_dialog_is_visible() { # <plain-pane-capture>
-  local pane=$1
-  case "$pane" in *'Trust this folder?'*) ;; *) return 1 ;; esac
-  case "$pane" in *'↑↓ navigate'*) ;; *) return 1 ;; esac
-  case "$pane" in *'Enter select'*) ;; *) return 1 ;; esac
-  case "$pane" in *'❯ Trust this folder'*) ;; *) return 1 ;; esac
-  case "$pane" in *"Don't trust"*) ;; *) return 1 ;; esac
-}
-
-# The complete dialog above decides whether to press Enter. Any single marker
-# of it on the visible pane decides whether that pane is safe to call ready: a
-# capture caught mid-redraw and one that has painted only the dialog's box
-# title both fail the complete-dialog test while the dialog is still up and
-# waiting, with Kimi's startup banner sitting above it in that same capture.
-# Treating such a pane as ready would type the brief pointer into the dialog
-# and lose it.
-kimi_trust_marker_is_present() { # <plain-pane-capture>
-  case "$1" in *'Trust this folder'* | *"Don't trust"*) return 0 ;; esac
-  return 1
-}
-
-# A successful key send is not evidence that Kimi accepted trust. Only the
-# ordinary readiness signals in a later capture prove advancement.
-kimi_ready_signal_is_present() { # <plain-pane-capture>
-  case "$1" in *'Welcome to Kimi Code!'*) return 0 ;; esac
-  kimi_composer_is_empty
-}
-
-kimi_wait_for_ready() {
-  local pane capture_rc i=0 max=${FM_KIMI_READY_POLLS:-60} interval=${FM_KIMI_POLL_INTERVAL:-0.5}
-  local trust_enters=0 trust_seen=0 trust_still_visible=0 trust_markers_pending=0
-  local ready_captures=0
-  KIMI_READY_FAILURE_DETAIL='kimi did not show a verified ready signal before brief delivery'
-  while [ "$i" -lt "$max" ]; do
-    capture_rc=0
-    pane=$(kimi_visible_capture) || capture_rc=$?
-    if [ "$capture_rc" -ne 0 ]; then
-      KIMI_READY_FAILURE_DETAIL="kimi readiness could not read the visible viewport of backend '$BACKEND' (viewport capture exited $capture_rc), so the trust dialog could neither be answered nor ruled out"
-      return 1
-    fi
-    if [ -z "$pane" ]; then
-      ready_captures=0
-      i=$((i + 1))
-      [ "$i" -ge "$max" ] || sleep "$interval"
-      continue
-    fi
-    if kimi_trust_dialog_is_visible "$pane"; then
-      trust_seen=1
-      trust_still_visible=1
-      trust_markers_pending=0
-      ready_captures=0
-      # Kimi swallows keypresses during its startup window - the same hazard
-      # FM_KIMI_SUBMIT_RETRIES covers for the brief pointer - so the
-      # affirmative selection is re-sent on every poll the complete dialog is
-      # still on screen. The dialog's own disappearance is the postcondition:
-      # once it clears, this branch cannot fire again.
-      if ! spawn_send_key "$T" Enter; then
-        KIMI_READY_FAILURE_DETAIL="kimi trust dialog was seen but the affirmative selection could not be submitted"
-        return 1
-      fi
-      trust_enters=$((trust_enters + 1))
-    else
-      trust_still_visible=0
-      if kimi_trust_marker_is_present "$pane"; then
-        trust_markers_pending=1
-        ready_captures=0
-      else
-        trust_markers_pending=0
-        # The banner prints before the dialog paints its first frame, so one
-        # ready-looking capture cannot be told apart from a pane whose dialog is
-        # one redraw away. Two consecutive captures that are each ready and free
-        # of dialog text can; any capture that is not ready restarts the count.
-        if kimi_ready_signal_is_present "$pane"; then
-          ready_captures=$((ready_captures + 1))
-          [ "$ready_captures" -lt 2 ] || return 0
-        else
-          ready_captures=0
-        fi
-      fi
-    fi
-    i=$((i + 1))
-    [ "$i" -ge "$max" ] || sleep "$interval"
-  done
-  if [ "$trust_still_visible" -eq 1 ]; then
-    KIMI_READY_FAILURE_DETAIL="kimi trust dialog did not clear after selecting 'Trust this folder' on $trust_enters poll(s); saw 'Trust this folder?', the navigation hint, selected 'Trust this folder', and the negative Don't trust option"
-  elif [ "$trust_seen" -eq 1 ]; then
-    KIMI_READY_FAILURE_DETAIL="kimi trust dialog was answered but the pane never advanced to a verified ready signal; saw 'Trust this folder?', the navigation hint, selected 'Trust this folder', and the negative Don't trust option"
-  elif [ "$trust_markers_pending" -eq 1 ]; then
-    KIMI_READY_FAILURE_DETAIL="kimi did not show a verified ready signal before brief delivery; trust dialog text stayed on screen without the complete dialog, so the pane was never safe to answer or to treat as ready"
-  fi
-  return 1
-}
-
-kimi_delivery_is_confirmed() { # <plain-pane-capture>
-  local pane=$1
-  kimi_composer_is_empty || return 1
-  if { printf '%s\n' "$pane" | grep -Fq '✨' &&
-    printf '%s\n' "$pane" | grep -Fq 'Read the brief at'; } ||
-    printf '%s\n' "$pane" |
-    grep -qiE 'context:[[:space:]]*(0\.[0-9]*[1-9][0-9]*|[1-9][0-9]*([.][0-9]+)?)[[:space:]]*%'; then
-    return 0
-  fi
-  return 1
-}
-
-kimi_wait_for_delivery() {
-  local pane i=0 max=${FM_KIMI_DELIVERY_POLLS:-40} interval=${FM_KIMI_POLL_INTERVAL:-0.5}
-  while [ "$i" -lt "$max" ]; do
-    pane=$(kimi_capture)
-    kimi_delivery_is_confirmed "$pane" && return 0
-    i=$((i + 1))
-    [ "$i" -ge "$max" ] || sleep "$interval"
-  done
-  return 1
-}
-
-kimi_spawn_fail() { # <detail>
-  printf '%s\n' "$(status_stamp_line "failed: $1")" >>"$STATE/$ID.status"
-  echo "error: $1; inspect window $T" >&2
-}
-
 if [ "$RELAUNCH" -eq 1 ]; then
   # No worktree is acquired: the recorded one is reused as-is. What must be
   # proven instead is that the adopted endpoint's shell is actually sitting in
@@ -3625,8 +3438,7 @@ if [ "$KIND" != secondmate ]; then
   # submitted turn, so the seed record is busy/fm-spawn. The minted gen is
   # embedded into each adapter's wiring so an event from a superseded
   # incarnation is rejected as stale. Grok stays on its isolated
-  # rendered-tail fallback and standalone Kimi stays unknown until
-  # fm_busy_kimi_verified opens, so neither is armed here. Gemini IS
+  # rendered-tail fallback, so it is not armed here. Gemini IS
   # armed: its BeforeAgent / AfterAgent / SessionEnd hooks are a verified
   # open-close pair.
   BUSY_GEN=
@@ -3653,16 +3465,6 @@ if [ "$KIND" != secondmate ]; then
         exit 1
       }
       [ "$RELAUNCH" -ne 1 ] || RELAUNCH_REPLACEMENT_BUSY_GEN=$BUSY_GEN
-    fi
-    ;;
-  kimi*)
-    # Standalone Kimi stays unknown until fm_busy_kimi_verified opens on a
-    # live-verified installed version (bin/fm-busy-lib.sh owns the gate and
-    # the required evidence). Arming without wiring would seed a busy record
-    # nothing can ever clear, so the arm waits for the wiring.
-    if fm_busy_kimi_verified; then
-      echo "error: kimi semantic busy-state wiring is not implemented; open the gate only together with verified wiring" >&2
-      exit 1
     fi
     ;;
   esac
@@ -3939,21 +3741,6 @@ EOF
       fi
     } >"$STATE/$ID.cursor-session"
     ;;
-  kimi*)
-    # Kimi's Stop hook is global, but it is inert unless cwd contains this
-    # task's token pointer and the token resolves through Firstmate's private
-    # registry. The installer above owns the format-preserving config edit and
-    # the always-zero, silent hook script.
-    KIMI_AUTH_DIR="$HOME/.kimi-code/fm-turn-end.d"
-    old_umask=$(umask)
-    umask 077
-    auth_file=$(mktemp "$KIMI_AUTH_DIR/fm.XXXXXXXXXXXX")
-    umask "$old_umask"
-    printf '%s\n' "$TURNEND" >"$auth_file"
-    printf '%s\n' "${auth_file##*/}" >"$STATE/$ID.kimi-turnend-token"
-    printf 'token=%s\n' "${auth_file##*/}" >"$WT/.fm-kimi-turnend"
-    exclude_path '.fm-kimi-turnend'
-    ;;
   esac
 fi
 
@@ -4186,7 +3973,7 @@ omp) LAUNCH=${LAUNCH//__OMPBIN__/"$(shell_quote "$OMP_BIN")"} ;;
 esac
 LAUNCH=${LAUNCH//__WORKTREE__/$sq_worktree}
 case "$HARNESS" in
-claude | codex | opencode | pi | pi-signed | grok | kimi | gemini)
+claude | codex | opencode | pi | pi-signed | grok | gemini)
   LAUNCH="env -u CURSOR_AGENT -u CURSOR_INVOKED_AS -u GEMINI_CLI $LAUNCH"
   ;;
 esac
@@ -4407,30 +4194,6 @@ if [ "${HERDR_PROJECTED:-0}" -eq 1 ]; then
   spawn_herdr_presentation_order_lock_release
 fi
 spawn_send_key "$T" Enter
-if [ "$HARNESS" = kimi ]; then
-  if ! kimi_wait_for_ready; then
-    kimi_spawn_fail "$KIMI_READY_FAILURE_DETAIL"
-    exit 1
-  fi
-  KIMI_POINTER="Read the brief at $BRIEF_REAL and follow it exactly."
-  KIMI_SUBMIT_RETRIES=${FM_KIMI_SUBMIT_RETRIES:-3}
-  KIMI_SUBMIT_SLEEP=${FM_KIMI_SUBMIT_SLEEP:-${FM_KIMI_POLL_INTERVAL:-0.5}}
-  KIMI_SUBMIT_SETTLE=${FM_KIMI_SUBMIT_SETTLE:-0}
-  if ! KIMI_SUBMIT_VERDICT=$(fm_backend_send_text_submit \
-    "$BACKEND" "$T" "$KIMI_POINTER" "$KIMI_SUBMIT_RETRIES" \
-    "$KIMI_SUBMIT_SLEEP" "$KIMI_SUBMIT_SETTLE" "$W"); then
-    kimi_spawn_fail "kimi brief pointer could not be submitted"
-    exit 1
-  fi
-  if [ "$KIMI_SUBMIT_VERDICT" = send-failed ]; then
-    kimi_spawn_fail "kimi brief pointer could not be submitted"
-    exit 1
-  fi
-  if ! kimi_wait_for_delivery; then
-    kimi_spawn_fail "kimi brief pointer delivery was not confirmed"
-    exit 1
-  fi
-fi
 if [ "$KIND" = secondmate ] && [ "${FM_SKIP_SECONDMATE_INHERIT:-0}" != 1 ]; then
   if ! fm_config_reread_discard_pending "$PROJ_ABS" "$ID" "$FM_HOME"; then
     if fm_config_reread_quarantine_pending "$PROJ_ABS" "$ID" "$FM_HOME"; then

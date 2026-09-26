@@ -982,37 +982,6 @@ test_unknown_backend_state_uses_capture_fallback() {
   pass "tmux unknown states use bounded capture fallback"
 }
 
-test_kimi_capture_fallback_uses_recorded_harness() (
-  local home state corr rec sm_home
-  home=$(setup_parent kimi-fallback)
-  state="$home/state"
-  sm_home="$home/sm"
-  mkdir -p "$sm_home/state"
-  # This fixture clock is intentionally scoped to the isolated subshell.
-  # shellcheck disable=SC2030,SC2031
-  export FM_PENDING_REPLY_NOW=10020
-  corr=$(fm_pending_reply_create "$home" "$state" hibit "kimi fallback")
-  fm_pending_reply_mark_delivered "$state" "$corr"
-  fm_write_secondmate_meta "$state/hibit.meta" "$sm_home" "session:fm-hibit" alpha kimi
-  fm_backend_busy_state() { printf 'unknown'; }
-  fm_backend_capture() { printf '%s' "$FM_PENDING_KIMI_CAPTURE"; }
-  export FM_PENDING_KIMI_CAPTURE=' 🌑 · Tip: ask Kimi to schedule tasks, e.g. "remind me at 5pm"'
-
-  [ "$(fm_pending_reply_backend_observation tmux session:fm-hibit fm-hibit codex)" = fallback-idle ] \
-    || fail "Kimi spinner leaked into another harness"
-  export FM_PENDING_KIMI_CAPTURE='Ctrl+c:cancel'
-  [ "$(fm_pending_reply_backend_observation tmux session:fm-hibit fm-hibit kimi)" = fallback-idle ] \
-    || fail "Grok's exact busy token leaked into Kimi pending-reply observation"
-  export FM_PENDING_KIMI_CAPTURE=' 🌑 · Tip: ask Kimi to schedule tasks, e.g. "remind me at 5pm"'
-  fm_pending_reply_tick "$state"
-  rec=$(fm_pending_reply_path "$state" "$corr")
-  [ "$(fm_pending_reply_get "$rec" turn_seen_busy)" = 1 ] \
-    || fail "recorded Kimi spinner was not observed as busy"
-  [ "$(phase_of "$state" "$corr")" = awaiting_report ] \
-    || fail "working Kimi secondmate entered recovery"
-  pass "pending replies scope Kimi capture fallback by recorded harness"
-)
-
 test_tick_skips_terminal_and_reuses_target_observation() {
   (
     local home state open1 open2 resolved escalated rec probe_log probes scan_log scans snapshot
@@ -1625,7 +1594,6 @@ test_document_pointer_resolves
 test_helper_report_resolves
 test_busy_idle_observation_via_backend_abstraction
 test_unknown_backend_state_uses_capture_fallback
-test_kimi_capture_fallback_uses_recorded_harness
 test_tick_skips_terminal_and_reuses_target_observation
 test_correlations_reuse_only_for_matching_open_task
 test_tick_end_to_end_missed_then_escalate

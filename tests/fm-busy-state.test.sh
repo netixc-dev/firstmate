@@ -439,8 +439,6 @@ Ctrl+c:cancel')
   pass "the grok fallback is regex-scoped to grok and classifies only grok tasks"
 }
 
-# --- kimi verification gate -----------------------------------------------------
-
 test_codex_unverified_gate() {
   local state gen out
   state=$(new_state_dir codex-gate)
@@ -451,18 +449,6 @@ test_codex_unverified_gate() {
   [ -z "$(fm_busy_sources_for_harness codex)" ] \
     || fail "codex must trust no semantic source until one is verified"
   pass "codex classifies unknown until a semantic source passes its verification gate"
-}
-
-test_kimi_unverified_gate() {
-  local state gen out
-  state=$(new_state_dir kimi-gate)
-  gen=$("$EV" arm "$state" t1)
-  "$EV" apply "$state" t1 busy --gen "$gen" --source kimi-hook --event user-prompt-submit
-  out=$(fm_busy_classify tmux w1 kimi t1 "$state")
-  [ "$out" = "unknown kimi-unverified" ] || fail "unverified kimi must classify unknown, got '$out'"
-  out=$(fm_busy_classify tmux w1 kimi t1 "$state" '🌒 · thinking')
-  [ "$out" = "unknown kimi-unverified" ] || fail "kimi must not classify from footer text, got '$out'"
-  pass "standalone kimi classifies unknown until the live verification gate opens"
 }
 
 test_cursor_ignores_rendered_and_native_signals() {
@@ -663,7 +649,6 @@ test_launch_prompt_requires_a_captured_tail
 test_removed_rovo_tail_is_not_a_busy_source
 test_grok_regex_isolated
 test_codex_unverified_gate
-test_kimi_unverified_gate
 test_cursor_ignores_rendered_and_native_signals
 test_dead_endpoint_overrides
 test_herdr_native_busy_only
