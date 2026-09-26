@@ -172,7 +172,7 @@ test_removed_runtime_ancestry_is_unknown() {
 
   node=$(named_bin "$dir/interpreter" node)
   script="$dir/interpreter/opencode-1.18.js"
-  printf 'r=$("%s"); printf "%%s" "$r"\n' "$HARNESS" > "$script"
+  printf "r=\$(\"%s\"); printf \"%%s\" \"\$r\"\n" "$HARNESS" > "$script"
   got=$(env -u PI_CODING_AGENT -u FM_PI_HARNESS -u GROK_AGENT \
     -u CURSOR_AGENT -u CURSOR_INVOKED_AS CLAUDECODE=1 "$node" "$script")
   [ "$got" = unknown ] || fail "removed runtime interpreter path inherited Claude identity: $got"

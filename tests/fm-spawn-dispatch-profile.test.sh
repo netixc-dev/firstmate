@@ -698,8 +698,8 @@ test_active_dispatch_profile_allows_raw_launch_command() {
 
 test_raw_claude_preserves_adapter_semantics() {
   local rec id sm_id sm out status launch
-  id=raw-claude-survivor-z16
-  sm_id=raw-claude-secondmate-z17
+  id='raw-claude-survivor-z16'
+  sm_id='raw-claude-secondmate-z17'
   rec=$(make_spawn_case raw-claude-survivor claude "$id" "$sm_id")
   read_case_record "$rec"
 
