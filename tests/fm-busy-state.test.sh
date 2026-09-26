@@ -268,8 +268,8 @@ test_source_mismatch_cross_adapter() {
   [ "$out" = "unknown source-mismatch" ] || fail "pi-ext record on a claude task must be untrusted, got '$out'"
   out=$(fm_busy_classify tmux w1 pi t1 "$state")
   [ "$out" = "busy pi-ext" ] || fail "pi-ext record on a pi task must classify, got '$out'"
-  out=$(fm_busy_classify tmux w1 grok t1 "$state")
-  [ "$out" = "unknown source-mismatch" ] || fail "grok trusts no semantic source, got '$out'"
+  out=$(fm_busy_classify tmux w1 opencode t1 "$state")
+  [ "$out" = "unknown source-mismatch" ] || fail "OpenCode cannot borrow Pi's semantic source, got '$out'"
   pass "a record is trusted only by the adapter whose source wrote it"
 }
 

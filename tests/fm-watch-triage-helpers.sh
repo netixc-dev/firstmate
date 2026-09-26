@@ -161,7 +161,7 @@ reap() {
 parked_watch_round() {  # <state> <fakebin> <out> <capture> <window> <exit|absorb>
   local state=$1 fakebin=$2 out=$3 capture=$4 window=$5 mode=$6 pid cycles=0
   PATH="$fakebin:$PATH" FM_FAKE_TMUX_WINDOW="$window" FM_FAKE_TMUX_CAPTURE="$capture" \
-    FM_FAKE_TMUX_CURRENT_COMMAND=grok \
+    FM_FAKE_TMUX_CURRENT_COMMAND=kimi \
     FM_FAKE_CREW_STATE='state: paused · source: status-log · parked' \
     FM_WATCH_HANDLING_SUCCESSOR=1 \
     FM_STATE_OVERRIDE="$state" FM_CREW_STATE_BIN="$fakebin/fm-crew-state.sh" \
@@ -184,7 +184,7 @@ wedge_threshold_round() {  # <state> <fakebin> <out> <capture> <window> <verdict
   local state=$1 fakebin=$2 out=$3 capture=$4 window=$5 verdict=$6 mode=$7 pid cycles=0
   PATH="$fakebin:$PATH" FM_FAKE_TMUX_WINDOW="$window" FM_FAKE_TMUX_CAPTURE="$capture" \
     FM_CONFIG_OVERRIDE="$(dirname "$state")/config" \
-    FM_FAKE_TMUX_CURRENT_COMMAND="${FM_TEST_PANE_COMMAND-grok}" \
+    FM_FAKE_TMUX_CURRENT_COMMAND="${FM_TEST_PANE_COMMAND-kimi}" \
     FM_FAKE_TMUX_WINDOWS="${FM_TEST_TMUX_WINDOWS-}" FM_FAKE_CREW_STATE="$verdict" \
     FM_WATCH_HANDLING_SUCCESSOR=1 \
     FM_STATE_OVERRIDE="$state" FM_CREW_STATE_BIN="$fakebin/fm-crew-state.sh" \
@@ -211,7 +211,7 @@ wedge_threshold_fixture() {  # <name> <status-log> <status-age-secs> [<wedge-tim
   statusf="$state/wedge.status"
   text='waiting at the gate'
   printf '%s' "$text" > "$dir/pane.txt"
-  printf 'window=%s\nkind=ship\nharness=grok\nbackend=tmux\n' "$window" > "$state/wedge.meta"
+  printf 'window=%s\nkind=ship\nharness=kimi\nbackend=tmux\n' "$window" > "$state/wedge.meta"
   printf '%s\n' "$log" > "$statusf"
   back=$(( $(date +%s) - age ))
   set_mtime "$back" "$statusf"
@@ -305,7 +305,7 @@ make_hold_home() {  # <name> <status-line> <hold|nohold>
   if [ "$hold" = hold ]; then
     run_hold "$dir" hold held-merge --reason 'awaiting the captain on the merge' || return 1
   fi
-  printf 'window=test:fm-held-merge\nkind=ship\nharness=grok\nbackend=tmux\n' \
+  printf 'window=test:fm-held-merge\nkind=ship\nharness=kimi\nbackend=tmux\n' \
     > "$state/held-merge.meta"
   printf '%s\n' "$line" > "$state/held-merge.status"
   printf '%s' "$(seen_sig "$state/held-merge.status")" > "$state/.seen-held-merge_status"
