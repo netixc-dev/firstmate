@@ -1149,7 +1149,11 @@ spawn_remote_secondmate() {
       echo "error: existing metadata for $id does not identify this remote secondmate route" >&2
       return 1
     fi
-    spawn_refuse_removed_record "$meta" || return 1
+    if ! spawn_refuse_removed_record "$meta"; then
+      fm_lock_release "$registry_lock" || true
+      fm_lock_release "$SPAWN_TASK_LOCK" || true
+      return 1
+    fi
   fi
   # Gate the host before anything is published or transferred, so a host that
   # cannot hold a durable Herdr endpoint refuses here rather than half-way
