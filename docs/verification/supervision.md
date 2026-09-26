@@ -8,7 +8,7 @@ Task-specific chronology, temporary paths, run identifiers, and delivery transcr
 
 ## Native session-start delivery
 
-The cross-harness transport pass ran on 2026-07-17 with Codex 0.144.4, Grok 0.2.103, OpenCode 1.17.18, Pi 0.80.10, and the tracked Claude hook wiring.
+The retained-harness transport evidence comes from the 2026-07-17 pass with Codex 0.144.4, Grok 0.2.103, Pi 0.80.10, and the tracked Claude hook wiring.
 
 Codex command shape:
 
@@ -30,10 +30,6 @@ grok --trust -p 'Follow any SessionStart hook context before this prompt.' \
 
 Observed result: the project hook ran, but its stdout did not reach model context.
 This is the current Grok fail-open limit.
-
-OpenCode was checked in both headless and interactive modes.
-`client.session.promptAsync` accepted the nudge in both cases; the persistent TUI completed the generated turn, while `opencode run` exited before another turn.
-This is the current headless fail-open limit.
 
 Pi command shape:
 
@@ -198,7 +194,7 @@ FM_PI_LIVE_E2E=1 tests/fm-pi-primary-live-e2e.test.sh
 It reports an absent adapter explicitly, asserts Pi compaction rather than noting it, and refuses to pass when none of those three adapters was installed.
 Cursor's refresh command is `FM_CURSOR_PRIMARY_LIVE_E2E=1 tests/fm-cursor-primary-live-e2e.test.sh`, recorded under [Cursor primary park](#cursor-primary-park-2026-08-13).
 
-The Ahoy first-message boundary was reverified on 2026-07-22 with Pi 0.81.1 and OpenCode 1.17.18.
+The Ahoy first-message boundary was reverified on 2026-07-22 with Pi 0.81.1.
 Marked current operational input and the two exact legacy compatibility shapes selected Bearings, while genuine near-miss captain messages remained real boundaries.
 The detailed reconciliation and task chronology stay in the private audit report and PR evidence.
 
@@ -238,7 +234,7 @@ tests/fm-crew-state.test.sh
 
 ## Turn-end guard
 
-The blocking and bounded-follow-up mechanisms were validated across seven harnesses on 2026-07-08 through 2026-09-21, with Claude's replacement Stop-owned path revalidated on 2026-09-21, Cursor's stop-hook park validated on 2026-08-13, and omp's blocking `session_stop` hook validated on 2026-09-05.
+The retained blocking and bounded-follow-up mechanisms were validated across six harnesses on 2026-07-08 through 2026-09-21, with Claude's replacement Stop-owned path revalidated on 2026-09-21, Cursor's stop-hook park validated on 2026-08-13, and omp's blocking `session_stop` hook validated on 2026-09-05.
 
 | Harness | Version verified | Mechanism | Observed result |
 | --- | --- | --- | --- |
@@ -494,7 +490,6 @@ No credential material was copied into a fixture.
 ```text
 Claude Code 2.1.278
 codex-cli 0.144.4
-OpenCode 1.17.18
 Pi 0.80.10
 grok 0.2.103 (89c3d36fb6f1) [stable]
 ```

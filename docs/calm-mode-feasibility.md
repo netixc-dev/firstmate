@@ -251,6 +251,7 @@ General component replacement, ANSI cursor erasure, provider-context mutation, a
 ## Cross-harness verification record
 
 The original five-harness inspection was performed on 2026-07-22, with every integration surface rechecked and Pi reverified at 0.81.1 on 2026-07-23 for the latest Calm presentation change.
+The OpenCode evidence in this historical record predates its removal and does not describe a supported adapter.
 
 ```text
 $ claude --version
