@@ -789,7 +789,7 @@ spawn_split_shell_words() { # <command>
     *) token=$token$char; active=1 ;;
     esac
   done
-  [ "$escaped" -eq 0 ] || token=$token'\'
+  [ "$escaped" -eq 0 ] || token="${token}\\"
   [ "$active" -eq 0 ] || SPAWN_SHELL_WORDS+=("$token")
 }
 
