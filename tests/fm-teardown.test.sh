@@ -750,6 +750,44 @@ test_legacy_grok_cleanup_is_guarded_and_exact() {
   pass "legacy Grok cleanup removes exact wiring only after work is safe"
 }
 
+test_ordinary_tasks_preserve_grok_named_files() {
+  local case_dir mode out rc token auth
+  for mode in dirty landed; do
+    case_dir=$(make_case "ordinary-grok-files-$mode")
+    write_meta "$case_dir" local-only ship
+    printf 'harness=pi\n' >> "$case_dir/state/task-x1.meta"
+    wt_commit "$case_dir" "ordinary Pi work"
+    add_fork_with_pushed_branch "$case_dir"
+    seed_backlog_in_flight "$case_dir"
+    token=fm.222222222222
+    auth="$case_dir/grok-home/hooks/fm-turn-end.d/$token"
+    mkdir -p "${auth%/*}"
+    printf 'user auth\n' > "$auth"
+    printf '%s\n' "$token" > "$case_dir/state/task-x1.grok-turnend-token"
+    if [ "$mode" = dirty ]; then
+      printf 'user worktree file\n' > "$case_dir/wt/.fm-grok-turnend"
+    fi
+
+    set +e
+    out=$(run_teardown "$case_dir" 2>&1); rc=$?
+    set -e
+    if [ "$mode" = dirty ]; then
+      expect_code 1 "$rc" "ordinary Grok-named worktree file must block teardown: $out"
+      assert_contains "$out" REFUSED "ordinary Grok-named file bypassed dirty-work safety"
+      assert_grep 'user worktree file' "$case_dir/wt/.fm-grok-turnend" \
+        "ordinary Grok-named worktree file was deleted"
+      assert_present "$case_dir/state/task-x1.meta" "ordinary dirty task record was removed"
+    else
+      expect_code 0 "$rc" "ordinary landed Pi task should tear down normally: $out"
+      assert_absent "$case_dir/state/task-x1.meta" "ordinary landed Pi task record survived"
+    fi
+    assert_grep "$token" "$case_dir/state/task-x1.grok-turnend-token" \
+      "ordinary Grok-named state file was deleted"
+    assert_grep 'user auth' "$auth" "ordinary Grok-named auth file was deleted"
+  done
+  pass "ordinary tasks safety-check and preserve Grok-named files"
+}
+
 test_teardown_removes_only_exact_legacy_devin_sidecar() {
   local case_dir out rc
   case_dir=$(make_case legacy-devin-sidecar)
@@ -3995,6 +4033,7 @@ EOF
 
 test_local_only_fork_remote_allows
 test_legacy_grok_cleanup_is_guarded_and_exact
+test_ordinary_tasks_preserve_grok_named_files
 test_teardown_removes_only_exact_legacy_devin_sidecar
 test_legacy_rovo_cleanup_preserves_unlanded_work
 test_teardown_closes_the_backlog_item_itself

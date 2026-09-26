@@ -88,7 +88,6 @@ Uncertainty and ineligibility are different findings:
 
 When a credential's local classification is the only thing standing between a candidate and a block, get ground truth before blocking.
 Use `quota-axi auth --json` for available provider authentication evidence; do not launch a vendor CLI to probe another harness.
-It takes no harness, model, or provider and returns a fact, not a route: only `authenticated` and `unauthenticated` are ground truth, while `indeterminate`, `timeout`, and `unavailable` establish nothing and must never be read as either outcome.
 Never launch a vendor CLI yourself, and never probe a credential store the candidate does not use.
 
 Malformed configuration is an actionable error, not a candidate to rank around.
