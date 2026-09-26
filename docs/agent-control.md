@@ -46,7 +46,7 @@ No supported adapter provides a reliable cancellation acknowledgement for a manu
 Removing a worktree, closing an endpoint, or discarding work stays with [`bin/fm-teardown.sh`](../bin/fm-teardown.sh), which owns the landed-work test.
 
 **`resume` is not a verb.**
-It is not deterministic across the verified adapters: codex, grok, and gemini resume only from a session id printed at exit, opencode continues the most recent session for the cwd, and claude, pi, pi-signed, omp, and kimi have no verified pane-resume contract.
+It is not deterministic across the verified adapters: codex, grok, and gemini resume only from a session id printed at exit, claude, pi, pi-signed, omp, and kimi have no verified pane-resume contract.
 `relaunch` covers the same need when the backend can prove the old agent stopped and the composer is empty, because the brief on disk - not a harness-private session - is the durable instruction.
 
 ## Transactional relaunch

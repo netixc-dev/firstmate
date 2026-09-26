@@ -29,7 +29,7 @@
 # provider family (fm_quota_provider_for_harness in bin/fm-quota-axi-lib.sh)
 # and checks quota for that
 # family only. Some harnesses can run models from several providers - for
-# example, Pi and OpenCode may dispatch xAI, Anthropic, or other models - so a
+# example, Pi may dispatch xAI, Anthropic, or other models - so a
 # candidate whose established provider differs from the harness's primary family
 # is checked against the wrong quota row. This is an accepted limitation of the
 # optional helper. Authoritative multi-provider routing - including provider

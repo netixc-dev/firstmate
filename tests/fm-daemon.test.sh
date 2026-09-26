@@ -2605,12 +2605,12 @@ test_pane_is_busy_herdr_native_busy_state() {
 test_primary_busy_guard_is_harness_scoped() {
   (
     fm_backend_busy_state() { printf 'unknown'; }
-    fm_backend_capture() { printf 'esc interrupt\n'; }
+    fm_backend_capture() { printf 'Working...\n'; }
     if FM_DAEMON_PRIMARY_HARNESS=claude pane_is_busy "default:w1:p2" herdr; then
-      fail "OpenCode's rendered signature must not classify a Claude primary busy"
+      fail "Pi's rendered signature must not classify a Claude primary busy"
     fi
-    FM_DAEMON_PRIMARY_HARNESS=opencode pane_is_busy "default:w1:p2" herdr \
-      || fail "OpenCode's rendered signature should classify an OpenCode primary busy"
+    FM_DAEMON_PRIMARY_HARNESS=pi pane_is_busy "default:w1:p2" herdr \
+      || fail "Pi's rendered signature should classify a Pi primary busy"
   ) || fail "harness-scoped primary busy guard subshell failed"
   pass "primary busy guard isolates rendered signatures by detected harness"
 }

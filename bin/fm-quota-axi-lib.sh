@@ -165,7 +165,6 @@ fm_quota_provider_for_harness() {
       ;;
     claude)       printf 'claude\n' ;;
     codex)        printf 'codex\n' ;;
-    opencode)     printf 'codex\n' ;;
     pi|pi-signed) printf 'pi\n' ;;
     grok)         printf 'grok\n' ;;
     kimi)         printf 'kimi\n' ;;

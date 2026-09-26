@@ -128,7 +128,7 @@ named_bin() {  # <dir> <name>
 
 # --- 1. A foreign marker never renames a markerless harness -----------------
 
-# codex, opencode, and kimi publish no identity marker, so before
+# codex and kimi publish no identity marker, so before
 # this boundary existed ANY retained marker renamed them outright. This is the
 # reported live failure, generalized to every markerless adapter and to both
 # foreign markers that can be retained.
@@ -136,7 +136,7 @@ test_markerless_ancestry_outranks_foreign_marker() {
   local dir fakebin bin got name
   dir="$TMP_ROOT/markerless"
   fakebin=$(blind_ancestry_bin "$dir/blind")
-  for name in codex opencode kimi; do
+  for name in codex kimi; do
     bin=$(named_bin "$dir/$name-tree" "$name")
     local expect=$name
 
@@ -157,6 +157,16 @@ test_markerless_ancestry_outranks_foreign_marker() {
       || fail "$name ancestry with an inherited CURSOR_AGENT resolved '$got', expected $expect"
   done
   pass "a markerless harness keeps its identity under an inherited foreign marker"
+}
+
+test_removed_runtime_ancestry_is_unknown() {
+  local bin got
+  bin=$(named_bin "$TMP_ROOT/removed-runtime" opencode)
+  got=$(under_process "$bin" CLAUDECODE=1)
+  [ "$got" = unknown ] || fail "removed runtime inherited Claude identity: $got"
+  got=$(under_process "$bin" FM_PI_HARNESS=pi)
+  [ "$got" = unknown ] || fail "removed runtime inherited Pi identity: $got"
+  pass "removed runtime ancestry remains unknown despite foreign markers"
 }
 
 # --- 2. A genuine harness in its own process tree still wins ----------------
@@ -859,6 +869,7 @@ test_removed_muse_ancestry_is_not_an_adapter() {
 test_removed_muse_ancestry_is_not_an_adapter
 test_removed_rovo_evidence_does_not_select_an_adapter
 test_markerless_ancestry_outranks_foreign_marker
+test_removed_runtime_ancestry_is_unknown
 test_genuine_marker_and_ancestry_agree
 test_cursor_ordering_still_decides_when_ancestry_is_silent
 test_retained_cursor_marker_does_not_rename_a_nested_claude

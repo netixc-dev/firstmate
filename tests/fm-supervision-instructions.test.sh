@@ -142,11 +142,8 @@ test_cross_harness_ordinary_continuation_and_repair_matrix() {
   assert_contains "$out" "fm_watch_arm_omp" "omp recovery line lost the extension-owned repair tool"
 
   out=$("$RENDER" --harness opencode)
-  ordinary=$(printf '%s\n' "$out" | grep -F -- '- Ordinary wake:')
-  assert_contains "$ordinary" "plugin already owns watcher continuity" "opencode ordinary-wake line does not leave continuity to the plugin"
-  assert_not_contains "$ordinary" "bin/fm-watch-arm.sh" "opencode ordinary-wake line incorrectly calls the recovery probe"
-  out=$("$RENDER" --harness opencode --repair-line)
-  assert_contains "$out" "manual recovery probe" "opencode recovery line lost its manual probe"
+  assert_contains "$out" "primary harness: unknown" "removed adapter must render unknown supervision"
+  assert_not_contains "$out" "fm_watch_arm_pi" "removed adapter must never borrow Pi supervision"
 
   out=$("$RENDER" --harness claude)
   ordinary=$(printf '%s\n' "$out" | grep -F -- '- Ordinary wake:')
