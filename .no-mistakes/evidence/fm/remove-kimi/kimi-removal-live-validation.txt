@@ -1,0 +1,85 @@
+SCENARIO 1: standalone Kimi selections are refused before mutation
+kimi-direct rc=1 harness=kimi
+error: unsupported removed harness 'kimi'; refusing before task mutation
+kimi-env rc=1 harness=env 1=x kimi --auto
+error: unsupported removed harness 'kimi'; refusing before task mutation
+kimi-wrapper rc=1 harness=exec -cla alias kimi --auto
+error: unsupported removed harness 'kimi'; refusing before task mutation
+Kimi refusal state records: none
+
+SCENARIO 2: plain Pi with openai-codex still launches in isolated Herdr
+warning: /Users/control/.no-mistakes/worktrees/874f0de57f61/01M3DNT03QXJJ546VFNJH47PR6/.live-kimi-validation-93507/home/data/pi-survivor/launch-brief.md records no ship branch; defaulting to legacy branch fm/pi-survivor
+warning: /Users/control/.no-mistakes/worktrees/874f0de57f61/01M3DNT03QXJJ546VFNJH47PR6/.live-kimi-validation-93507/home/data/pi-survivor/launch-brief.md records no delivery contract line (scaffolded before ship briefs recorded one); launching on the explicit --mode local-only - confirm its definition of done matches
+notice: pi-survivor ships mode=local-only while the standing posture for project is no-mistakes - less rigor than the captain's standing posture; proceed only on a current explicit captain instruction or an intake judgment you can state
+spawned pi-survivor harness=pi kind=ship mode=local-only yolo=off window=fm-lab-kimi-removal-93509-28690:w1:p2 worktree=/Users/control/.treehouse/project-cacb8d/1/project
+window=fm-lab-kimi-removal-93509-28690:w1:p2
+endpoint_task_id=pi-survivor
+worktree=/Users/control/.treehouse/project-cacb8d/1/project
+project=/Users/control/.no-mistakes/worktrees/874f0de57f61/01M3DNT03QXJJ546VFNJH47PR6/.live-kimi-validation-93507/project
+harness=pi
+kind=ship
+mode=local-only
+yolo=off
+branch=fm/pi-survivor
+tasktmp=/tmp/fm-pi-survivor
+model=openai-codex/gpt-5.6-sol
+effort=low
+busy_gen=g1790392471.97101.30943
+spawn_gen=s1790392471.94065.7165
+backend=herdr
+herdr_session=fm-lab-kimi-removal-93509-28690
+herdr_workspace_id=w1
+herdr_tab_id=w1:t2
+herdr_pane_id=w1:p2
+control@controls-MacBook-Air project % treehouse get
+A new version of treehouse is available: v2.3.0 → v3.0.0
+Run "treehouse update" to update
+
+🌳 Setting up worktree...
+🌳 Entered worktree at ~/.treehouse/project-cacb8d/1/project. Type 'exit' to return.
+control@controls-MacBook-Air project % export GOTMPDIR=/tmp/fm-pi-survivor/gotmp
+control@controls-MacBook-Air project % export COMPACT_ADVISER_DISABLE=1
+control@controls-MacBook-Air project % export FM_TASK_ID=pi-survivor
+control@controls-MacBook-Air project % . '/tmp/fm-pi-survivor+41d1632a8c84448d5f8a4ba63f4cfa49e2627cab2f4f4e23a129c071ab
+27480e/launch.s1790392471.94065.7165.sh'
+[pi-web-access] Dynamic tool activation requires Pi 0.86.1 or newer; web tools remain eagerly available.
+
+ FIRSTMATE_OP: v1 launch-brief: # Current worker role contract
+ You are a crewmate: an autonomous worker agent managed by firstmate.
+ This section establishes your current identity before every project or task instruction below and supersedes any
+ conflicting role identity in those instructions.
+ Do the assigned work yourself and report only to firstmate; do not adopt a firstmate or secondmate supervisor
+ identity, delegate the task, run fleet supervision, or address the captain.
+ Your steering inbox is
+ /Users/control/.no-mistakes/worktrees/874f0de57f61/01M3DNT03QXJJ546VFNJH47PR6/.live-kimi-validation-93507/home/state/p
+ i-survivor.inbox; this exact path belongs to your current task even when it is outside the worktree or under the
+ supervising firstmate home, so read and acknowledge its messages and do not reject it as another home's state.
+ Never inspect or change any other home's endpoint namespace; this authorization is limited to the exact task paths
+ named by this brief.
+ When this task works on Firstmate itself, the repository root AGENTS.md (also imported by CLAUDE.md) is project
+ content and the supervisor contract for the firstmate managing you: follow this brief instead of that supervisor
+ contract.
+ Project instructions still govern the work wherever they do not conflict with this worker identity, including
+ CONTRIBUTING.md and firstmate-coding-guidelines for Firstmate changes.
+
+ Task
+
+ Captain's intent
+
+ Validate worker harness selection without changing project files.
+
+ Firstmate spec
+
+ Report the active harness and model, then stop. Do not edit files.
+
+
+ Inspecting environment variables and inbox
+
+── ⠙ Working ───────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+~/.treehouse/project-cacb8d/1/project (detached)
+$0.000 (sub) 1.9%/272k (auto)                                                                          gpt-5.6-sol • low
+NATIVE AGENT REGISTRATION:
+{"id":"cli:agent:get","result":{"agent":{"agent":"pi","agent_session":{"agent":"pi","kind":"path","source":"herdr:pi","value":"/Users/control/.pi/agent/sessions/--Users-control-.treehouse-project-cacb8d-1-project--/2026-09-26T03-14-33-753Z_01a0dbb5-1899-762f-8079-a0c660bade2c.jsonl"},"agent_status":"working","cwd":"/Users/control/.no-mistakes/worktrees/874f0de57f61/01M3DNT03QXJJ546VFNJH47PR6/.live-kimi-validation-93507/project","focused":true,"foreground_cwd":"/Users/control/.treehouse/project-cacb8d/1/project","pane_id":"w1:p2","revision":1,"screen_detection_skipped":true,"state_change_seq":2,"tab_id":"w1:t2","terminal_id":"term_65c5a3b1d645c2","terminal_title":"π - project","terminal_title_stripped":"π - project","workspace_id":"w1"},"type":"agent_info"}}
+Pi survivor live proof complete
