@@ -877,12 +877,13 @@ spawn_raw_executable() { # <command>
       i=$((i + 1))
       while [ "$i" -lt "${#words[@]}" ]; do
         case "${words[$i]}" in
-        -a)
-          i=$((i + 2))
-          ;;
         --) i=$((i + 1)); break ;;
         -*)
-          if [[ ${words[$i]} =~ ^-[cl]+$ ]]; then i=$((i + 1)); else break; fi
+          if [[ ${words[$i]} =~ ^-[cla]+$ ]]; then
+            if [[ ${words[$i]} == *a* ]]; then i=$((i + 2)); else i=$((i + 1)); fi
+          else
+            break
+          fi
           ;;
         *) break ;;
         esac

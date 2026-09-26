@@ -165,7 +165,7 @@ SH
     /usr/bin/env -S 'FOO=hello\"world custom-agent --flag' || fail "real env -S escaped-quote probe failed"
   [ "$(cat "$probe_value")" = 'hello"world' ] || fail "real env -S treated an escaped quote as grouping"
   [ "$(cat "$probe_args")" = --flag ] || fail "real env -S did not execute the unrelated probe"
-  for form in flag positional config raw command_raw exec_raw nohup_raw env_command_raw command_env_raw wrapper_chain_raw env_raw env_numeric_assignment_raw env_unset_raw env_chdir_raw env_unset_equals_raw env_ignore_raw env_separator_raw env_cluster_raw env_unknown_raw env_split_raw env_split_numeric_assignment_raw env_split_equals_raw env_split_option_raw env_split_cluster_raw env_split_escape_raw env_split_control_raw secondmate; do
+  for form in flag positional config raw command_raw exec_raw exec_la_raw exec_ca_raw exec_cla_raw env_exec_cla_raw nohup_raw env_command_raw command_env_raw wrapper_chain_raw env_raw env_numeric_assignment_raw env_unset_raw env_chdir_raw env_unset_equals_raw env_ignore_raw env_separator_raw env_cluster_raw env_unknown_raw env_split_raw env_split_numeric_assignment_raw env_split_equals_raw env_split_option_raw env_split_cluster_raw env_split_escape_raw env_split_control_raw secondmate; do
     case "$form" in
       flag) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness kimi); rc=$? ;;
       positional) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" kimi); rc=$? ;;
@@ -177,6 +177,10 @@ SH
       raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness 'kimi --auto'); rc=$? ;;
       command_raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness 'command kimi --auto'); rc=$? ;;
       exec_raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness 'exec kimi --auto'); rc=$? ;;
+      exec_la_raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness 'exec -la alias kimi --auto'); rc=$? ;;
+      exec_ca_raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness 'exec -ca alias kimi --auto'); rc=$? ;;
+      exec_cla_raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness 'exec -cla alias kimi --auto'); rc=$? ;;
+      env_exec_cla_raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness 'env FOO=bar exec -cla alias kimi --auto'); rc=$? ;;
       nohup_raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness 'nohup kimi --auto'); rc=$? ;;
       env_command_raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness 'env FOO=bar command kimi --auto'); rc=$? ;;
       command_env_raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness 'command env FOO=bar kimi --auto'); rc=$? ;;
@@ -230,7 +234,10 @@ SH
   assert_grep 'harness=env' "$HOME_DIR/state/$escaped_id.meta" "escaped env split-string metadata changed"
   assert_contains "$(cat "$LAUNCH_LOG")" "$raw" "escaped env split-string launch was rewritten"
   i=0
-  for raw in 'command /opt/bin/custom-agent --flag' 'exec /opt/bin/custom-agent --flag' 'nohup /opt/bin/custom-agent --flag'; do
+  for raw in 'command /opt/bin/custom-agent --flag' 'exec /opt/bin/custom-agent --flag' \
+    'exec -la alias /opt/bin/custom-agent --flag' 'exec -ca alias /opt/bin/custom-agent --flag' \
+    'exec -cla alias /opt/bin/custom-agent --flag' \
+    'env FOO=bar exec -cla alias /opt/bin/custom-agent --flag' 'nohup /opt/bin/custom-agent --flag'; do
     i=$((i + 1))
     wrapper_id="kimi-wrapper-safe-z$i"
     fm_test_spawn_brief "$HOME_DIR" "$wrapper_id"
