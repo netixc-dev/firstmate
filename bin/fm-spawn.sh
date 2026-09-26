@@ -847,71 +847,111 @@ spawn_split_env_words() { # <split-string>
 }
 
 spawn_raw_executable() { # <command>
-  local input=${1-} word split env_word='' i=0
+  local input=${1-} word split wrapper_word='' i=0 skip_assignments=1
   local -a words suffix
   spawn_split_shell_words "$input"
   words=("${SPAWN_SHELL_WORDS[@]}")
   while [ "$i" -lt "${#words[@]}" ]; do
-    while [ "$i" -lt "${#words[@]}" ]; do
-      case "${words[$i]}" in [A-Za-z_]*=*) i=$((i + 1)) ;; *) break ;; esac
-    done
+    if [ "$skip_assignments" -eq 1 ]; then
+      while [ "$i" -lt "${#words[@]}" ]; do
+        case "${words[$i]}" in [A-Za-z_]*=*) i=$((i + 1)) ;; *) break ;; esac
+      done
+    fi
+    skip_assignments=0
     [ "$i" -lt "${#words[@]}" ] || break
     word=${words[$i]}
-    if [ "${word##*/}" != env ]; then
+    case "${word##*/}" in
+    command)
+      wrapper_word=$word
+      i=$((i + 1))
+      while [ "$i" -lt "${#words[@]}" ]; do
+        case "${words[$i]}" in
+        -p) i=$((i + 1)) ;;
+        --) i=$((i + 1)); break ;;
+        *) break ;;
+        esac
+      done
+      ;;
+    exec)
+      wrapper_word=$word
+      i=$((i + 1))
+      while [ "$i" -lt "${#words[@]}" ]; do
+        case "${words[$i]}" in
+        -a)
+          i=$((i + 2))
+          ;;
+        --) i=$((i + 1)); break ;;
+        -*)
+          if [[ ${words[$i]} =~ ^-[cl]+$ ]]; then i=$((i + 1)); else break; fi
+          ;;
+        *) break ;;
+        esac
+      done
+      ;;
+    nohup)
+      wrapper_word=$word
+      i=$((i + 1))
+      if [ "${words[$i]:-}" = -- ]; then i=$((i + 1)); fi
+      ;;
+    env)
+      wrapper_word=$word
+      i=$((i + 1))
+      while [ "$i" -lt "${#words[@]}" ]; do
+        word=${words[$i]}
+        case "$word" in
+        [!-]*=*) i=$((i + 1)) ;;
+        --)
+          i=$((i + 1))
+          while [ "$i" -lt "${#words[@]}" ]; do
+            case "${words[$i]}" in ?*=*) i=$((i + 1)) ;; *) break ;; esac
+          done
+          break
+          ;;
+        -i|--ignore-environment|-0|--null|-v|--debug|--list-signal-handling) i=$((i + 1)) ;;
+        -u|--unset|-C|--chdir|-P|-a|--argv0)
+          i=$((i + 2))
+          ;;
+        --unset=*|--chdir=*|--argv0=*|-u?*|-C?*|-P?*|-a?*|--default-signal|--default-signal=*|--ignore-signal|--ignore-signal=*|--block-signal|--block-signal=*)
+          i=$((i + 1))
+          ;;
+        -S|--split-string)
+          i=$((i + 1))
+          [ "$i" -lt "${#words[@]}" ] || break 2
+          split=${words[$i]}
+          suffix=("${words[@]:i+1}")
+          spawn_split_env_words "$split" || return 1
+          words=("${SPAWN_SHELL_WORDS[@]}" "${suffix[@]}")
+          i=0
+          ;;
+        --split-string=*)
+          split=${word#*=}
+          suffix=("${words[@]:i+1}")
+          spawn_split_env_words "$split" || return 1
+          words=("${SPAWN_SHELL_WORDS[@]}" "${suffix[@]}")
+          i=0
+          ;;
+        -S?*)
+          split=${word#-S}
+          suffix=("${words[@]:i+1}")
+          spawn_split_env_words "$split" || return 1
+          words=("${SPAWN_SHELL_WORDS[@]}" "${suffix[@]}")
+          i=0
+          ;;
+        -*)
+          if [[ $word =~ ^-[iv0]+$ ]]; then i=$((i + 1)); else return 1; fi
+          ;;
+        *) break ;;
+        esac
+      done
+      skip_assignments=1
+      ;;
+    *)
       printf '%s\n' "$word"
       return 0
-    fi
-    env_word=$word
-    i=$((i + 1))
-    while [ "$i" -lt "${#words[@]}" ]; do
-      word=${words[$i]}
-      case "$word" in
-      [!-]*=*) i=$((i + 1)) ;;
-      --)
-        i=$((i + 1))
-        while [ "$i" -lt "${#words[@]}" ]; do
-          case "${words[$i]}" in ?*=*) i=$((i + 1)) ;; *) break ;; esac
-        done
-        break
-        ;;
-      -i|--ignore-environment|-0|--null|-v|--debug|--list-signal-handling) i=$((i + 1)) ;;
-      -u|--unset|-C|--chdir|-P|-a|--argv0)
-        i=$((i + 2))
-        ;;
-      --unset=*|--chdir=*|--argv0=*|-u?*|-C?*|-P?*|-a?*|--default-signal|--default-signal=*|--ignore-signal|--ignore-signal=*|--block-signal|--block-signal=*)
-        i=$((i + 1))
-        ;;
-      -S|--split-string)
-        i=$((i + 1))
-        [ "$i" -lt "${#words[@]}" ] || break 2
-        split=${words[$i]}
-        suffix=("${words[@]:i+1}")
-        spawn_split_env_words "$split" || return 1
-        words=("${SPAWN_SHELL_WORDS[@]}" "${suffix[@]}")
-        i=0
-        ;;
-      --split-string=*)
-        split=${word#*=}
-        suffix=("${words[@]:i+1}")
-        spawn_split_env_words "$split" || return 1
-        words=("${SPAWN_SHELL_WORDS[@]}" "${suffix[@]}")
-        i=0
-        ;;
-      -S?*)
-        split=${word#-S}
-        suffix=("${words[@]:i+1}")
-        spawn_split_env_words "$split" || return 1
-        words=("${SPAWN_SHELL_WORDS[@]}" "${suffix[@]}")
-        i=0
-        ;;
-      -*)
-        if [[ $word =~ ^-[iv0]+$ ]]; then i=$((i + 1)); else return 1; fi
-        ;;
-      *) break ;;
-      esac
-    done
+      ;;
+    esac
   done
-  [ -z "$env_word" ] || printf '%s\n' "$env_word"
+  [ -z "$wrapper_word" ] || printf '%s\n' "$wrapper_word"
 }
 
 spawn_refuse_removed_harness() { # <harness-or-command>

@@ -139,7 +139,7 @@ test_removed_harness_pin_refuses_before_task_mutation() {
 }
 
 test_kimi_selections_refuse_before_mutation() {
-  local rec id safe_id escaped_id out rc form before after raw probe_value probe_args
+  local rec id safe_id escaped_id wrapper_id out rc form before after raw probe_value probe_args i
   id=kimi-retired-z1
   rec=$(make_spawn_case kimi-retired pi "$id")
   read_case_record "$rec"
@@ -165,7 +165,7 @@ SH
     /usr/bin/env -S 'FOO=hello\"world custom-agent --flag' || fail "real env -S escaped-quote probe failed"
   [ "$(cat "$probe_value")" = 'hello"world' ] || fail "real env -S treated an escaped quote as grouping"
   [ "$(cat "$probe_args")" = --flag ] || fail "real env -S did not execute the unrelated probe"
-  for form in flag positional config raw env_raw env_numeric_assignment_raw env_unset_raw env_chdir_raw env_unset_equals_raw env_ignore_raw env_separator_raw env_cluster_raw env_unknown_raw env_split_raw env_split_numeric_assignment_raw env_split_equals_raw env_split_option_raw env_split_cluster_raw env_split_escape_raw env_split_control_raw secondmate; do
+  for form in flag positional config raw command_raw exec_raw nohup_raw env_command_raw command_env_raw wrapper_chain_raw env_raw env_numeric_assignment_raw env_unset_raw env_chdir_raw env_unset_equals_raw env_ignore_raw env_separator_raw env_cluster_raw env_unknown_raw env_split_raw env_split_numeric_assignment_raw env_split_equals_raw env_split_option_raw env_split_cluster_raw env_split_escape_raw env_split_control_raw secondmate; do
     case "$form" in
       flag) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness kimi); rc=$? ;;
       positional) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" kimi); rc=$? ;;
@@ -175,6 +175,12 @@ SH
         printf 'pi\n' > "$HOME_DIR/config/crew-harness"
         ;;
       raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness 'kimi --auto'); rc=$? ;;
+      command_raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness 'command kimi --auto'); rc=$? ;;
+      exec_raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness 'exec kimi --auto'); rc=$? ;;
+      nohup_raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness 'nohup kimi --auto'); rc=$? ;;
+      env_command_raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness 'env FOO=bar command kimi --auto'); rc=$? ;;
+      command_env_raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness 'command env FOO=bar kimi --auto'); rc=$? ;;
+      wrapper_chain_raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness 'command exec nohup kimi --auto'); rc=$? ;;
       env_raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness 'env FOO=bar kimi --auto'); rc=$? ;;
       env_numeric_assignment_raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness 'env 1=x kimi --auto'); rc=$? ;;
       env_unset_raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness '/usr/bin/env -u FOO /opt/bin/kimi --auto'); rc=$? ;;
@@ -223,6 +229,15 @@ SH
   expect_code 0 "$rc" "an unrelated escaped env split-string must remain available"
   assert_grep 'harness=env' "$HOME_DIR/state/$escaped_id.meta" "escaped env split-string metadata changed"
   assert_contains "$(cat "$LAUNCH_LOG")" "$raw" "escaped env split-string launch was rewritten"
+  i=0
+  for raw in 'command /opt/bin/custom-agent --flag' 'exec /opt/bin/custom-agent --flag' 'nohup /opt/bin/custom-agent --flag'; do
+    i=$((i + 1))
+    wrapper_id="kimi-wrapper-safe-z$i"
+    fm_test_spawn_brief "$HOME_DIR" "$wrapper_id"
+    out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$wrapper_id" "$PROJ_DIR" --harness "$raw"); rc=$?
+    expect_code 0 "$rc" "an unrelated simple raw wrapper must remain available"
+    assert_contains "$(cat "$LAUNCH_LOG")" "$raw" "simple raw wrapper launch was rewritten"
+  done
   fm_write_meta "$HOME_DIR/state/$id.meta" "window=sess:fm-$id" "worktree=$WT_DIR" "harness=kimi" "kind=ship"
   out=$(run_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" --relaunch --harness pi); rc=$?
   expect_code 1 "$rc" "a recorded Kimi task must not silently switch to Pi"
@@ -427,7 +442,7 @@ test_caller_owned_raw_launch_forms() {
   read_case_record "$rec"
   for form in "env KEY=value $removed --prompt-interactive" "  env KEY=value $removed --prompt-interactive" \
     "nice -n 5 $removed --prompt-interactive" "  other --prompt $removed" \
-    "bash -c '$removed --prompt-interactive'" "a'g'y --prompt-interactive" \
+    "bash -c '$removed --prompt-interactive'" "sh -c 'kimi --auto'" "a'g'y --prompt-interactive" \
     "/opt/bin/a[g]y --prompt-interactive" "{ $removed --prompt-interactive; }" \
     "if true; then $removed --prompt-interactive; fi" "2>/dev/null $removed --prompt-interactive" \
     "nohup $removed --prompt-interactive" "other --flag; echo ok"; do
