@@ -139,12 +139,12 @@ test_removed_harness_pin_refuses_before_task_mutation() {
 }
 
 test_kimi_selections_refuse_before_mutation() {
-  local rec id out rc form before after
+  local rec id safe_id out rc form before after raw
   id=kimi-retired-z1
   rec=$(make_spawn_case kimi-retired pi "$id")
   read_case_record "$rec"
   before=$(git -C "$WT_DIR" status --short)
-  for form in flag positional config raw env_raw env_unset_raw secondmate; do
+  for form in flag positional config raw env_raw env_unset_raw env_chdir_raw env_unset_equals_raw env_ignore_raw env_separator_raw env_split_raw env_split_equals_raw secondmate; do
     case "$form" in
       flag) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness kimi); rc=$? ;;
       positional) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" kimi); rc=$? ;;
@@ -156,6 +156,12 @@ test_kimi_selections_refuse_before_mutation() {
       raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness 'kimi --auto'); rc=$? ;;
       env_raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness 'env FOO=bar kimi --auto'); rc=$? ;;
       env_unset_raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness '/usr/bin/env -u FOO /opt/bin/kimi --auto'); rc=$? ;;
+      env_chdir_raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness 'env --chdir=/tmp kimi --auto'); rc=$? ;;
+      env_unset_equals_raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness 'env --unset=FOO kimi --auto'); rc=$? ;;
+      env_ignore_raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness 'env -i -P /bin FOO=bar kimi --auto'); rc=$? ;;
+      env_separator_raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness 'env -- kimi --auto'); rc=$? ;;
+      env_split_raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "env -S 'kimi --auto'"); rc=$? ;;
+      env_split_equals_raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "env --split-string='FOO=bar /opt/bin/kimi --auto'"); rc=$? ;;
       secondmate) out=$(run_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" --secondmate --harness kimi); rc=$? ;;
     esac
     expect_code 1 "$rc" "$form must refuse standalone Kimi"
@@ -166,6 +172,13 @@ test_kimi_selections_refuse_before_mutation() {
     after=$(git -C "$WT_DIR" status --short)
     [ "$after" = "$before" ] || fail "$form changed the isolated copy"
   done
+  safe_id=kimi-env-safe-z2
+  fm_test_spawn_brief "$HOME_DIR" "$safe_id"
+  raw='env --chdir=/tmp --unset=FOO FOO=bar /opt/bin/custom-agent --flag'
+  out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$safe_id" "$PROJ_DIR" --harness "$raw"); rc=$?
+  expect_code 0 "$rc" "an unrelated env-wrapped raw command must remain available"
+  assert_grep 'harness=env' "$HOME_DIR/state/$safe_id.meta" "env-wrapped raw metadata changed"
+  assert_contains "$(cat "$LAUNCH_LOG")" "$raw" "env-wrapped raw launch was rewritten"
   fm_write_meta "$HOME_DIR/state/$id.meta" "window=sess:fm-$id" "worktree=$WT_DIR" "harness=kimi" "kind=ship"
   out=$(run_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" --relaunch --harness pi); rc=$?
   expect_code 1 "$rc" "a recorded Kimi task must not silently switch to Pi"

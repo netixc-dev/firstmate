@@ -740,41 +740,129 @@ case "$EFFORT" in
   ;;
 esac
 
+spawn_split_shell_words() { # <command>
+  local input=${1-} token='' char quote='' i=0 escaped=0 active=0
+  SPAWN_SHELL_WORDS=()
+  while [ "$i" -lt "${#input}" ]; do
+    char=${input:i:1}
+    i=$((i + 1))
+    if [ "$escaped" -eq 1 ]; then
+      token=$token$char
+      escaped=0
+      active=1
+      continue
+    fi
+    if [ "$quote" = single ]; then
+      if [ "$char" = "'" ]; then quote=''; else token=$token$char; fi
+      active=1
+      continue
+    fi
+    if [ "$quote" = double ]; then
+      if [ "$char" = '"' ]; then
+        quote=''
+      elif [ "$char" = "\\" ]; then
+        escaped=1
+      else
+        token=$token$char
+      fi
+      active=1
+      continue
+    fi
+    case "$char" in
+    [[:space:]])
+      if [ "$active" -eq 1 ]; then
+        SPAWN_SHELL_WORDS+=("$token")
+        token=''
+        active=0
+      fi
+      ;;
+    "'") quote=single; active=1 ;;
+    '"') quote=double; active=1 ;;
+    \\) escaped=1; active=1 ;;
+    *) token=$token$char; active=1 ;;
+    esac
+  done
+  [ "$escaped" -eq 0 ] || token=$token'\'
+  [ "$active" -eq 0 ] || SPAWN_SHELL_WORDS+=("$token")
+}
+
+spawn_raw_executable() { # <command>
+  local input=${1-} word split env_word='' i=0
+  local -a words suffix
+  spawn_split_shell_words "$input"
+  words=("${SPAWN_SHELL_WORDS[@]}")
+  while [ "$i" -lt "${#words[@]}" ]; do
+    while [ "$i" -lt "${#words[@]}" ]; do
+      case "${words[$i]}" in [A-Za-z_]*=*) i=$((i + 1)) ;; *) break ;; esac
+    done
+    [ "$i" -lt "${#words[@]}" ] || break
+    word=${words[$i]}
+    if [ "${word##*/}" != env ]; then
+      printf '%s\n' "$word"
+      return 0
+    fi
+    env_word=$word
+    i=$((i + 1))
+    while [ "$i" -lt "${#words[@]}" ]; do
+      word=${words[$i]}
+      case "$word" in
+      [A-Za-z_]*=*) i=$((i + 1)) ;;
+      --) i=$((i + 1)); break ;;
+      -i|--ignore-environment|-0|--null|-v|--debug|--list-signal-handling) i=$((i + 1)) ;;
+      -u|--unset|-C|--chdir|-P|-a|--argv0)
+        i=$((i + 2))
+        ;;
+      --unset=*|--chdir=*|--argv0=*|-u?*|-C?*|-P?*|-a?*|--default-signal|--default-signal=*|--ignore-signal|--ignore-signal=*|--block-signal|--block-signal=*)
+        i=$((i + 1))
+        ;;
+      -S|--split-string)
+        i=$((i + 1))
+        [ "$i" -lt "${#words[@]}" ] || break 2
+        split=${words[$i]}
+        suffix=("${words[@]:i+1}")
+        spawn_split_shell_words "$split"
+        words=("${SPAWN_SHELL_WORDS[@]}" "${suffix[@]}")
+        i=0
+        ;;
+      --split-string=*)
+        split=${word#*=}
+        suffix=("${words[@]:i+1}")
+        spawn_split_shell_words "$split"
+        words=("${SPAWN_SHELL_WORDS[@]}" "${suffix[@]}")
+        i=0
+        ;;
+      -S?*)
+        split=${word#-S}
+        suffix=("${words[@]:i+1}")
+        spawn_split_shell_words "$split"
+        words=("${SPAWN_SHELL_WORDS[@]}" "${suffix[@]}")
+        i=0
+        ;;
+      -*) printf '%s\n' "$env_word"; return 0 ;;
+      *) break ;;
+      esac
+    done
+  done
+  [ -z "$env_word" ] || printf '%s\n' "$env_word"
+}
+
 spawn_refuse_removed_harness() { # <harness-or-command>
-  local input=${1-} executable='' word env_mode=0 skip_next=0 legacy=agy
+  local input=${1-} executable legacy=agy
   if [ "$input" = devin ] || [ "$input" = rovo ] || [ "$input" = muse ] || [ "$input" = kimi ]; then
     echo "error: unsupported removed harness '$input'; refusing before task mutation" >&2
     return 1
   fi
-  # Inspect only the first executable; do not execute or rewrite a raw command.
-  # env options and assignments precede that executable, including -u NAME.
-  for word in $input; do
-    if [ "$skip_next" -eq 1 ]; then skip_next=0; continue; fi
-    if [ "$env_mode" -eq 0 ]; then
-      case "${word##*/}" in env) env_mode=1; continue ;; esac
-    else
-      case "$word" in
-      -u|--unset|-C|--chdir|-S) skip_next=1; continue ;;
-      -i|--ignore-environment|--) continue ;;
-      [A-Za-z_]*=*) continue ;;
-      esac
-    fi
-    executable=$word
-    break
-  done
-  case "${executable##*/}" in
-  kimi)
+  executable=$(spawn_raw_executable "$input")
+  if [ "${executable##*/}" = kimi ]; then
     echo "error: unsupported removed harness '$executable'; refusing before task mutation" >&2
     return 1
-    ;;
-  "$legacy")
-    [ "$env_mode" -eq 0 ] || return 0
-    if [[ $executable =~ ^[[:alnum:]_./:@%+,=-]+$ ]]; then
-      echo "error: unsupported removed harness '$executable'; refusing before task mutation" >&2
-      return 1
-    fi
-    ;;
-  esac
+  fi
+  executable=${input#"${input%%[![:space:]]*}"}
+  executable=${executable%%[[:space:]]*}
+  if [ "${executable##*/}" = "$legacy" ] && [[ $executable =~ ^[[:alnum:]_./:@%+,=-]+$ ]]; then
+    echo "error: unsupported removed harness '$executable'; refusing before task mutation" >&2
+    return 1
+  fi
 }
 
 spawn_refuse_removed_record() { # <meta-file>
