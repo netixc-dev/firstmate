@@ -2995,9 +2995,12 @@ test_removed_grok_record_is_unsupported() {
   out=$(run_crew_state "$d" legacy-grok); rc=$?
   expect_code 0 "$rc" "legacy Grok record renders a current-state refusal"
   assert_contains "$out" "state: unknown" "legacy Grok cannot be read as idle or Pi"
-  assert_contains "$out" "unsupported legacy Grok record" "legacy Grok needs explicit migration"
+  assert_contains "$out" "explicit supported-harness replacement" \
+    "legacy Grok lifecycle guidance must name deliberate migration"
+  assert_contains "$out" "guarded teardown for safely landed work" \
+    "legacy Grok cleanup guidance must preserve the supported teardown path"
   [ -f "$d/state/legacy-grok.meta" ] || fail "crew-state mutated the legacy record"
-  pass "legacy Grok state is unsupported without deleting its record"
+  pass "legacy Grok state distinguishes replacement from guarded cleanup"
 }
 
 test_missing_meta() {

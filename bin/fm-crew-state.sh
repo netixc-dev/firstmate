@@ -216,7 +216,7 @@ WT=$(meta_value worktree)
 KIND=$(meta_value kind)
 HARNESS=$(meta_value harness)
 case "$HARNESS" in
-  grok*) emit unknown none "unsupported legacy Grok record; explicitly migrate before lifecycle or cleanup" ;;
+  grok*) emit unknown none "unsupported legacy Grok lifecycle; use explicit supported-harness replacement, or guarded teardown for safely landed work" ;;
 esac
 REMOTE_HOST=$(meta_value remote_host)
 [ -n "$KIND" ] || KIND=ship
