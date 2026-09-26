@@ -213,7 +213,7 @@ test_devin_adapter_selections_refuse_and_raw_command_survives() {
 
 test_rovo_selections_refuse_but_raw_commands_and_home_paths_survive() {
   local rec id out rc form before after raw i sm removed
-  for removed in rovo muse; do
+  for removed in rovo muse opencode; do
   id="$removed-selection"; i=0
   rec=$(make_spawn_case "$id" pi "$id")
   read_case_record "$rec"
@@ -265,7 +265,15 @@ test_rovo_selections_refuse_but_raw_commands_and_home_paths_survive() {
     assert_absent "$HOME_DIR/state/$id.muse-session" "raw command received a retired session binding"
     assert_absent "$HOME_DIR/state/$id.muse-session-current" "raw command received a retired session cache"
     assert_not_contains "$(cat "$LAUNCH_LOG")" '--yolo' "raw command received an adapter-added permission flag"
-    [ "$i" -gt 2 ] || assert_grep "harness=$removed" "$HOME_DIR/state/$id.meta" "raw basename provenance changed"
+    if [ "$removed" = opencode ]; then
+      if [ "$i" -le 2 ]; then
+        assert_grep 'harness=unknown' "$HOME_DIR/state/$id.meta" "raw OpenCode launch must record opaque identity"
+      fi
+      assert_absent "$WT_DIR/.opencode/plugins/fm-busy-state.js" "raw command generated removed adapter wiring"
+      [ ! -e "$HOME_DIR/state/$id.busy-state" ] || fail "raw command armed an adapter busy source"
+    elif [ "$i" -le 2 ]; then
+      assert_grep "harness=$removed" "$HOME_DIR/state/$id.meta" "raw basename provenance changed"
+    fi
   done
   done
   pass "removed selections refuse before mutation while raw commands and home paths remain caller-owned"
@@ -688,6 +696,40 @@ test_active_dispatch_profile_allows_raw_launch_command() {
   pass "active crew-dispatch profile allows the raw launch-command escape hatch"
 }
 
+test_raw_claude_preserves_adapter_semantics() {
+  local rec id sm_id sm out status launch
+  id='raw-claude-survivor-z16'
+  sm_id='raw-claude-secondmate-z17'
+  rec=$(make_spawn_case raw-claude-survivor claude "$id" "$sm_id")
+  read_case_record "$rec"
+
+  out=$(FM_TEST_CLAUDE_CONFIG_DIR="$CASE_DIR/claude-work" \
+    run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" \
+      "$id" "$PROJ_DIR" --harness "claude --raw-flag")
+  status=$?
+  expect_code 0 "$status" "a recognized raw Claude launch should succeed"
+  assert_contains "$out" "spawned $id harness=claude" "raw Claude lost its adapter identity"
+  assert_meta_profile "$HOME_DIR/state/$id.meta" claude default default
+  assert_present "$HOME_DIR/state/$id.busy-state" "raw Claude did not arm semantic busy state"
+  assert_present "$WT_DIR/.claude/settings.local.json" "raw Claude did not receive lifecycle hooks"
+  launch=$(cat "$LAUNCH_LOG")
+  assert_contains "$launch" "CLAUDE_CONFIG_DIR='$CASE_DIR/claude-work'" "raw Claude lost ambient account forwarding"
+  assert_contains "$launch" "env -u CURSOR_AGENT -u CURSOR_INVOKED_AS -u GEMINI_CLI claude --raw-flag" \
+    "raw Claude did not clear foreign harness markers"
+
+  sm="$CASE_DIR/secondmate-home"
+  make_seeded_secondmate_home "$sm" "$sm_id"
+  out=$(run_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" \
+    "$sm_id" "$sm" --secondmate --harness "claude --raw-flag")
+  status=$?
+  expect_code 0 "$status" "a recognized raw Claude secondmate launch should succeed"
+  assert_contains "$out" "spawned $sm_id harness=claude kind=secondmate" \
+    "raw Claude secondmate lost its adapter identity"
+  assert_contains "$(cat "$LAUNCH_LOG")" "FM_SUPERVISION_MODEL=autoarm" \
+    "raw Claude secondmate lost its supervision model"
+  pass "recognized raw Claude launches preserve adapter semantics"
+}
+
 test_claude_threads_model_and_effort() {
   local rec id out status launch
   id=profile-claude-z2
@@ -922,24 +964,6 @@ test_cursor_failed_catalog_probe_does_not_block_spawn() {
   pass "cursor preserves the requested model when its live catalog is unreachable"
 }
 
-test_opencode_threads_model_and_ignores_effort_axis() {
-  local rec id out status launch
-  id=profile-opencode-z7
-  rec=$(make_spawn_case profile-opencode opencode "$id")
-  read_case_record "$rec"
-
-  out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --model anthropic/claude-sonnet-4-5 --effort high)
-  status=$?
-  expect_code 0 "$status" "opencode spawn with model and ignored effort should succeed"
-  assert_meta_profile "$HOME_DIR/state/$id.meta" opencode anthropic/claude-sonnet-4-5 high
-  launch=$(cat "$LAUNCH_LOG")
-  assert_contains "$launch" "opencode --model 'anthropic/claude-sonnet-4-5' --prompt" \
-    "opencode launch did not thread model"
-  assert_not_contains "$launch" "--effort" "opencode launch must not pass unsupported --effort"
-  assert_not_contains "$launch" "--variant" "opencode launch must not pass run-only --variant"
-  assert_not_contains "$launch" "--thinking" "opencode launch must not pass pi thinking flag"
-  pass "opencode receives --model and omits the unsupported effort axis"
-}
 
 test_native_effort_validator_keeps_axes_separate() {
   local harness
@@ -1799,6 +1823,7 @@ test_active_dispatch_profile_requires_explicit_harness_for_scout
 test_active_dispatch_profile_allows_explicit_harness
 test_active_dispatch_profile_allows_positional_harness
 test_active_dispatch_profile_allows_raw_launch_command
+test_raw_claude_preserves_adapter_semantics
 test_claude_threads_model_and_effort
 test_codex_threads_model_and_effort
 test_codex_threads_model_and_max_effort
@@ -1811,7 +1836,7 @@ test_grok_omits_invalid_xhigh_reasoning_effort
 test_cursor_threads_model_workspace_and_omits_effort_axis
 test_cursor_refuses_model_absent_from_live_catalog
 test_cursor_failed_catalog_probe_does_not_block_spawn
-test_opencode_threads_model_and_ignores_effort_axis
+
 test_native_effort_validator_keeps_axes_separate
 test_native_pi_ultra_is_explicit_and_model_scoped
 test_batch_preserves_native_ultra

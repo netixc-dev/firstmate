@@ -138,7 +138,7 @@ test_real_text_is_pending() {
 # claude 2.1.226 (bare `❯` + U+00A0 NO-BREAK SPACE), codex 0.146.0 (bold `›`
 # + SGR-2 dim hint), codex 0.154.0 (the same `›` amid a braille starfield over
 # a status footer, captured through Herdr on 2026-09-15), pi (blank row
-# between solid `─` rules), opencode 1.14.46 (left-bar `┃` rows), and grok
+# between solid `─` rules), and grok
 # 1.0.0 (bordered box with a TITLED bottom border), plus claude captured
 # through a styled ANSI dump (`ESC[m` `❯` U+00A0).
 #
@@ -587,39 +587,6 @@ test_matrix_pi_separated_needs_identity() {
   pass "matrix: pi's separated composer needs identity + structure; the blank row alone never proves it"
 }
 
-test_matrix_opencode_leftbar_signals() {
-  # Real idle opencode: `┃`-prefixed rows holding an "Ask anything" hint,
-  # blanks, and a Build-mode footer. Two independent idle signals: the shared
-  # idle-placeholder pattern (works on plain captures) and the ghost strip
-  # (works on styled captures even if the pattern is overridden away).
-  local screen typed dim_screen captured_idle captured_pending out
-  screen=$'  ┃\n  ┃  Ask anything... "What is the tech stack?"\n  ┃\n  ┃  Build · GPT-5.5 Fast OpenAI · high\n  ╹▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀'
-  dim_screen=$'  ┃\n  ┃  '"${ESC}[2mAsk anything...${ESC}[0m"$'\n  ┃\n  ┃  Build · GPT-5.5 Fast OpenAI · high\n  ╹▀▀▀▀'
-  assert_screen "opencode idle on tmux (cursor on hint)" empty "$CAPS_TMUX" "$dim_screen" 1
-  assert_screen "opencode idle on herdr" empty "$CAPS_STYLED" "$dim_screen"
-  assert_screen "opencode idle on styled capture" empty "$CAPS_STYLED_NOID" "$dim_screen"
-  # This sanitized live OpenCode 1.18.30 capture preserves its U+2026 hint and
-  # RGB 128 styling. RGB 128 is deliberately outside the ghost threshold, so
-  # the placeholder spelling is the independent empty signal. The completed-
-  # turn row above the active composer also pins the incident's idle layout.
-  captured_idle=$'  ▣ Build · Big Pickle · 3.4s\n\n  ┃\n  ┃  '"${ESC}[38;2;128;128;128mAsk anything… \"Fix a TODO in the codebase\"${ESC}[38;2;255;255;255m"$'\n  ┃\n  ┃  Build · Big Pickle OpenCode Zen\n  ╹▀▀▀▀▀▀▀▀'
-  assert_screen "opencode 1.18.30 completed-turn idle hint on tmux" empty "$CAPS_TMUX" "$captured_idle" 3
-  captured_pending=$'  ▣ Build · Big Pickle · 3.4s\n\n  ┃\n  ┃  '"${ESC}[38;2;255;255;255mReply with OK.${ESC}[38;2;255;255;255m"$'\n  ┃\n  ┃  Build · Big Pickle OpenCode Zen\n  ╹▀▀▀▀▀▀▀▀'
-  assert_screen "opencode 1.18.30 completed-turn typed composer on tmux" pending "$CAPS_TMUX" "$captured_pending" 3
-  # Signal separation: with the idle pattern overridden to something that
-  # cannot match, a DIM-styled hint still proves empty through the ghost strip.
-  out=$(FM_COMPOSER_IDLE_RE='^NEVER-MATCHES$' fm_composer_classify_screen "$CAPS_TMUX" "$dim_screen" 1)
-  [ "$out" = empty ] || fail "a dim opencode hint must stay empty via the ghost strip alone, got '$out'"
-  typed=$'┃\n┃  refactor the parser please\n┃\n┃  Build · GPT-5.5 Fast OpenAI · high\n╹▀▀▀▀'
-  assert_screen "opencode typed on tmux" pending "$CAPS_TMUX" "$typed" 1
-  assert_screen "opencode typed on plain backends" unknown "$CAPS_UNSTYLED" "$typed"
-  typed=$'┃  Ask anything... please investigate\n┃\n┃  Build · GPT-5.5 Fast OpenAI · high\n╹▀▀▀▀'
-  assert_screen "opencode placeholder-like input on tmux" pending "$CAPS_TMUX" "$typed" 0
-  assert_screen "opencode placeholder-like input on plain backends" unknown "$CAPS_UNSTYLED" "$typed"
-  typed=$'┃  refactor the parser please\n┃\n┃  Build · GPT-5.5 Fast OpenAI · high'
-  assert_screen "opencode multiline draft above blank cursor row" pending "$CAPS_TMUX" "$typed" 1
-  pass "matrix: opencode's left-bar composer reads empty everywhere and scans the full active run"
-}
 
 test_matrix_grok_titled_bottom_border() {
   # Grok 1.0.5 widened its titled BOTTOM border three columns past the top and
@@ -765,21 +732,16 @@ test_cursorless_bare_wrap_region_classifies() {
 }
 
 test_cursorless_container_rejects_contiguous_lower_activity() {
-  local box leftbar grok kimi opencode
+  local box grok kimi
   box=$'╭────────────────────────╮\n│ ❯                      │\n╰────────────────────────╯\nWorking on request...'
   assert_screen "stale box above activity on herdr" unknown "$CAPS_STYLED" "$box"
   assert_screen "stale box above activity on styled capture" unknown "$CAPS_STYLED_NOID" "$box"
 
-  leftbar=$'┃\n┃  Ask anything...\n┃\n┃  Build · GPT-5.5 Fast OpenAI · high\n╹▀▀▀▀▀▀▀▀\nWorking on request...'
-  assert_screen "stale left-bar above activity on herdr" unknown "$CAPS_STYLED" "$leftbar"
-  assert_screen "stale left-bar above activity on styled capture" unknown "$CAPS_STYLED_NOID" "$leftbar"
 
   grok=$'╭────────────────────────╮\n│ ❯                      │\n╰──────── Grok 4.5 ──────╯\n\nGrok status'
   kimi=$'╭────────────────────────╮\n│ >                      │\n╰────────────────────────╯\n\nKimi status'
-  opencode=$'┃\n┃  Ask anything...\n┃\n┃  Build · GPT-5.5 Fast OpenAI · high\n╹▀▀▀▀▀▀▀▀\n\nOpenCode status'
   assert_screen "blank-separated grok footer" empty "$CAPS_STYLED_NOID" "$grok"
   assert_screen "blank-separated kimi footer" empty "$CAPS_UNSTYLED" "$kimi"
-  assert_screen "left-bar floor and blank-separated footer" empty "$CAPS_STYLED_NOID" "$opencode"
   pass "fm_composer_classify_screen: cursorless containers reject only contiguous unclaimed activity"
 }
 
@@ -830,10 +792,6 @@ test_selected_content_is_composer_scoped_and_wrap_normalized() {
   out=$(fm_composer_extract_selected_content "$CAPS_STYLED_NOID" "$screen")
   [ "$out" = 'unrelated draft' ] \
     || fail "box extraction should contain only normalized selected composer rows, got '$out'"
-  screen=$'hello captain in transcript\n┃ hello\n┃ captain\n┃ Build · GPT-5.5 Fast OpenAI · high'
-  out=$(fm_composer_extract_selected_content "$CAPS_STYLED_NOID" "$screen")
-  [ "$out" = 'hello captain' ] \
-    || fail "left-bar extraction should join user rows without footer furniture, got '$out'"
   screen=$'╭────────────────────╮\n│ ❯ '"${ESC}[2mType a message...${ESC}[0m"$'│\n╰────────────────────╯'
   out=$(fm_composer_extract_selected_content "$CAPS_STYLED_NOID" "$screen")
   [ -z "$out" ] \
@@ -885,7 +843,7 @@ test_matrix_herdr_halfblock_rule_bounds_bare_wrap
 test_matrix_omp_status_row_bounds_bare_composer
 test_matrix_codex_idle_starfield_furniture
 test_matrix_pi_separated_needs_identity
-test_matrix_opencode_leftbar_signals
+
 test_matrix_grok_titled_bottom_border
 test_matrix_kimi_bordered_shell_glyph_box
 test_matrix_claude_styled_ansi_dump

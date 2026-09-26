@@ -17,7 +17,7 @@
 #   bin/fm-cd-pretool-check.sh --command '<cmd>'
 #
 # Stdin mode extracts .toolInput.command for Grok or .tool_input.command for
-# Claude, Codex, and Cursor. CLI mode is used by OpenCode and Pi after their
+# Claude, Codex, and Cursor. CLI mode is used by Pi after their
 # adapters extract the exact command string. --cursor selects Cursor's own deny
 # rendering and marks this invocation as the Cursor registration rather than the
 # Claude-settings duplicate Cursor also loads.
@@ -36,7 +36,7 @@
 # Claude requires stdout to remain empty on deny.
 # Codex blocks on exit 2 and displays stderr.
 # Grok consumes the stdout decision object.
-# OpenCode and Pi consume exit 2 plus stderr.
+# Pi consume exit 2 plus stderr.
 # Cursor consumes the stdout decision object.
 set -u
 

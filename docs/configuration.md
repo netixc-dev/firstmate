@@ -327,17 +327,18 @@ Bootstrap applies the same relative `FM_HOME` resolution only when embedding tha
 For the herdr backend, `FM_HOME` also determines the workspace label used by the adapter.
 ## Harness support
 
-claude, codex, opencode, pi, pi-signed, grok, kimi, cursor, and omp are empirically verified for crewmate and secondmate launches; gemini is verified for crewmate and scout launches only, and [README requirements](../README.md#requirements) own the set supported for the primary session.
+claude, codex, pi, pi-signed, grok, kimi, cursor, and omp are empirically verified for crewmate and secondmate launches; gemini is verified for crewmate and scout launches only, and [README requirements](../README.md#requirements) own the set supported for the primary session.
 A cursor secondmate or primary runs the tracked project-scope `.cursor/hooks.json` in its own home and must be launched with `--trust`, or no project hook loads; [`docs/supervision-protocols/cursor.md`](supervision-protocols/cursor.md) owns its supervision protocol.
 Cursor typed-submit confirmation is verified on tmux and Herdr only.
 gemini is refused for secondmates because it has no primary supervision protocol; [its adapter reference](../.agents/skills/harness-adapters/references/harness/gemini.md) owns the credential precondition, canonical-launch wiring, and raw-launch limitations.
-The retired `agy`, Devin, Rovo, and Muse CLI worker adapters are unsupported: explicit harness selections, static pins, and dispatch profiles naming them are refused before task mutation rather than falling back to another runtime.
-Legacy `agy` task records remain refused; a legacy `harness=devin`, `harness=rovo`, or `harness=muse` task remains steerable through `fm-send.sh` because its record does not distinguish the old adapter from a caller-owned raw command, but [lifecycle control](agent-control.md#fail-closed-boundaries) cannot manage those removed adapters.
-An implicit relaunch cannot reconstruct that original command; an explicit surviving-adapter replacement must pass the existing agent-free endpoint and work-preservation checks, never reinterpret the old record as Pi.
-Normal [guarded cleanup](../bin/fm-teardown.sh) remains available for landed work and report-complete scouts; ambiguous or unlanded legacy work must be preserved and reconciled by its owner before rollout, without deleting vendor files or credentials.
+The retired `agy`, Devin, Rovo, Muse, and OpenCode CLI worker adapters are unsupported: explicit harness selections, static pins, and dispatch profiles naming them are refused before task mutation rather than falling back to another runtime.
+Legacy `agy` task records and historical `harness=opencode` records remain unsupported and cannot be relaunched or managed through [lifecycle control](agent-control.md#fail-closed-boundaries).
+A legacy `harness=devin`, `harness=rovo`, or `harness=muse` task remains steerable through `fm-send.sh` because its record does not distinguish the old adapter from a caller-owned raw command, but lifecycle control cannot manage those removed adapters.
+For those ambiguous raw-command records, an implicit relaunch cannot reconstruct the original command; an explicit surviving-adapter replacement must pass the existing agent-free endpoint and work-preservation checks, never reinterpret the old record as Pi.
+Normal [guarded cleanup](../bin/fm-teardown.sh) remains available for landed work and report-complete scouts; ambiguous or unlanded legacy work, including historical OpenCode tasks, must be preserved and reconciled by its owner before rollout, without deleting vendor files or credentials.
 Legacy Muse session bindings and their cache are cleanup-only artifacts: guarded replacement and teardown retire only the exact task's Firstmate-owned sidecars, never the vendor paths those files reference.
 Vendor installations and session history remain untouched.
-The generic raw-command escape hatch remains caller-owned; [`fm-spawn.sh --help`](../bin/fm-spawn.sh) owns its narrow direct-executable rejection and preserves wrapped or dynamic commands, unrelated arguments, existing secondmate home paths, and whitespace-containing raw commands whose executable is Devin, Rovo, or Muse.
+The generic raw-command escape hatch remains caller-owned; [`fm-spawn.sh --help`](../bin/fm-spawn.sh) owns its narrow direct-executable rejection and preserves wrapped or dynamic commands, unrelated arguments, existing secondmate home paths, and whitespace-containing raw commands whose executable is Devin, Rovo, Muse, or OpenCode as opaque caller-owned commands.
 New harnesses get verified through a supervised trial task before joining the set.
 The verified adapter evidence - each harness's busy-state source, interrupt and exit behavior, skill-invocation syntax, and per-harness quirks - lives in the skill tree rooted at [`.agents/skills/harness-adapters/SKILL.md`](../.agents/skills/harness-adapters/SKILL.md).
 The executable interrupt and exit mechanics live in [`bin/fm-control-lib.sh`](../bin/fm-control-lib.sh), and [`docs/agent-control.md`](agent-control.md) owns their lifecycle-control architecture.
@@ -346,7 +347,7 @@ Pi-family launches adapt the regular-TUI safeguard to the installed CLI's capabi
 Enabled primary-session turn-end guard integrations are tracked as repo-level hook files and documented in [`docs/turnend-guard.md`](turnend-guard.md).
 Kimi remains outside the primary turn-end guard integrations; [`docs/turnend-guard.md`](turnend-guard.md#compatibility-limits) owns its separate captain-approved crew wake hook.
 Primary-session watcher wake protocols are rendered at session start by [`bin/fm-supervision-instructions.sh`](../bin/fm-supervision-instructions.sh) from [`docs/supervision-protocols/`](supervision-protocols/).
-Claude's Stop `asyncRewake` hook owns tokenless re-arm cycles, Cursor's stop hook parks on the watcher, Grok uses background-notify cycles, Codex uses bounded foreground checkpoints, Pi and pi-signed use the same two tracked primary extensions, omp uses its own two tracked `.omp/extensions/` files with a blocking `session_stop` turn-end hook, and OpenCode uses its TUI plugin.
+Claude's Stop `asyncRewake` hook owns tokenless re-arm cycles, Cursor's stop hook parks on the watcher, Grok uses background-notify cycles, Codex uses bounded foreground checkpoints, Pi and pi-signed use the same two tracked primary extensions, and omp uses its own two tracked `.omp/extensions/` files with a blocking `session_stop` turn-end hook.
 `config/crew-harness` is a local, gitignored file containing one adapter name for crewmate and scout launches.
 When pi-signed is selected, Firstmate preserves `FM_PI_HARNESS=pi-signed` and refuses the launch if the selected executable is unavailable rather than falling back to pi; [`fm-spawn.sh --help`](../bin/fm-spawn.sh) owns executable resolution and launch mechanics.
 Plain Pi launches set `FM_PI_HARNESS=pi`, so a signed primary's environment cannot relabel a plain Pi worker.
@@ -531,7 +532,7 @@ A known percentage below the floor makes the tool resolve among `default` profil
 A profile `provider` optionally names the quota-axi provider family whose rows apply to that profile; when present, profile and rule-floor provider IDs must match the strict whole-string pattern `^[a-z0-9]+(-[a-z0-9]+)*\z`.
 Bootstrap validates resolver-only `approval`, `min_confidence`, `floor`, and present `provider` values only while typed resolution is active; without the key those inert fields and the pre-existing verified-harness baseline preserve bootstrap behavior.
 Typed resolution additively recognizes `gemini` because AGENTS.md section 4 verifies it for crewmate and scout dispatch.
-The opted-in resolver has authoritative single-provider mappings for `claude`, `codex`, `grok`, `kimi`, and `cursor`; every other verified harness must declare `provider` explicitly, including multi-provider `pi`, `pi-signed`, `omp`, and `opencode` and unmapped `gemini`.
+The opted-in resolver has authoritative single-provider mappings for `claude`, `codex`, `grok`, `kimi`, and `cursor`; every other verified harness must declare `provider` explicitly, including multi-provider `pi`, `pi-signed`, and `omp`, plus unmapped `gemini`.
 Its single-provider table is separate from the frozen legacy mapping used by `fm-quota-choose.sh`, so additions cannot alter no-key routing.
 The resolver returns an actionable configuration error before any request when such a profile omits it.
 A profile `floor` contains only `scope` and `min_percent`, always uses that profile's provider and matched account, and makes that one candidate ineligible below `min_percent` on the named scope.
@@ -1225,12 +1226,11 @@ FM_CLAUDE_AUTOARM_EPOCH_FRESH=15   # seconds a recorded auto-arm outcome remains
 FM_CLAUDE_TURNEND_BLOCK_BUDGET=3   # consecutive --claude guard re-blocks before the verified one-time attended fail-open; safely below Claude Code's 8-block override
 FM_ARM_CONFIRM_TIMEOUT=10   # seconds fm-watch-arm waits to confirm a fresh watcher before reporting FAILED
 FM_ARM_ATTACH_POLL=0.5  # seconds between checks while fm-watch-arm is attached to an existing healthy watcher cycle
-FM_OPENCODE_ARM_READY_TIMEOUT_MS=12000   # milliseconds the OpenCode primary watcher plugin waits for an arm attempt to report started, healthy, wake, or failure
 FM_PI_ARM_READY_TIMEOUT_MS=12000   # milliseconds the Pi watcher extension waits for a successor arm to report started or attached
-FM_WATCH_ARM_RETIRE_TIMEOUT_MS=1000   # milliseconds Pi/OpenCode wait for an unready successor arm to exit before abandoning retries
-FM_WATCH_REARM_RETRY_BASE_MS=250   # Pi/OpenCode adapter base delay for continuity restoration retries
-FM_WATCH_REARM_RETRY_MAX_MS=4000   # Pi/OpenCode adapter cap for exponential continuity retry delay
-FM_WATCH_REARM_RETRY_LIMIT=5   # Pi/OpenCode adapter launch-failure retries before surfacing restoration failure
+FM_WATCH_ARM_RETIRE_TIMEOUT_MS=1000   # milliseconds Pi waits for an unready successor arm to exit before abandoning retries
+FM_WATCH_REARM_RETRY_BASE_MS=250   # Pi adapter base delay for continuity restoration retries
+FM_WATCH_REARM_RETRY_MAX_MS=4000   # Pi adapter cap for exponential continuity retry delay
+FM_WATCH_REARM_RETRY_LIMIT=5   # Pi adapter launch-failure retries before surfacing restoration failure
 FM_WATCH_CYCLE_LOG_MAX_BYTES=262144   # size cap for the arm-owned watcher lifecycle ledger
 FM_WATCH_CYCLE_LOG_KEEP_LINES=1000   # newest complete lifecycle rows considered when the ledger is capped
 FM_WATCHER_STALE_GRACE=300   # defaults to FM_GUARD_GRACE if set, else the poll-derived grace (docs/turnend-guard.md "Guard grace and the poll cadence"); seconds a live watcher lock may have a stale beacon before re-arm errors

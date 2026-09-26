@@ -63,7 +63,7 @@ fm_control_verb_allowed() {  # <verb>
 # section 4's verified-adapter list; an unverified adapter is refused rather
 # than guessed at, exactly as a spawn on it would be.
 fm_control_harnesses() {
-  printf '%s\n' claude codex opencode pi pi-signed grok kimi cursor gemini omp
+  printf '%s\n' claude codex pi pi-signed grok kimi cursor gemini omp
 }
 
 fm_control_harness_supported() {  # <harness>
@@ -89,7 +89,6 @@ fm_control_harness_family() {  # <recorded-harness>
     omp) printf 'omp' ;;
     claude*) printf 'claude' ;;
     codex*) printf 'codex' ;;
-    opencode*) printf 'opencode' ;;
     grok*) printf 'grok' ;;
     kimi*) printf 'kimi' ;;
     cursor*) printf 'cursor' ;;
@@ -122,17 +121,16 @@ fm_control_harness_supports_kind() {  # <harness> <kind>
 # through Herdr).
 fm_control_interrupt_key() {  # <harness>
   case "${1-}" in
-    claude|codex|opencode|pi|pi-signed|omp|kimi|cursor|gemini) printf 'Escape' ;;
+    claude|codex|pi|pi-signed|omp|kimi|cursor|gemini) printf 'Escape' ;;
     grok) printf 'C-c' ;;
     *) return 1 ;;
   esac
 }
 
-# How many times the interrupt key must be delivered. OpenCode needs a double
+# How many times the interrupt key must be delivered. Older adapters needed a double
 # Escape; every other verified adapter interrupts on a single press.
 fm_control_interrupt_repeat() {  # <harness>
   case "${1-}" in
-    opencode) printf '2' ;;
     claude|codex|pi|pi-signed|omp|grok|kimi|cursor|gemini) printf '1' ;;
     *) return 1 ;;
   esac
@@ -143,7 +141,7 @@ fm_control_interrupt_repeat() {  # <harness>
 # its presses blind.
 fm_control_interrupt_arm_signal() {  # <harness>
   case "${1-}" in
-    claude|codex|opencode|pi|pi-signed|omp|grok|kimi|cursor|gemini) ;;
+    claude|codex|pi|pi-signed|omp|grok|kimi|cursor|gemini) ;;
     *) return 1 ;;
   esac
 }
@@ -151,7 +149,7 @@ fm_control_interrupt_arm_signal() {  # <harness>
 # The minimum seconds between two presses of an armed interrupt.
 fm_control_interrupt_press_gap() {  # <harness>
   case "${1-}" in
-    claude|codex|opencode|pi|pi-signed|omp|grok|kimi|cursor|gemini) printf '0.2' ;;
+    claude|codex|pi|pi-signed|omp|grok|kimi|cursor|gemini) printf '0.2' ;;
     *) return 1 ;;
   esac
 }
@@ -161,7 +159,7 @@ fm_control_interrupt_press_gap() {  # <harness>
 # when the adapter has none.
 fm_control_interrupt_hazard_signal() {  # <harness>
   case "${1-}" in
-    claude|codex|opencode|pi|pi-signed|omp|grok|kimi|cursor|gemini) ;;
+    claude|codex|pi|pi-signed|omp|grok|kimi|cursor|gemini) ;;
     *) return 1 ;;
   esac
 }
@@ -177,7 +175,7 @@ fm_control_interrupt_hazard_signal() {  # <harness>
 # above.
 fm_control_interrupt_clear_key() {  # <harness>
   case "${1-}" in
-    claude|codex|opencode|pi|pi-signed|omp|grok|kimi|cursor|gemini) ;;
+    claude|codex|pi|pi-signed|omp|grok|kimi|cursor|gemini) ;;
     *) return 1 ;;
   esac
 }
@@ -185,7 +183,7 @@ fm_control_interrupt_clear_key() {  # <harness>
 # The command that exits the agent from its own composer.
 fm_control_exit_command() {  # <harness>
   case "${1-}" in
-    claude|opencode|grok|kimi|cursor) printf '/exit' ;;
+    claude|grok|kimi|cursor) printf '/exit' ;;
     codex|pi|pi-signed|omp|gemini) printf '/quit' ;;
     *) return 1 ;;
   esac
@@ -291,7 +289,6 @@ fm_control_harness_wiring_paths() {  # <harness> <worktree> <state-dir> <id>
   [ -n "$wt" ] && [ -n "$state" ] && [ -n "$id" ] || return 1
   case "$harness" in
     claude) printf '%s\n' "$wt/.claude/settings.local.json" ;;
-    opencode) printf '%s\n' "$wt/.opencode/plugins/fm-busy-state.js" ;;
     pi|pi-signed) printf '%s\n' "$state/$id.pi-ext.ts" ;;
     omp) printf '%s\n' "$state/$id.omp-ext.ts" ;;
     grok)

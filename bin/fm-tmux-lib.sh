@@ -12,7 +12,7 @@
 # Styled captures remain internal; fm-peek and every human-facing capture stay
 # plain.
 #
-# OpenCode's busy-queued Enter conversion accepts only structurally proven
+# Busy-queued Enter conversion accepts only structurally proven
 # pending text after retries, while the separate turn-started conversion accepts
 # an unknown post-Enter composer only after this submit observed an idle baseline
 # become busy.
@@ -219,7 +219,7 @@ fm_pane_is_busy() {  # <target> [harness]
 # swallowed Enter leaves our text in the composer and retyping would duplicate
 # it. Echoes the final proof-carrying verdict on stdout so callers can require
 # exact `empty` before treating submission as confirmed.
-# Busy-queued Enter (opencode 1.18.4): the harness accepts Enter while mid-turn
+# Busy-queued Enter: some agents accept Enter while mid-turn
 # and queues it for after the current turn, but keeps the typed text visible in
 # the composer. Once the Enter-retry budget is spent and a structurally proven
 # composer still reads "pending", the submit core falls back to

@@ -218,7 +218,7 @@ test_stale_gen_record_unknown() {
 test_missing_record_unknown_not_idle() {
   local state out h
   state=$(new_state_dir missing)
-  for h in claude opencode pi pi-signed; do
+  for h in claude pi pi-signed; do
     out=$(fm_busy_classify tmux w1 "$h" t1 "$state")
     [ "$out" = "unknown missing" ] || fail "$h with no record must be 'unknown missing', got '$out'"
   done
@@ -280,7 +280,7 @@ test_converted_adapters_ignore_footer_text() {
    ■■■■⬝⬝⬝⬝  esc interrupt
 Working...
 Ctrl+c:cancel'
-  for h in claude opencode pi pi-signed; do
+  for h in claude pi pi-signed; do
     out=$(fm_busy_classify tmux w1 "$h" t1 "$state" "$tail")
     [ "$out" = "unknown missing" ] || fail "$h must never classify from footer text, got '$out'"
   done
@@ -391,14 +391,12 @@ test_launch_prompt_never_shortens_a_working_launch() {
 
 test_launch_prompt_scoped_to_armed_harnesses() {
   local state out
-  # opencode ships no trust dialog (fm-busy-lib.sh header), so it has no
-  # signature at all: even Claude's own dialog text must not reclassify it.
-  state=$(new_state_dir launch-prompt-opencode)
+  state=$(new_state_dir launch-prompt-removed)
   "$EV" arm "$state" t1 >/dev/null
   out=$(fm_busy_classify tmux w1 opencode t1 "$state" \
     'Quick safety check: Is this a project you created or one you trust?')
-  [ "$out" = "busy fm-spawn" ] \
-    || fail "opencode has no launch-prompt signature and must stay busy fm-spawn, got '$out'"
+  [ "$out" = "unknown source-mismatch" ] \
+    || fail "removed adapter must not borrow a verified busy source, got '$out'"
   pass "the launch-prompt backstop is scoped to harnesses with a verified signature"
 }
 

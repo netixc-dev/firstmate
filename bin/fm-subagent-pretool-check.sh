@@ -35,7 +35,7 @@
 #   bin/fm-subagent-pretool-check.sh --tool '<tool-name>'
 #
 # Stdin mode extracts .tool_name for Claude and Codex, or .toolName for Grok.
-# CLI mode is for adapters that already hold the tool name (OpenCode, Pi).
+# CLI mode is for adapters that already hold the tool name (Pi).
 #
 # Exit/output contract (identical shape to bin/fm-cd-pretool-check.sh):
 #   ALLOW - exit 0 and no output.
@@ -49,7 +49,7 @@
 # Claude requires stdout to remain empty on deny.
 # Codex blocks on exit 2 and displays stderr.
 # Grok consumes the stdout decision object.
-# OpenCode and Pi consume exit 2 plus stderr.
+# Pi consume exit 2 plus stderr.
 set -u
 
 # Lowercase substrings that mark a tool name as delegation-shaped: it creates

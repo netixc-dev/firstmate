@@ -3074,7 +3074,7 @@ fm_backend_herdr_capture_ansi() {  # <target> <lines>
 # These functions are the ONLY herdr-specific composer knowledge left: the
 # ANSI pane capture (with its small-N workaround), the native `agent get`
 # identity probe, and the capability descriptor. Every shape - the bordered
-# box, the bare agent-glyph row, opencode's left-bar, and pi's
+# box, the bare agent-glyph row, and pi's
 # identity-gated separated pair (which this adapter pioneered) - now lives in
 # the shared owner (bin/fm-composer-lib.sh, fm_composer_classify_screen), so
 # a new harness shape is taught there once and every backend learns it in the
@@ -3216,7 +3216,7 @@ fm_backend_herdr_rendered_busy_state() {  # <target> [harness] -> busy|idle|unkn
 # mid-turn cannot use a rendered-footer transition as proof of this Enter;
 # only the separate retries-exhausted, proven-pending queued-Enter verdict can
 # confirm delivery from its native working state.
-# Queued-while-busy Enter (OpenCode 1.18.4, and any harness that keeps typed
+# Queued-while-busy Enter (any harness that keeps typed
 # text visible until the current turn ends): after the retry budget, a proven
 # pending composer plus native agent_status=working is delivered, not swallowed.
 # blocked is not working, so a Cursor pane that is blocked in every state does

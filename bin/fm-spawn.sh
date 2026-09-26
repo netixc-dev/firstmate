@@ -156,7 +156,7 @@
 #   profile consultation. A --secondmate spawn is exempt and resolves the SECONDMATE
 #   harness (config/secondmate-harness -> config/crew-harness -> own), so the
 #   secondmate-vs-crewmate split is DURABLE across every respawn (recovery,
-#   /updatefirstmate, restart). A bare adapter name (claude|codex|opencode|pi|pi-signed|grok|kimi|cursor|gemini|omp)
+#   /updatefirstmate, restart). A bare adapter name (claude|codex|pi|pi-signed|grok|kimi|cursor|gemini|omp)
 #   overrides it for this spawn (either kind). A non-flag string containing
 #   whitespace is treated as a RAW launch command - the escape hatch for verifying
 #   new adapters. The removed agy adapter is refused for explicit selections,
@@ -753,7 +753,7 @@ esac
 
 spawn_refuse_removed_harness() { # <harness-or-command>
   local input=${1-} executable legacy=agy
-  if [ "$input" = devin ] || [ "$input" = rovo ] || [ "$input" = muse ]; then
+  if [ "$input" = devin ] || [ "$input" = rovo ] || [ "$input" = muse ] || [ "$input" = opencode ]; then
     echo "error: unsupported removed harness '$input'; refusing before task mutation" >&2
     return 1
   fi
@@ -883,6 +883,21 @@ spawn_remote_secondmate() {
     echo "error: invalid task id" >&2
     return 2
   }
+  # A local secondmate positional may be a home path. Only remote routes
+  # use this early read-only adapter check; registry identity is rechecked
+  # under the lock below before any remote publication.
+  remote=$(secondmate_registry_field "$DATA/secondmates.md" "$id" remote 2>/dev/null || true)
+  [ "$remote" = 1 ] || return 3
+  positional=${POS[1]:-}
+  if [ "${#POS[@]}" -gt 2 ]; then
+    echo "error: remote secondmate spawn accepts no local home positional argument" >&2
+    return 2
+  fi
+  harness=${HARNESS_ARG:-${positional:-$("$SCRIPT_DIR/fm-harness.sh" secondmate)}}
+  case "$harness" in
+  claude | codex | pi | pi-signed | grok | kimi | cursor) ;;
+  *) echo "error: unsupported remote secondmate harness '$harness'; verified adapter required" >&2; return 1 ;;
+  esac
   mkdir -p "$STATE" || {
     echo "error: could not create parent state directory" >&2
     return 1
@@ -922,11 +937,11 @@ spawn_remote_secondmate() {
     harness=$("$FM_ROOT/bin/fm-harness.sh" secondmate)
   fi
   case "$harness" in
-  claude | codex | opencode | pi | pi-signed | grok | kimi | cursor) ;;
+  claude | codex | pi | pi-signed | grok | kimi | cursor) ;;
   *)
     fm_lock_release "$registry_lock" || true
     fm_lock_release "$SPAWN_TASK_LOCK" || true
-    echo "error: remote secondmate spawn requires a verified harness adapter, not a raw launch command: $harness" >&2
+    echo "error: unsupported remote secondmate harness '$harness'; verified adapter required" >&2
     return 1
     ;;
   esac
@@ -1742,7 +1757,7 @@ if [ "$RELAUNCH" -eq 1 ]; then
   }
 elif [ "$KIND" = secondmate ]; then
   case "${POS[1]:-}" in
-  '' | claude | codex | opencode | pi | pi-signed | grok | kimi | cursor | gemini | omp)
+  '' | claude | codex | pi | pi-signed | grok | kimi | cursor | gemini | omp)
     ARG3=${POS[1]:-}
     ;;
   *' '*)
@@ -1898,7 +1913,6 @@ launch_template() {
       printf '%s' 'codex __MODELFLAG____EFFORTFLAG__--dangerously-bypass-approvals-and-sandbox --disable hooks -c "notify=[\"bash\",\"-c\",\"touch __TURNEND__\"]" "$(__OPINPUT__ encode launch-brief < __BRIEF__)"'
     fi
     ;;
-  opencode) printf '%s' 'OPENCODE_CONFIG_CONTENT='\''{"permission":{"*":"allow"}}'\'' opencode __MODELFLAG__--prompt "$(__OPINPUT__ encode launch-brief < __BRIEF__)"' ;;
   pi | pi-signed)
     printf '%s' '__PIBIN____PITUIMODE__'
     if [ "$kind" = secondmate ]; then
@@ -1996,7 +2010,7 @@ case "$ARG3" in
 *' '*) # raw launch command (unverified-adapter escape hatch)
   RAW_LAUNCH=1
   LAUNCH=$ARG3
-  HARNESS=""
+  HARNESS=
   for word in $LAUNCH; do
     case "$word" in [A-Za-z_]*=*) continue ;; *)
       HARNESS=$(basename "$word")
@@ -2004,6 +2018,7 @@ case "$ARG3" in
       ;;
     esac
   done
+  [ "$HARNESS" != opencode ] || HARNESS=unknown
   ;;
 '')
   # No explicit harness: resolve from config. A secondmate AGENT launches on the
@@ -2112,11 +2127,11 @@ fi
 # Ultra is an explicit native capability, never a Pi thinking-level alias.
 # Validate the fully resolved profile before worktree or endpoint provisioning.
 if [ "$EFFORT" = ultra ]; then
-  "$SCRIPT_DIR/fm-harness.sh" validate-native-effort "$HARNESS" "$MODEL" "$EFFORT" || exit 1
   [ "$RAW_LAUNCH" = 0 ] || {
     echo "error: --effort ultra requires the canonical --harness pi or pi-signed launch so its native flag cannot be omitted" >&2
     exit 1
   }
+  "$SCRIPT_DIR/fm-harness.sh" validate-native-effort "$HARNESS" "$MODEL" "$EFFORT" || exit 1
 fi
 if [ "$HARNESS" = omp ]; then
   omp_model_validate "$OMP_BIN" "$MODEL" || exit 1
@@ -2175,7 +2190,7 @@ model_flag_for_harness() {
   local harness=$1 model=$2
   [ -n "$model" ] && [ "$model" != default ] || return 0
   case "$harness" in
-  claude | codex | opencode | pi | pi-signed | grok | kimi | cursor | gemini | omp)
+  claude | codex | pi | pi-signed | grok | kimi | cursor | gemini | omp)
     printf -- '--model %s ' "$(shell_quote "$model")"
     ;;
   esac
@@ -2229,9 +2244,6 @@ effort_flag_for_harness() {
     low | medium | high | xhigh | max) printf -- '--thinking %s ' "$(shell_quote "$effort")" ;;
     esac
     ;;
-    # opencode's interactive `opencode --prompt` launch has a verified --model
-    # flag but no verified effort flag. Its `opencode run --variant` flag belongs
-    # to a different, non-interactive launch mode, so fm-spawn does not pass it.
     # kimi provider catalogs expose supported and default effort values, but a
     # launch flag and mapping have not been live-verified; the requested axis
     # stays in task metadata but never reaches the launch command. Cursor encodes
@@ -3639,7 +3651,7 @@ if [ "$KIND" != secondmate ]; then
     ;;
   esac
   case "$HARNESS" in
-  claude* | opencode* | pi | pi-signed | omp)
+  claude* | pi | pi-signed | omp)
     BUSY_GEN=$("$FM_ROOT/bin/fm-busy-event.sh" arm "$STATE_REAL" "$ID") || {
       echo "error: failed to arm the busy-state contract for $ID" >&2
       exit 1
@@ -3722,59 +3734,6 @@ EOF
 {"hooks":{"BeforeAgent":[{"hooks":[{"type":"command","command":"$g_before"}]}],"AfterAgent":[{"hooks":[{"type":"command","command":"$g_after"}]}],"SessionEnd":[{"hooks":[{"type":"command","command":"$g_sessionend"}]}]}}
 EOF
     fi
-    ;;
-  opencode*)
-    mkdir -p "$WT/.opencode/plugins"
-    cat >"$WT/.opencode/plugins/fm-busy-state.js" <<EOF
-// Firstmate semantic busy-state events + turn-end notification; written by
-// fm-spawn under the contract owned by bin/fm-busy-lib.sh.
-// Semantic state comes from OpenCode's session.status events: busy and retry
-// are active, idle is inactive. Scoping latches the first session that
-// reports activity (the worker's main session - a subagent child session can
-// only start while the main session is already busy) and ignores other
-// sessions' status until the latched session settles, so a child's idle can
-// never clear the worker's busy state. The session.idle touch stays the
-// watcher's wake NOTIFICATION, never current-state truth.
-import { execFile } from "node:child_process";
-const busyEvent = (state, event) =>
-  new Promise((resolve) => {
-    execFile("$FM_ROOT/bin/fm-busy-event.sh", [
-      "apply", "$STATE_REAL", "$ID", state,
-      "--gen", "$BUSY_GEN", "--source", "opencode-plugin", "--event", event,
-    ], () => resolve());
-  });
-export const FmBusyState = async () => {
-  let activeSession = null;
-  return {
-    event: async ({ event }) => {
-      if (event.type === "session.status") {
-        const sessionID = event.properties.sessionID;
-        const statusType = event.properties.status && event.properties.status.type;
-        if (statusType === "busy" || statusType === "retry") {
-          if (activeSession === null) activeSession = sessionID;
-          if (sessionID === activeSession) await busyEvent("busy", "session-" + statusType);
-          return;
-        }
-        if (statusType === "idle" && sessionID === activeSession) {
-          activeSession = null;
-          await busyEvent("idle", "session-status-idle");
-        }
-        return;
-      }
-      if (event.type === "session.idle") {
-        if (event.properties.sessionID === activeSession) {
-          activeSession = null;
-          await busyEvent("idle", "session-idle");
-        }
-        await new Promise((resolve) => {
-          execFile("touch", ["$TURNEND"], () => resolve());
-        });
-      }
-    },
-  };
-};
-EOF
-    exclude_path '.opencode/plugins/fm-busy-state.js'
     ;;
   pi | pi-signed)
     # Written OUTSIDE the worktree: pi's project-trust gate fires on any extension
@@ -4186,7 +4145,7 @@ omp) LAUNCH=${LAUNCH//__OMPBIN__/"$(shell_quote "$OMP_BIN")"} ;;
 esac
 LAUNCH=${LAUNCH//__WORKTREE__/$sq_worktree}
 case "$HARNESS" in
-claude | codex | opencode | pi | pi-signed | grok | kimi | gemini)
+claude | codex | pi | pi-signed | grok | kimi | gemini)
   LAUNCH="env -u CURSOR_AGENT -u CURSOR_INVOKED_AS -u GEMINI_CLI $LAUNCH"
   ;;
 esac

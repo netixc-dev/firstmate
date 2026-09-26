@@ -251,6 +251,7 @@ General component replacement, ANSI cursor erasure, provider-context mutation, a
 ## Cross-harness verification record
 
 The original five-harness inspection was performed on 2026-07-22, with every integration surface rechecked and Pi reverified at 0.81.1 on 2026-07-23 for the latest Calm presentation change.
+The OpenCode evidence in this historical record predates its removal and does not describe a supported adapter.
 
 ```text
 $ claude --version
@@ -275,7 +276,7 @@ grok 0.2.106 (bde89716f679)
 
 These conclusions are deliberately limited to the named versions and supported surfaces.
 They do not claim that a harness can never add the missing renderer API, and the Claude Code row is the first that changed for exactly that reason.
-For the duplicate-turn fix and the latest presentation change, the launch templates for Claude, Codex, OpenCode, Pi, and Grok and the watcher, turn-end, session-start, away-supervisor, and from-firstmate producers were re-inspected.
+For the duplicate-turn fix and the latest presentation change, the launch templates for Claude, Codex, Pi, and Grok and the watcher, turn-end, session-start, away-supervisor, and from-firstmate producers were re-inspected.
 The canonical encoder and every non-Pi delivery path remain unchanged, and the tmux and Herdr runtime surfaces continue to transport the same input selected by the harness adapter.
 Pi's Calm implementation changed only to consume the shared sprite core, while the new Claude Code mod changes drawings only; every producer and non-Pi transport remains unchanged.
 

@@ -20,7 +20,7 @@
 # no new extraction - only --cursor, which selects Cursor's own deny rendering
 # and marks this invocation as the Cursor registration rather than the
 # Claude-settings duplicate Cursor also loads.
-# CLI mode is used by OpenCode and Pi after their adapters extract the exact
+# CLI mode is used by Pi after their adapters extract the exact
 # command string.
 # --background remains accepted for compatibility, but harness-native tracked
 # background execution is not itself a policy signal.
@@ -38,7 +38,7 @@
 # Claude requires stdout to remain empty on deny.
 # Codex blocks on exit 2 and displays stderr.
 # Grok consumes the stdout decision object.
-# OpenCode and Pi consume exit 2 plus stderr.
+# Pi consume exit 2 plus stderr.
 # Cursor consumes the stdout decision object.
 set -u
 

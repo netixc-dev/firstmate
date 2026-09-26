@@ -79,7 +79,7 @@ check_harness_idle_empty() {  # <name> <launch-cmd...>
     [ "$verdict" = empty ] && break
     i=$((i + 1))
     # A fresh harness may park on a vendor update-available modal (observed
-    # live: codex 0.146.0 and opencode 1.14.46), which the strict classifier
+    # live: codex 0.146.0), which the strict classifier
     # correctly refuses to call a composer. Dismiss it once, mid-budget, with
     # a single Escape - the one key that submits nothing anywhere and is how
     # the audit declined the same prompts. Never Enter: on codex's dialog
@@ -151,7 +151,7 @@ check_harness_idle_cursorless() {  # <name> <version> <target>
 }
 
 # --- 1. Every installed verified harness must reach a proven-empty composer --
-for h in claude codex opencode pi grok kimi; do
+for h in claude codex pi grok kimi; do
   if command -v "$h" >/dev/null 2>&1; then
     check_harness_idle_empty "$h" "$h"
   else
