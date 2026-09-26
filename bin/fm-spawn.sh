@@ -786,6 +786,11 @@ spawn_split_shell_words() { # <command>
   [ "$active" -eq 0 ] || SPAWN_SHELL_WORDS+=("$token")
 }
 
+spawn_split_env_words() { # <split-string>
+  case "$1" in *\\*) return 1 ;; esac
+  spawn_split_shell_words "$1"
+}
+
 spawn_raw_executable() { # <command>
   local input=${1-} word split env_word='' i=0
   local -a words suffix
@@ -820,21 +825,21 @@ spawn_raw_executable() { # <command>
         [ "$i" -lt "${#words[@]}" ] || break 2
         split=${words[$i]}
         suffix=("${words[@]:i+1}")
-        spawn_split_shell_words "$split"
+        spawn_split_env_words "$split" || return 1
         words=("${SPAWN_SHELL_WORDS[@]}" "${suffix[@]}")
         i=0
         ;;
       --split-string=*)
         split=${word#*=}
         suffix=("${words[@]:i+1}")
-        spawn_split_shell_words "$split"
+        spawn_split_env_words "$split" || return 1
         words=("${SPAWN_SHELL_WORDS[@]}" "${suffix[@]}")
         i=0
         ;;
       -S?*)
         split=${word#-S}
         suffix=("${words[@]:i+1}")
-        spawn_split_shell_words "$split"
+        spawn_split_env_words "$split" || return 1
         words=("${SPAWN_SHELL_WORDS[@]}" "${suffix[@]}")
         i=0
         ;;
@@ -852,7 +857,10 @@ spawn_refuse_removed_harness() { # <harness-or-command>
     echo "error: unsupported removed harness '$input'; refusing before task mutation" >&2
     return 1
   fi
-  executable=$(spawn_raw_executable "$input")
+  if ! executable=$(spawn_raw_executable "$input"); then
+    echo "error: env split-string backslash syntax cannot be classified safely; refusing before task mutation" >&2
+    return 1
+  fi
   if [ "${executable##*/}" = kimi ]; then
     echo "error: unsupported removed harness '$executable'; refusing before task mutation" >&2
     return 1
