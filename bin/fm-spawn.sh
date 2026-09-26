@@ -843,7 +843,9 @@ spawn_raw_executable() { # <command>
         words=("${SPAWN_SHELL_WORDS[@]}" "${suffix[@]}")
         i=0
         ;;
-      -*) printf '%s\n' "$env_word"; return 0 ;;
+      -*)
+        if [[ $word =~ ^-[iv0]+$ ]]; then i=$((i + 1)); else return 1; fi
+        ;;
       *) break ;;
       esac
     done
@@ -858,7 +860,7 @@ spawn_refuse_removed_harness() { # <harness-or-command>
     return 1
   fi
   if ! executable=$(spawn_raw_executable "$input"); then
-    echo "error: env split-string backslash syntax cannot be classified safely; refusing before task mutation" >&2
+    echo "error: env raw command cannot be classified safely; refusing before task mutation" >&2
     return 1
   fi
   if [ "${executable##*/}" = kimi ]; then
