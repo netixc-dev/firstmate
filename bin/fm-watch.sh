@@ -2203,6 +2203,9 @@ if ! fm_lock_try_acquire "$WATCH_LOCK"; then
   fi
   exit 0
 fi
+# Cover the startup interval before the full watcher cleanup trap is installed.
+# fm_lock_release removes the lock only while this process still owns it.
+trap 'fm_lock_release "$WATCH_LOCK" || true' EXIT
 WATCHER_RECOVERY_PENDING=0
 if [ -n "${FM_LOCK_RECOVERED_PID:-}" ]; then
   WATCHER_RECOVERY_PENDING=1
