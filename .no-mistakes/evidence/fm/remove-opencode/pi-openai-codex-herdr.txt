@@ -1,0 +1,8 @@
+session=fm-lab-remove-opencode-16092-3654
+provision=ok (provision performs prepare for a fresh lab)
+workspace-created pane=w1:p1
+pi-launched model=openai-codex/gpt-5.5
+model-response:
+[pi-web-access] Dynamic tool activation requires Pi 0.86.1 or newer; web tools remain eagerly available.
+PI_OPENAI_CODEX_PRESERVED
+result=pass

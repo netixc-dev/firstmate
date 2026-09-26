@@ -1,0 +1,4 @@
+$ FM_GATE_REFUSE_BYPASS=1 FM_HOME=<isolated> bin/fm-spawn.sh live-opencode-refusal <project> --harness opencode --mode no-mistakes --yolo off
+error: unsupported removed harness 'opencode'; refusing before task mutation
+exit=1
+published-files:
