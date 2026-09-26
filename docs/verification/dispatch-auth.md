@@ -143,7 +143,8 @@ A listing that reaches the account and returns no row is the authoritative negat
 
 Verified 2026-07-30 against quota-axi 0.1.16.
 
-`quota-axi auth --json` reports each provider's credential sources separately, which is what lets a candidate be scoped to the one surface it actually authenticates through:
+`quota-axi auth --json` reports each provider's credential sources separately, which is what lets a candidate be scoped to the one surface it actually authenticates through.
+The `grok` provider row below is xAI authentication for Pi's `xai/grok-*` models, not a standalone worker harness:
 
 ```json
 [

@@ -528,6 +528,21 @@ assert_contains "$out" 'candidate: pi:openai-codex/gpt-5.6-sol  provider=codex  
 assert_contains "$out" 'candidate: codex:gpt-5.6-sol  provider=codex  scope=all_models  remaining=31%  spendPriority=-  runway=projected_exhaustion  -> not eligible: profile floor all_models below 50%' "profile floor makes a candidate ineligible with its reason"
 assert_contains "$out" "  profile: --harness 'pi' --model 'openai-codex/gpt-5.6-sol'" "the remaining eligible candidate wins"
 
+# The xAI provider row named `grok` belongs to a Pi model, never to the
+# retired standalone worker or its credential store.
+XAI_QUOTA="$TMP_ROOT/pi-xai-quota.json"
+jq '.providers += [{"provider":"grok","state":{"status":"fresh"},"quotaSemantics":{"status":"known","effectiveAvailability":[{"scope":"all_models","status":"known","effectivePercentRemaining":70,"runway":{"status":"through_reset"},"selection":{"spendPriority":0.7}}]}}]' "$QUOTA" > "$XAI_QUOTA"
+jq '.rules[1].use = [{"harness":"pi","model":"xai/grok-4.5","provider":"grok"}]' "$BASE_RULES" > "$RULES"
+reset_log
+write_response "$RESPONSE" rule_2 0.99
+TYPESAFE_API_KEY=$KEY QUOTA_AXI_FIXTURE="$XAI_QUOTA" run code out err "$BRIEF"
+assert_contains "$out" 'candidate: pi:xai/grok-4.5  provider=grok  scope=all_models  remaining=70%' "Pi xAI candidate must bind to the explicit provider row"
+assert_contains "$out" "  profile: --harness 'pi' --model 'xai/grok-4.5'" "provider evidence must never select standalone Grok"
+cp "$BASE_RULES" "$RULES"
+reset_log
+write_response "$RESPONSE" rule_2 0.99
+pass "explicit xAI provider evidence preserves Pi routing without a Grok harness"
+
 FLOOR_BOUNDS="$TMP_ROOT/floor-bounds.json"
 jq '(.providers[] | select(.provider == "codex") | .quotaSemantics.effectiveAvailability) += [
   {"scope":"model:gpt-5.6-sol","status":"known","effectivePercentRemaining":10,"runway":{"status":"projected_exhaustion"},"selection":{"spendPriority":-0.9}}

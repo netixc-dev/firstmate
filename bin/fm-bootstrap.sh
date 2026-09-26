@@ -1505,12 +1505,12 @@ detect_local_config() {
   crew=
   [ -f "$CONFIG/crew-harness" ] && crew=$(tr -d '[:space:]' < "$CONFIG/crew-harness" || true)
   case "$crew" in
-    grok|grok-*) echo "CREW_DISPATCH: invalid config/crew-harness - unsupported removed Grok worker '$crew'; choose a supported harness explicitly" ;;
+    grok*) echo "CREW_DISPATCH: invalid config/crew-harness - unsupported removed Grok worker '$crew'; choose a supported harness explicitly" ;;
   esac
   if [ -f "$CONFIG/secondmate-harness" ]; then
     read -r secondmate_pin _ < "$CONFIG/secondmate-harness" || true
     case "$secondmate_pin" in
-      grok|grok-*) echo "CREW_DISPATCH: invalid config/secondmate-harness - unsupported removed Grok worker '$secondmate_pin'; choose a supported harness explicitly" ;;
+      grok*) echo "CREW_DISPATCH: invalid config/secondmate-harness - unsupported removed Grok worker '$secondmate_pin'; choose a supported harness explicitly" ;;
     esac
   fi
   if [ "${FM_BOOTSTRAP_VERBOSE_FACTS:-0}" = 1 ] && [ -n "$crew" ] && [ "$crew" != "default" ]; then

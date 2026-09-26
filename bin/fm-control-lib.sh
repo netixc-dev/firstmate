@@ -68,7 +68,7 @@ fm_control_harnesses() {
 
 # A legacy Grok record is unsupported and must be explicitly migrated.
 fm_control_removed_harness() {  # <recorded-harness>
-  case "${1-}" in grok|grok-*) return 0 ;; *) return 1 ;; esac
+  case "${1-}" in grok*) return 0 ;; *) return 1 ;; esac
 }
 
 fm_control_harness_supported() {  # <harness>

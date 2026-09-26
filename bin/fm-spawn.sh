@@ -167,6 +167,9 @@
 #   paths named agy. The removed Devin, Rovo, and Muse adapters are refused for
 #   explicit selections, static pins, and dispatch profiles, while whitespace-
 #   containing raw commands remain caller-owned even for those executables.
+#   Standalone Grok values (including raw commands whose first non-environment
+#   executable is grok*) refuse before task mutation; recorded Grok tasks retain
+#   their work for explicit migration. No Grok value falls back to Pi.
 #   Legacy Muse bindings are retired only by guarded replacement or teardown;
 #   vendor credentials, installations, and session history are never removed.
 #   For pi and pi-signed, fm-spawn resolves the selected executable
@@ -752,7 +755,7 @@ esac
 spawn_refuse_removed_harness() { # <harness-or-command>
   local input=${1-} executable legacy=agy
   case "$input" in
-    grok|grok-*)
+    grok*)
       echo "error: unsupported removed harness '$input'; refusing before task mutation" >&2
       return 1
       ;;
@@ -769,7 +772,7 @@ spawn_refuse_removed_harness() { # <harness-or-command>
       --) if [ "$raw_env" -eq 1 ]; then raw_env=0; continue; fi ;;
     esac
     case "${word##*/}" in
-      grok|grok-*)
+      grok*)
         echo "error: unsupported removed Grok executable '$word'; refusing before task mutation" >&2
         return 1
         ;;
@@ -798,7 +801,7 @@ spawn_refuse_removed_record() { # <meta-file>
   # A removed Grok record must be preserved for explicit recovery, never
   # relaunched as an inferred replacement or cleaned as a supported task.
   case "$recorded" in
-    grok|grok-*)
+    grok*)
       echo "error: unsupported legacy Grok record '$recorded'; retaining its work" >&2
       return 1
       ;;
@@ -2067,7 +2070,7 @@ esac
 # A removed executable must not pass through the raw-command escape hatch.
 # Reject before any endpoint, worktree, busy writer, or task record is created.
 case "$HARNESS" in
-  grok|grok-*)
+  grok*)
     echo "error: standalone Grok worker '$HARNESS' is unsupported; explicitly choose a supported harness" >&2
     exit 1
     ;;

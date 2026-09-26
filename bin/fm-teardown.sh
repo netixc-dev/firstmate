@@ -443,7 +443,7 @@ fm_backlog_record_present "$META" "task record" "$STATE" || {
 }
 # A removed adapter's active record is not permission to clean up its work.
 case "$(fm_meta_get "$META" harness)" in
-  grok|grok-*)
+  grok*)
     echo "error: task $ID has an unsupported legacy Grok record; migrate it explicitly before cleanup" >&2
     exit 1
     ;;
@@ -3035,7 +3035,7 @@ cleanup_firstmate_home_children() {
     [ -e "$child_meta" ] || continue
     child_id=$(basename "$child_meta" .meta)
     case "$(meta_value "$child_meta" harness)" in
-      grok|grok-*)
+      grok*)
         echo "error: child task $child_id has an unsupported legacy Grok record; retaining its work" >&2
         return 1
         ;;

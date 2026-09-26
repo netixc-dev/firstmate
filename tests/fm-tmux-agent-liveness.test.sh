@@ -89,6 +89,7 @@ fi
 ln -s "$STANDIN_BIN" "$LAB/bin/claude-link"
 ln -s "$STANDIN_BIN" "$LAB/bin/pi"
 ln -s "$STANDIN_BIN" "$LAB/bin/rovo"
+ln -s "$STANDIN_BIN" "$LAB/bin/grok"
 ln -s "$STANDIN_BIN" "$LAB/bin/notaharness"
 # omp (Oh My Pi) is a single binary whose live process name is the bare word
 # `omp`; the two decoys are the substrings an unanchored glob would misread.
@@ -209,6 +210,20 @@ new_window agent "$LAB/bin/claude-link" 900
 wait_for_state "$SESSION:agent" alive \
   || fail "a running harness-named foreground process must classify alive"
 pass "tmux liveness: a harness-named foreground process classifies alive"
+
+if [ ! -L "$LAB/bin/standin" ]; then
+  new_window pi-xai "$LAB/bin/pi" --model xai/grok-4.5
+  wait_for_state "$SESSION:pi-xai" alive \
+    || fail "a Pi executable with an xAI Grok model argument must remain a live Pi agent"
+  pass "tmux liveness: an xAI model argument does not change Pi process identity"
+else
+  echo "skip: no C compiler; sleep stand-in cannot accept a model argument"
+fi
+
+new_window retired-grok "$LAB/bin/grok" 900
+wait_for_state "$SESSION:retired-grok" ambiguous \
+  || fail "a retired standalone Grok executable must not regain agent identity"
+pass "tmux liveness: a retired Grok executable stays ambiguous"
 
 # A retired Rovo-named process can still occupy a legacy caller-owned raw
 # command pane. Do not give that process verified agent authority through the

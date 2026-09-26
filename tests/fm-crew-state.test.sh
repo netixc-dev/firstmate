@@ -2985,6 +2985,21 @@ test_remote_dead_reports_remote_verdict() {
   pass "fm-crew-state remote: the remote host's own dead verdict is reported truthfully"
 }
 
+test_removed_grok_record_is_unsupported() {
+  reset_fakes
+  local d out rc
+  d=$(new_case legacy-grok-record)
+  make_repo_on_branch "$d/wt" fm/legacy-grok
+  make_fakebin "$d" >/dev/null
+  fm_write_meta "$d/state/legacy-grok.meta" "window=fm:fm-legacy-grok" "worktree=$d/wt" "kind=ship" "harness=grok-helper"
+  out=$(run_crew_state "$d" legacy-grok); rc=$?
+  expect_code 0 "$rc" "legacy Grok record renders a current-state refusal"
+  assert_contains "$out" "state: unknown" "legacy Grok cannot be read as idle or Pi"
+  assert_contains "$out" "unsupported legacy Grok record" "legacy Grok needs explicit migration"
+  [ -f "$d/state/legacy-grok.meta" ] || fail "crew-state mutated the legacy record"
+  pass "legacy Grok state is unsupported without deleting its record"
+}
+
 test_missing_meta() {
   reset_fakes
   local d; d=$(new_case nometa)
@@ -5318,6 +5333,7 @@ test_remote_alive_with_log_uses_status_log
 test_remote_alive_idle_is_healthy_not_gone
 test_remote_unreachable_is_unknown_remote_not_dead
 test_remote_dead_reports_remote_verdict
+test_removed_grok_record_is_unsupported
 test_missing_meta
 test_provably_working_via_runs_list_fallback
 test_not_provably_working_when_stopped

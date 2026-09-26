@@ -36,7 +36,6 @@ run_spawn() {  # <home> <wt> <fakebin> <spawn-args...>
   # fixed valid one.
   local home=$1 wt=$2 fakebin=$3
   shift 3
-  GROK_HOME="$home/grok-home" \
     fm_test_run_spawn "$home" "$wt" "$fakebin" "$@" --mode no-mistakes --yolo off
 }
 
@@ -398,8 +397,7 @@ test_gemini_is_refused_as_a_secondmate() {
   read_case_record "$rec"
   # A secondmate spawn carries no delivery contract, so this one deliberately
   # bypasses run_spawn's ship-only --mode/--yolo arguments.
-  out=$(GROK_HOME="$HOME_DIR/grok-home" \
-    fm_test_run_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" --secondmate "$id" gemini) && {
+  out=$(fm_test_run_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" --secondmate "$id" gemini) && {
     fail "a gemini secondmate must be refused, it has no primary supervision protocol: $out"
   }
   assert_contains "$out" 'crewmate/scout adapter only' \
