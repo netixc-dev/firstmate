@@ -2010,16 +2010,15 @@ case "$ARG3" in
 *' '*) # raw launch command (unverified-adapter escape hatch)
   RAW_LAUNCH=1
   LAUNCH=$ARG3
-  # The executable is diagnostic/account-pin input, never a verified adapter.
-  RAW_EXECUTABLE=
-  HARNESS=unknown
+  HARNESS=
   for word in $LAUNCH; do
     case "$word" in [A-Za-z_]*=*) continue ;; *)
-      RAW_EXECUTABLE=$(basename "$word")
+      HARNESS=$(basename "$word")
       break
       ;;
     esac
   done
+  [ "$HARNESS" != opencode ] || HARNESS=unknown
   ;;
 '')
   # No explicit harness: resolve from config. A secondmate AGENT launches on the
@@ -2143,16 +2142,12 @@ fi
 # trust registration below writes the store the worker will actually read.
 RAW_COMMAND=
 [ "$RAW_LAUNCH" = 0 ] || RAW_COMMAND=$ARG3
-ACCOUNT_HARNESS=$HARNESS
-if [ "$RAW_LAUNCH" -eq 1 ]; then
-  case "$RAW_EXECUTABLE" in claude|pi|pi-signed) ACCOUNT_HARNESS=$RAW_EXECUTABLE ;; esac
-fi
-WORKER_ACCOUNT=$(fm_worker_account_select "$ACCOUNT_HARNESS" "$CONFIG" "$MODEL" "${PI_BIN:-${RAW_EXECUTABLE:-$HARNESS}}" "$RAW_COMMAND") || exit 1
+WORKER_ACCOUNT=$(fm_worker_account_select "$HARNESS" "$CONFIG" "$MODEL" "${PI_BIN:-$HARNESS}" "$RAW_COMMAND") || exit 1
 WORKER_ACCOUNT_DECLARED=${WORKER_ACCOUNT%%$'\t'*}
 WORKER_ACCOUNT_ROOT=${WORKER_ACCOUNT#*$'\t'}
 WORKER_ACCOUNT_PROVIDER=${WORKER_ACCOUNT_ROOT#*$'\t'}
 WORKER_ACCOUNT_ROOT=${WORKER_ACCOUNT_ROOT%%$'\t'*}
-if [ -n "$WORKER_ACCOUNT" ] && [ "$ACCOUNT_HARNESS" = claude ]; then
+if [ -n "$WORKER_ACCOUNT" ] && [ "$HARNESS" = claude ]; then
   if [ -n "$WORKER_ACCOUNT_ROOT" ]; then
     export CLAUDE_CONFIG_DIR=$WORKER_ACCOUNT_ROOT
   else
@@ -4165,7 +4160,7 @@ esac
 # pinned root (or unsets the variable for the ordinary Claude account) and
 # sheds the environment credentials Claude ranks above the root's login.
 if [ -n "$WORKER_ACCOUNT" ]; then
-  case "$ACCOUNT_HARNESS" in
+  case "$HARNESS" in
   claude)
     if [ -n "$WORKER_ACCOUNT_ROOT" ]; then
       LAUNCH="$(fm_worker_account_claude_shed) CLAUDE_CONFIG_DIR=$(shell_quote "$WORKER_ACCOUNT_ROOT") $LAUNCH"

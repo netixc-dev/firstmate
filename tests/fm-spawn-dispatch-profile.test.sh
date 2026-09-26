@@ -170,7 +170,7 @@ test_devin_adapter_selections_refuse_and_raw_command_survives() {
   assert_absent "$HOME_DIR/state/$id.meta" "static Devin secondmate pin wrote task metadata"
   printf '%s\n' codex > "$HOME_DIR/config/secondmate-harness"
 
-  fm_write_meta "$HOME_DIR/state/$id.meta" "window=sess:fm-$id" "worktree=$WT_DIR" "project=$PROJ_DIR" "harness=unknown" "kind=ship"
+  fm_write_meta "$HOME_DIR/state/$id.meta" "window=sess:fm-$id" "worktree=$WT_DIR" "project=$PROJ_DIR" "harness=devin" "kind=ship"
   meta_before=$(cat "$HOME_DIR/state/$id.meta")
   out=$(run_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" --relaunch); rc=$?
   expect_code 1 "$rc" "an implicit legacy Devin relaunch must not start the removed adapter"
@@ -188,7 +188,7 @@ test_devin_adapter_selections_refuse_and_raw_command_survives() {
   fm_test_spawn_brief "$HOME_DIR" "$id"
   out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "devin --prompt-interactive"); rc=$?
   expect_code 0 "$rc" "a caller-owned raw Devin command must remain available"
-  assert_contains "$out" "spawned $id harness=unknown" "raw Devin command did not publish its task"
+  assert_contains "$out" "spawned $id harness=devin" "raw Devin command did not publish its task"
   assert_contains "$(cat "$LAUNCH_LOG")" "devin --prompt-interactive" "raw Devin command was changed"
   out=$(run_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" --relaunch); rc=$?
   expect_code 1 "$rc" "implicit raw relaunch cannot reconstruct the original command"
@@ -265,10 +265,14 @@ test_rovo_selections_refuse_but_raw_commands_and_home_paths_survive() {
     assert_absent "$HOME_DIR/state/$id.muse-session" "raw command received a retired session binding"
     assert_absent "$HOME_DIR/state/$id.muse-session-current" "raw command received a retired session cache"
     assert_not_contains "$(cat "$LAUNCH_LOG")" '--yolo' "raw command received an adapter-added permission flag"
-    assert_grep 'harness=unknown' "$HOME_DIR/state/$id.meta" "raw launch must record opaque identity"
     if [ "$removed" = opencode ]; then
+      if [ "$i" -le 2 ]; then
+        assert_grep 'harness=unknown' "$HOME_DIR/state/$id.meta" "raw OpenCode launch must record opaque identity"
+      fi
       assert_absent "$WT_DIR/.opencode/plugins/fm-busy-state.js" "raw command generated removed adapter wiring"
       [ ! -e "$HOME_DIR/state/$id.busy-state" ] || fail "raw command armed an adapter busy source"
+    elif [ "$i" -le 2 ]; then
+      assert_grep "harness=$removed" "$HOME_DIR/state/$id.meta" "raw basename provenance changed"
     fi
   done
   done
@@ -370,8 +374,8 @@ test_unrelated_raw_argument_keeps_survivor_launch() {
   read_case_record "$rec"
   out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "other --prompt $removed"); rc=$?
   expect_code 0 "$rc" "an unrelated raw launch may pass a removed-name argument"
-  assert_contains "$out" "spawned $id harness=unknown" "the unrelated raw launch was not selected"
-  assert_grep 'harness=unknown' "$HOME_DIR/state/$id.meta" "unrelated raw launch lost its harness record"
+  assert_contains "$out" "spawned $id harness=other" "the unrelated raw launch was not selected"
+  assert_grep 'harness=other' "$HOME_DIR/state/$id.meta" "unrelated raw launch lost its harness record"
   assert_contains "$(cat "$LAUNCH_LOG")" "other --prompt $removed" "raw launch changed its argument text"
   out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$quoted_id" "$PROJ_DIR" --harness "other --prompt '$removed; echo ok'"); rc=$?
   expect_code 0 "$rc" "a quoted argument containing shell syntax is not a command"
@@ -393,7 +397,7 @@ test_unrelated_raw_argument_keeps_survivor_launch() {
   assert_contains "$(cat "$LAUNCH_LOG")" "nice -n 5 other --prompt $removed" "nice changed the unrelated leaf argument"
   out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$other_id" "$PROJ_DIR" --harness "$other --flag"); rc=$?
   expect_code 0 "$rc" "an unrelated raw executable must remain available"
-  assert_contains "$out" "spawned $other_id harness=unknown" "unrelated raw executable was rejected as an alias"
+  assert_contains "$out" "spawned $other_id harness=$other" "unrelated raw executable was rejected as an alias"
   pass "removed-name arguments and unrelated raw executables remain available"
 }
 
@@ -682,14 +686,48 @@ test_active_dispatch_profile_allows_raw_launch_command() {
     "$id" "$PROJ_DIR" "custom-agent --flag")
   status=$?
   expect_code 0 "$status" "raw launch command should satisfy active dispatch-profile requirement"
-  assert_contains "$out" "spawned $id harness=unknown" "spawn did not report raw command harness"
-  assert_meta_profile "$HOME_DIR/state/$id.meta" unknown default default
+  assert_contains "$out" "spawned $id harness=custom-agent" "spawn did not report raw command harness"
+  assert_meta_profile "$HOME_DIR/state/$id.meta" custom-agent default default
   launch=$(cat "$LAUNCH_LOG")
   # The unverified-adapter escape hatch is still an agent this fleet launched,
   # so it carries the compact-adviser floor; nothing else may rewrite the
   # captain's own command.
   [ "$launch" = "export COMPACT_ADVISER_DISABLE=1; custom-agent --flag" ] || fail "raw launch command changed"$'\n'"actual: $launch"
   pass "active crew-dispatch profile allows the raw launch-command escape hatch"
+}
+
+test_raw_claude_preserves_adapter_semantics() {
+  local rec id sm_id sm out status launch
+  id=raw-claude-survivor-z16
+  sm_id=raw-claude-secondmate-z17
+  rec=$(make_spawn_case raw-claude-survivor claude "$id" "$sm_id")
+  read_case_record "$rec"
+
+  out=$(FM_TEST_CLAUDE_CONFIG_DIR="$CASE_DIR/claude-work" \
+    run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" \
+      "$id" "$PROJ_DIR" --harness "claude --raw-flag")
+  status=$?
+  expect_code 0 "$status" "a recognized raw Claude launch should succeed"
+  assert_contains "$out" "spawned $id harness=claude" "raw Claude lost its adapter identity"
+  assert_meta_profile "$HOME_DIR/state/$id.meta" claude default default
+  assert_present "$HOME_DIR/state/$id.busy-state" "raw Claude did not arm semantic busy state"
+  assert_present "$WT_DIR/.claude/settings.local.json" "raw Claude did not receive lifecycle hooks"
+  launch=$(cat "$LAUNCH_LOG")
+  assert_contains "$launch" "CLAUDE_CONFIG_DIR='$CASE_DIR/claude-work'" "raw Claude lost ambient account forwarding"
+  assert_contains "$launch" "env -u CURSOR_AGENT -u CURSOR_INVOKED_AS -u GEMINI_CLI claude --raw-flag" \
+    "raw Claude did not clear foreign harness markers"
+
+  sm="$CASE_DIR/secondmate-home"
+  make_seeded_secondmate_home "$sm" "$sm_id"
+  out=$(run_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" \
+    "$sm_id" "$sm" --secondmate --harness "claude --raw-flag")
+  status=$?
+  expect_code 0 "$status" "a recognized raw Claude secondmate launch should succeed"
+  assert_contains "$out" "spawned $sm_id harness=claude kind=secondmate" \
+    "raw Claude secondmate lost its adapter identity"
+  assert_contains "$(cat "$LAUNCH_LOG")" "FM_SUPERVISION_MODEL=autoarm" \
+    "raw Claude secondmate lost its supervision model"
+  pass "recognized raw Claude launches preserve adapter semantics"
 }
 
 test_claude_threads_model_and_effort() {
@@ -1785,6 +1823,7 @@ test_active_dispatch_profile_requires_explicit_harness_for_scout
 test_active_dispatch_profile_allows_explicit_harness
 test_active_dispatch_profile_allows_positional_harness
 test_active_dispatch_profile_allows_raw_launch_command
+test_raw_claude_preserves_adapter_semantics
 test_claude_threads_model_and_effort
 test_codex_threads_model_and_effort
 test_codex_threads_model_and_max_effort
