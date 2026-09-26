@@ -144,7 +144,7 @@ test_kimi_selections_refuse_before_mutation() {
   rec=$(make_spawn_case kimi-retired pi "$id")
   read_case_record "$rec"
   before=$(git -C "$WT_DIR" status --short)
-  for form in flag positional config raw env_raw env_unset_raw env_chdir_raw env_unset_equals_raw env_ignore_raw env_separator_raw env_split_raw env_split_equals_raw env_split_escape_raw secondmate; do
+  for form in flag positional config raw env_raw env_unset_raw env_chdir_raw env_unset_equals_raw env_ignore_raw env_separator_raw env_split_raw env_split_equals_raw env_split_option_raw env_split_escape_raw secondmate; do
     case "$form" in
       flag) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness kimi); rc=$? ;;
       positional) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" kimi); rc=$? ;;
@@ -162,6 +162,7 @@ test_kimi_selections_refuse_before_mutation() {
       env_separator_raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness 'env -- kimi --auto'); rc=$? ;;
       env_split_raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "env -S 'kimi --auto'"); rc=$? ;;
       env_split_equals_raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "env --split-string='FOO=bar /opt/bin/kimi --auto'"); rc=$? ;;
+      env_split_option_raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "env -S '-u FOO kimi --auto'"); rc=$? ;;
       env_split_escape_raw) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --harness "env -S 'kimi\\_--auto'"); rc=$? ;;
       secondmate) out=$(run_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" --secondmate --harness kimi); rc=$? ;;
     esac
