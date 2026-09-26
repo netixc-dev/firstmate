@@ -1,0 +1,4 @@
+typed rc=1 output=error: unsupported removed harness 'grok'; refusing before task mutation
+prefixed rc=1 output=error: unsupported removed harness 'grok-2'; refusing before task mutation
+raw rc=1 output=error: unsupported removed Grok executable '/usr/bin/grok'; refusing before task mutation
+durable_task_metadata=absent busy_state=absent

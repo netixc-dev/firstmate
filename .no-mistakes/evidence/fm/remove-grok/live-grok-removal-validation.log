@@ -1,0 +1,122 @@
+
+=== Fresh standalone Grok selection refuses before task mutation ===
+error: unsupported removed harness 'grok'; refusing before task mutation
+PASS: standalone Grok is rejected before task state exists
+
+=== Legacy Grok record explicitly migrates to a real Pi process ===
+A new version of treehouse is available: v2.3.0 → v3.0.0
+Run "treehouse update" to update
+
+Created /Users/control/.no-mistakes/worktrees/874f0de57f61/01M3EBGDMVNX4HAMF7PS38E0SE/.live-grok-validation-22338/migration/project/treehouse.toml
+●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+●  WATCHER DOWN - SUPERVISION IS OFF
+●  1 task(s) in flight, but no live watcher process holds this home lock (last beat: 1s ago).
+●  Trust the emitted supervision protocol for this harness; do not use shell & for watcher repair.
+●  This is a supervision warning only; the guarded operation WILL still run.
+●  repair a missing or failed watcher cycle with the Pi tool fm_watch_arm_pi, or restart Pi with -e /Users/control/.no-mistakes/worktrees/874f0de57f61/01M3EBGDMVNX4HAMF7PS38E0SE/.pi/extensions/fm-primary-turnend-guard.ts -e /Users/control/.no-mistakes/worktrees/874f0de57f61/01M3EBGDMVNX4HAMF7PS38E0SE/.pi/extensions/fm-primary-pi-watch.ts if the extensions are not loaded.
+●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+warning: /Users/control/.no-mistakes/worktrees/874f0de57f61/01M3EBGDMVNX4HAMF7PS38E0SE/.live-grok-validation-22338/migration/home/data/migrate-grok/launch-brief.md records no ship branch; defaulting to legacy branch fm/migrate-grok
+warning: /Users/control/.no-mistakes/worktrees/874f0de57f61/01M3EBGDMVNX4HAMF7PS38E0SE/.live-grok-validation-22338/migration/home/data/migrate-grok/launch-brief.md records no delivery contract line (scaffolded before ship briefs recorded one); launching on the explicit --mode local-only - confirm its definition of done matches
+notice: migrate-grok ships mode=local-only while the standing posture for project is no-mistakes - less rigor than the captain's standing posture; proceed only on a current explicit captain instruction or an intake judgment you can state
+relaunched migrate-grok harness=pi from=grok-2 model=default effort=default backend=tmux endpoint=live-migration:fm-migrate-grok worktree=/Users/control/.no-mistakes/worktrees/874f0de57f61/01M3EBGDMVNX4HAMF7PS38E0SE/.live-grok-validation-22338/migration/pool/.treehouse/project-e6cfad/1/project
+replacement pane command: node
+PASS: explicit agent-free migration launched Pi and retired only exact Grok wiring
+A new version of treehouse is available: v2.3.0 → v3.0.0
+Run "treehouse update" to update
+
+🌳 Worktree returned to pool.
+
+=== Safely landed legacy Grok cleanup succeeds and exact wiring is removed ===
+A new version of treehouse is available: v2.3.0 → v3.0.0
+Run "treehouse update" to update
+
+Created /Users/control/.no-mistakes/worktrees/874f0de57f61/01M3EBGDMVNX4HAMF7PS38E0SE/.live-grok-validation-22338/cleanup-landed/project/treehouse.toml
+●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+●  WATCHER DOWN - SUPERVISION IS OFF
+●  1 task(s) in flight, but no live watcher process holds this home lock (last beat: 2s ago).
+●  Trust the emitted supervision protocol for this harness; do not use shell & for watcher repair.
+●  This is a supervision warning only; the guarded operation WILL still run.
+●  repair a missing or failed watcher cycle with the Pi tool fm_watch_arm_pi, or restart Pi with -e /Users/control/.no-mistakes/worktrees/874f0de57f61/01M3EBGDMVNX4HAMF7PS38E0SE/.pi/extensions/fm-primary-turnend-guard.ts -e /Users/control/.no-mistakes/worktrees/874f0de57f61/01M3EBGDMVNX4HAMF7PS38E0SE/.pi/extensions/fm-primary-pi-watch.ts if the extensions are not loaded.
+●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+teardown: reaping leaked worktree process(es) for cleanup-landed: 29065 30471
+teardown: force-killing leaked worktree process(es) for cleanup-landed: 29065
+🌳 Worktree returned to pool.
+teardown cleanup-landed complete (window live-cleanup-landed:fm-cleanup-landed, worktree /Users/control/.no-mistakes/worktrees/874f0de57f61/01M3EBGDMVNX4HAMF7PS38E0SE/.live-grok-validation-22338/cleanup-landed/pool/.treehouse/project-e42504/1/project)
+Backlog: cleanup-landed is closed in /Users/control/.no-mistakes/worktrees/874f0de57f61/01M3EBGDMVNX4HAMF7PS38E0SE/.live-grok-validation-22338/cleanup-landed/home/data/backlog.md. Run bin/fm-tasks-axi.sh ready for dependency-cleared candidates, check date gates, and dispatch only work whose blockers are gone and date is due.
+PASS: guarded cleanup accepted landed legacy work and removed only task-owned Grok wiring
+
+=== Dirty and unlanded legacy Grok cleanup attempts are refused without loss ===
+A new version of treehouse is available: v2.3.0 → v3.0.0
+Run "treehouse update" to update
+
+Created /Users/control/.no-mistakes/worktrees/874f0de57f61/01M3EBGDMVNX4HAMF7PS38E0SE/.live-grok-validation-22338/cleanup-dirty/project/treehouse.toml
+●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+●  WATCHER DOWN - SUPERVISION IS OFF
+●  1 task(s) in flight, but no live watcher process holds this home lock (last beat: 2s ago).
+●  Trust the emitted supervision protocol for this harness; do not use shell & for watcher repair.
+●  This is a supervision warning only; the guarded operation WILL still run.
+●  repair a missing or failed watcher cycle with the Pi tool fm_watch_arm_pi, or restart Pi with -e /Users/control/.no-mistakes/worktrees/874f0de57f61/01M3EBGDMVNX4HAMF7PS38E0SE/.pi/extensions/fm-primary-turnend-guard.ts -e /Users/control/.no-mistakes/worktrees/874f0de57f61/01M3EBGDMVNX4HAMF7PS38E0SE/.pi/extensions/fm-primary-pi-watch.ts if the extensions are not loaded.
+●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+REFUSED: worktree /Users/control/.no-mistakes/worktrees/874f0de57f61/01M3EBGDMVNX4HAMF7PS38E0SE/.live-grok-validation-22338/cleanup-dirty/pool/.treehouse/project-de626e/1/project has uncommitted changes.
+uncommitted changes present
+Commit them (or get the captain's explicit OK to discard, then --force).
+PASS: dirty legacy work remained intact after guarded refusal
+A new version of treehouse is available: v2.3.0 → v3.0.0
+Run "treehouse update" to update
+
+🌳 Worktree returned to pool.
+A new version of treehouse is available: v2.3.0 → v3.0.0
+Run "treehouse update" to update
+
+Created /Users/control/.no-mistakes/worktrees/874f0de57f61/01M3EBGDMVNX4HAMF7PS38E0SE/.live-grok-validation-22338/cleanup-unlanded/project/treehouse.toml
+●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+●  WATCHER DOWN - SUPERVISION IS OFF
+●  1 task(s) in flight, but no live watcher process holds this home lock (last beat: 2s ago).
+●  Trust the emitted supervision protocol for this harness; do not use shell & for watcher repair.
+●  This is a supervision warning only; the guarded operation WILL still run.
+●  repair a missing or failed watcher cycle with the Pi tool fm_watch_arm_pi, or restart Pi with -e /Users/control/.no-mistakes/worktrees/874f0de57f61/01M3EBGDMVNX4HAMF7PS38E0SE/.pi/extensions/fm-primary-turnend-guard.ts -e /Users/control/.no-mistakes/worktrees/874f0de57f61/01M3EBGDMVNX4HAMF7PS38E0SE/.pi/extensions/fm-primary-pi-watch.ts if the extensions are not loaded.
+●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+REFUSED: local-only worktree /Users/control/.no-mistakes/worktrees/874f0de57f61/01M3EBGDMVNX4HAMF7PS38E0SE/.live-grok-validation-22338/cleanup-unlanded/pool/.treehouse/project-4721aa/1/project has work not yet merged into main and not on any remote.
+commits not yet on main:
+d352725 work for cleanup-unlanded
+Merge the branch into local main first (bin/fm-merge-local.sh after the captain approves), or push to a fork/remote, or get the captain's explicit OK to discard, then --force.
+PASS: unlanded legacy work remained intact after guarded refusal
+A new version of treehouse is available: v2.3.0 → v3.0.0
+Run "treehouse update" to update
+
+🌳 Worktree returned to pool.
+
+=== Ordinary Pi task preserves Grok-named user files ===
+A new version of treehouse is available: v2.3.0 → v3.0.0
+Run "treehouse update" to update
+
+Created /Users/control/.no-mistakes/worktrees/874f0de57f61/01M3EBGDMVNX4HAMF7PS38E0SE/.live-grok-validation-22338/ordinary-pi/project/treehouse.toml
+●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+●  WATCHER DOWN - SUPERVISION IS OFF
+●  1 task(s) in flight, but no live watcher process holds this home lock (last beat: 1s ago).
+●  Trust the emitted supervision protocol for this harness; do not use shell & for watcher repair.
+●  This is a supervision warning only; the guarded operation WILL still run.
+●  repair a missing or failed watcher cycle with the Pi tool fm_watch_arm_pi, or restart Pi with -e /Users/control/.no-mistakes/worktrees/874f0de57f61/01M3EBGDMVNX4HAMF7PS38E0SE/.pi/extensions/fm-primary-turnend-guard.ts -e /Users/control/.no-mistakes/worktrees/874f0de57f61/01M3EBGDMVNX4HAMF7PS38E0SE/.pi/extensions/fm-primary-pi-watch.ts if the extensions are not loaded.
+●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+REFUSED: worktree /Users/control/.no-mistakes/worktrees/874f0de57f61/01M3EBGDMVNX4HAMF7PS38E0SE/.live-grok-validation-22338/ordinary-pi/pool/.treehouse/project-f58065/1/project has uncommitted changes.
+uncommitted changes present
+Commit them (or get the captain's explicit OK to discard, then --force).
+PASS: ordinary Pi Grok-named worktree, state, and auth files were preserved
+A new version of treehouse is available: v2.3.0 → v3.0.0
+Run "treehouse update" to update
+
+🌳 Worktree returned to pool.
+
+=== Legacy Grok diagnostic distinguishes migration from guarded cleanup ===
+A new version of treehouse is available: v2.3.0 → v3.0.0
+Run "treehouse update" to update
+
+Created /Users/control/.no-mistakes/worktrees/874f0de57f61/01M3EBGDMVNX4HAMF7PS38E0SE/.live-grok-validation-22338/diagnostic/project/treehouse.toml
+state: unknown · source: none · unsupported legacy Grok lifecycle; use explicit supported-harness replacement, or guarded teardown for safely landed work
+PASS: operator diagnostic advertises explicit replacement and guarded landed cleanup without mutation
+A new version of treehouse is available: v2.3.0 → v3.0.0
+Run "treehouse update" to update
+
+🌳 Worktree returned to pool.
+
+=== All live product scenarios passed ===

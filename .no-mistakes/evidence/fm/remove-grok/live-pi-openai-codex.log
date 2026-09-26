@@ -1,0 +1,6 @@
+spawned live-pi harness=pi kind=scout window=fm-lab-remove-grok-live-56063-23224:w1:p2 worktree=/Users/control/.treehouse/project-e5ef54/1/project
+session=fm-lab-remove-grok-live-56063-23224
+spawned harness=pi model=openai-codex/gpt-5.6-sol effort=high backend=herdr
+native_agent=pi native_status=working
+foreground_processes=[{"name":"node","argv0":"pi-openai-fast version","argv":null},{"name":"node","argv0":"npm view pi-web-access version","argv":null},{"name":"node","argv0":"pi","argv":null}]
+legacy_grok_token=absent legacy_grok_pointer=absent

@@ -1,0 +1,2 @@
+ok - legacy Grok cleanup removes exact wiring only after work is safe
+ok - ordinary tasks safety-check and preserve Grok-named files
