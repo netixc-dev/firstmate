@@ -167,6 +167,13 @@
 #   paths named agy. The removed Devin, Rovo, and Muse adapters are refused for
 #   explicit selections, static pins, and dispatch profiles, while whitespace-
 #   containing raw commands remain caller-owned even for those executables.
+#   Standalone Kimi is also refused in those configured positions and when a raw
+#   command's effective executable is directly identifiable through the supported
+#   env, command, exec, or nohup forms; an env form that cannot be classified
+#   safely also refuses before task mutation, while arbitrary shell scripts remain
+#   caller-owned. A recorded standalone Kimi task cannot be relaunched, including
+#   onto a replacement adapter. Kimi providers selected through a supported
+#   adapter remain unaffected.
 #   Legacy Muse bindings are retired only by guarded replacement or teardown;
 #   vendor credentials, installations, and session history are never removed.
 #   For pi and pi-signed, fm-spawn resolves the selected executable
